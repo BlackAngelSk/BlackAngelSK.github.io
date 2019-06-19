@@ -57,7 +57,7 @@ section h2 {
     color: red;
 }
 footer {
-    position: relative;
+    position: fixed;
     box-sizing: border-box;
     bottom: 0;
     width: 100%;
@@ -65,6 +65,7 @@ footer {
     padding: 10px;
     background: #262626;
     text-align: center;
+    
     z-index: 10;
 }
 a {
@@ -82,4 +83,9 @@ a:hover {
 h4 {
     font-size: 15px;
     color : #262626; 
+}
+
+lol {
+
+   font-size: 70px
 }
