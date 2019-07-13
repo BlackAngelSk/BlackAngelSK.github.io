@@ -86,8 +86,25 @@ h4 {
     color : #262626; 
 }
 
-lol {
+.paragraph {  
 
-   font-size: 70px
+    font-family: 'Raleway', sans-serif;
 }
+
+p2 {
+    font-size: 15px;
+    line-height: 20px;
+    font-family: 'Raleway', sans-serif;  
+}
+
+
+
+lol {
+    font-display: 14px;
+    font-size: 70px
+
+}
+
+
+
 /* 
