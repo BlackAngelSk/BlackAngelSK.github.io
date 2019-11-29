@@ -3,7 +3,7 @@ const chars = ['$','%','#','@','&','(',')','=','*','/'];
 const charsTotal = chars.length;
 const getRandomInt = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min;
 
-let title = 'Hviezdoslavov čať podhaj';
+let title = 'Hviezdoslavov časť podhaj';
 let i = 0;
 setInterval(() => {
 	// document.title = chars[getRandomInt(0, charsTotal - 1)];
