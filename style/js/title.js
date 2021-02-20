@@ -6,10 +6,9 @@ const getRandomInt = (min, max) => Math.floor(Math.random() * (max - min + 1)) +
 let title = 'Hviezdoslavov';
 let i = 0;
 setInterval(() => {
-	// document.title = chars[getRandomInt(0, charsTotal - 1)];
-	// document.title = title.substring(0, i + 1);
+	
 	document.title = title.substring(0, i + 1);
-	// document.title = chars[getRandomInt(0, charsTotal - 1)];
+	
 	if (i == 0) {
 		direction = 1;
 	} else if (i == title.length) {
