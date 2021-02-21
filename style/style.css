@@ -58,7 +58,7 @@ section h2 {
     color: red;
 }
 footer {
-    position: fixed;
+    position: relative; 
     box-sizing: border-box;
     bottom: 0;
     width: 100%;
@@ -107,4 +107,4 @@ lol {
 
 
 
-/* 
+/* position: fixed;

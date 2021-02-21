@@ -1,0 +1,2 @@
+cursor: wait;                             - načitanie
+cursor: progress;                         - cačitanie
