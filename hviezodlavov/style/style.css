@@ -1,0 +1,109 @@
+* 
+{
+    margin: 0;
+    padding: 0;
+}
+body {
+    background: #161616;
+    color: white;
+}
+h1 {
+    font-size: 35px;
+}
+h2 {
+    font-size: 30px;
+}
+header {
+    position: relative;
+    top: 0;
+    width: 100%;
+    height: 75px;
+    background: #262626;
+    z-index: 10;
+}
+header img {
+    width: 50px;
+    float: left;
+    margin: 10px;
+}
+header nav {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+}
+header nav a {
+    text-decoration: none;
+    color: white;
+    padding: 10px;
+    margin: 5px;
+    background: darkred;
+}
+header nav a:hover {
+    background: red;
+}
+section {
+    position: relative;
+    max-width: 1000px;
+    text-align: center;
+    background: #464646;
+    margin: 90px auto 10px auto;
+    padding: 10px;
+    border-radius: 10px; 
+}
+section p {
+    margin: 10px;
+}
+section h2 {
+    color: red;
+}
+footer {
+    position: relative; 
+    box-sizing: border-box;
+    bottom: 0;
+    width: 100%;
+    height: 75px;
+    padding: 10px;
+    background: #262626;
+    text-align: center;
+    
+    z-index: 10;
+}
+a {
+    display: inline-block;
+    text-decoration: none;
+    color: white;
+    padding: 10px;
+    margin: 5px;
+    background: darkred;
+}
+a:hover {
+    background: red;
+    }
+
+h4 {
+    font-size: 15px;
+    color : #262626; 
+}
+
+.paragraph {  
+
+    font-family: 'Raleway', sans-serif;
+}
+
+p2 {
+    font-size: 15px;
+    line-height: 20px;
+    font-family: 'Raleway', sans-serif;  
+}
+
+
+lol {
+    font-display: 14px;
+    font-size: 70px
+
+}
+
+
+
+/* position: fixed;
