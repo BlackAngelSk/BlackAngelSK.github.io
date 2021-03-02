@@ -37,16 +37,16 @@ header nav a {
     color: white;
     padding: 9px;
     margin: 3px;
-    background: darkred;
+    background: #444444;
 }
 header nav a:hover {
-    background: red;
+    background: rgb(63, 62, 62);
 }
 section {
     position: relative;
     max-width: 1000px;
     text-align: center;
-    background: #b91010;
+    background: #444444;
     margin: 180px auto 10px auto;
     padding: 6px;
     border-radius: 6px; 
@@ -55,7 +55,7 @@ section p {
     margin: 1px;
 }
 section h2 {
-    color: red;
+    color: rgb(0, 0, 0);
 }
 footer {
     position: fixed;
@@ -75,19 +75,12 @@ a {
     color: white;
     padding: 10px;
     margin: 5px;
-    background: darkred;
+    background: rgb(0, 0, 0);
 }
 a:hover {
-    background: red;
-    }
-
+    background: rgb(43, 27, 27);
+}
 h4 {
     font-size: 15px;
     color : #262626; 
 }
-
-.paragraph {  
-
-    font-family: 'Raleway', sans-serif;
-}
-
