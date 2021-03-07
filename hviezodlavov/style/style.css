@@ -2,6 +2,7 @@
 {
     margin: 0;
     padding: 0;
+    font-family: 'Raleway', sans-serif;
 }
 body {
     background: #161616;
@@ -35,8 +36,10 @@ header nav {
 header nav a {
     text-decoration: none;
     color: white;
+    font-size: 20px;
     padding: 10px;
     margin: 5px;
+    border-radius: 5px;
     background: darkred;
 }
 header nav a:hover {
@@ -47,15 +50,42 @@ section {
     max-width: 1000px;
     text-align: center;
     background: #464646;
-    margin: 90px auto 10px auto;
+    margin: 50px auto;
     padding: 10px;
     border-radius: 10px; 
 }
-section p {
+.intro {
     margin: 10px;
 }
-section h2 {
-    color: red;
+.intro h1 {
+    padding: 10px;
+}
+.intro p {
+    padding: 10px;
+}
+.gallery{
+    margin: 10px 50px;
+}
+.parts {
+    margin: 10px;
+}
+.parts a {
+    text-decoration: none;
+    color: white;
+    padding: 10px;
+    margin: 5px;
+}
+.parts a:hover {
+    text-decoration: underline;
+}
+.gallery img {
+    transition: 1s;
+    padding: 15px;
+    width: 200px;
+}
+.gallery img:hover {
+    filter: grayscale(100%);
+    transform: scale(1.1);
 }
 footer {
     position: relative; 
@@ -66,44 +96,4 @@ footer {
     padding: 10px;
     background: #262626;
     text-align: center;
-    
-    z-index: 10;
 }
-a {
-    display: inline-block;
-    text-decoration: none;
-    color: white;
-    padding: 10px;
-    margin: 5px;
-    background: darkred;
-}
-a:hover {
-    background: red;
-    }
-
-h4 {
-    font-size: 15px;
-    color : #262626; 
-}
-
-.paragraph {  
-
-    font-family: 'Raleway', sans-serif;
-}
-
-p2 {
-    font-size: 15px;
-    line-height: 20px;
-    font-family: 'Raleway', sans-serif;  
-}
-
-
-lol {
-    font-display: 14px;
-    font-size: 70px
-
-}
-
-
-
-/* position: fixed;
