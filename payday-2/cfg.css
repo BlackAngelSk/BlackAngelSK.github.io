@@ -43,8 +43,8 @@ section {
     position: relative;
     max-width: 1000px;
     text-align: center;
-    
-    margin: 90px auto 10px auto;
+    background: #222222;
+    margin: 40px auto 10px auto;
     padding: 10px;
     border-radius: 10px; 
 }
@@ -55,7 +55,7 @@ section h2 {
     color: rgb(0, 0, 0);
 }
 footer {
-    position: relative; 
+    position: fixed; 
     box-sizing: border-box;
     bottom: 0;
     width: 100%;
@@ -63,7 +63,6 @@ footer {
     padding: 10px;
     background: #262626;
     text-align: center;
-    
     z-index: 10;
 }
 a {
@@ -83,6 +82,7 @@ h4 {
     font-size: 15px;
     color : #262626; 
 }
+
 .paragraph {  
 
     font-family: 'Raleway', sans-serif;
