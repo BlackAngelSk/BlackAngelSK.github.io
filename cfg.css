@@ -1,4 +1,7 @@
 *
+.music {
+    display: none;
+}
 h0 {
     font-size: 15px;
 }
@@ -10,7 +13,4 @@ h2 {
 }
 h3{
     font-size: 40px;
-}
-.music {
-    display: none;
 }
