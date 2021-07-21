@@ -87,3 +87,15 @@ h4 {
 
     font-family: 'Raleway', sans-serif;
 }
+
+.gallery {
+    margin: 10px 50px;
+}
+.gallery img {
+    transition: 1s;
+    padding: auto;
+    width: auto;
+}
+.gallery img:hover {
+    transform: scale(1.1);
+}
