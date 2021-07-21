@@ -15,4 +15,4 @@ setInterval(() => {
 		direction = -1;
 	}
 	i += direction;
-}, 200);
+}, 400);
