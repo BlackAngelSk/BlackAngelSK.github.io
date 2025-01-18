@@ -77,7 +77,7 @@
     </style>
 </head>
 <body>
-    <h1>TF2 MVM - Postavy</h1>
+    <h1>TF2 MVM - Characters </h1>
     <div class="character-grid">
         <div class="character-card" onclick="showDetails('scout')">
             <img src="images/tokens/scouttoken.jpg" alt="Scout">
@@ -159,7 +159,10 @@
             },
             pyro: {
                 basic: ["images/upgrades/pyro_basic1.jpg"],
-                special: {}
+                special: {
+                    "blackburner": ["images/upgrades/pyro_flamethrower1.jpg"],
+                    "Flamethrower": ["images/upgrades/pyro_flamethrower2.jpg"]
+                }
             },
             demoman: {
                 basic: ["images/upgrades/demo_basic1.jpg"],
@@ -198,7 +201,7 @@
 
             let basicSection = `
                 <div class="upgrade-section">
-                    <div class="upgrade-title">Základné upgrady</div>
+                    <div class="upgrade-title">Basic upgrades</div>
                     ${basic.map(img => `<img src="${img}" alt="Základný upgrade">`).join('')}
                 </div>
             `;
@@ -206,7 +209,7 @@
             let specialSections = Object.entries(special)
                 .map(([weapon, upgrades]) => `
                     <div class="upgrade-section">
-                        <div class="upgrade-title">Pre zbraň: ${weapon}</div>
+                        <div class="upgrade-title">For weapon: ${weapon}</div>
                         ${upgrades.map(img => `<img src="${img}" alt="${weapon} upgrade">`).join('')}
                     </div>
                 `)
@@ -220,5 +223,6 @@
             document.getElementById('character-details').style.display = 'none';
         }
     </script>
+    <footer>version 0.0.1 alpha </footer>
 </body>
 </html>
