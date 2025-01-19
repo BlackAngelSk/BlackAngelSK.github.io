@@ -74,6 +74,11 @@
             font-size: 20px;
             margin-bottom: 10px;
         }
+        .upgrade-description {
+            font-size: 14px;
+            margin-top: 5px;
+            color: #c9c9c9;
+        }
     </style>
 </head>
 <body>
@@ -117,73 +122,40 @@
         </div>
     </div>
 
-    <div id="character-details" class="character-details">
-        <button class="close-button" onclick="hideDetails()">Zatvoriť</button>
-        <div id="character-info"></div>
-    </div>
-
     <script>
         // Dáta pre postavy a ich upgrady
         const characterData = {
             scout: {
                 basic: [
-                    "images/upgrades/scout_basic1.jpg",
-                    "images/upgrades/scout_basic2.jpg"
+                    { img: "images/upgrades/scout_basic1.jpg", description: "Tento upgrade je užitočný na začiatok hry." },
+                    { img: "images/upgrades/scout_basic2.jpg", description: "Odporúča sa kúpiť na 2. vlnu." }
                 ],
                 special: {
                     "Force-A-Nature": [
-                        "images/upgrades/scout_force1.jpg",
-                        "images/upgrades/scout_force2.jpg"
+                        { img: "images/upgrades/scout_force1.jpg", description: "Vynikajúci na rýchle eliminácie robotov." },
+                        { img: "images/upgrades/scout_force2.jpg", description: "Zvyšuje efektivitu v tesných priestoroch." }
                     ],
                     "Scattergun": [
-                        "images/upgrades/scout_scatter1.jpg",
-                        "images/upgrades/scout_scatter2.jpg"
+                        { img: "images/upgrades/scout_scatter1.jpg", description: "Kúpiť pri ťažkých vlnách." },
+                        { img: "images/upgrades/scout_scatter2.jpg", description: "Doplnkový upgrade na zvýšenie poškodenia." }
                     ]
                 }
             },
             soldier: {
                 basic: [
-                    "images/upgrades/soldier_basic1.jpg",
-                    "images/upgrades/soldier_basic2.jpg"
+                    { img: "images/upgrades/soldier_basic1.jpg", description: "Dôležité pre raketomet." },
+                    { img: "images/upgrades/soldier_basic2.jpg", description: "Zvyšuje prežitie na stredných vlnách." }
                 ],
                 special: {
                     "Rocket Launcher": [
-                        "images/upgrades/soldier_rocket1.jpg",
-                        "images/upgrades/soldier_rocket2.jpg"
+                        { img: "images/upgrades/soldier_rocket1.jpg", description: "Skvelé pre rýchle odstránenie tankov." },
+                        { img: "images/upgrades/soldier_rocket2.jpg", description: "Zlepšuje rýchlosť streľby." }
                     ],
                     "Shotgun": [
-                        "images/upgrades/soldier_shotgun1.jpg",
-                        "images/upgrades/soldier_shotgun2.jpg"
+                        { img: "images/upgrades/soldier_shotgun1.jpg", description: "Efektívne proti ľahkým robotom." },
+                        { img: "images/upgrades/soldier_shotgun2.jpg", description: "Pridáva rýchlejšie nabíjanie." }
                     ]
                 }
-            },
-            pyro: {
-                basic: ["images/upgrades/pyro_basic1.jpg"],
-                special: {}
-            },
-            demoman: {
-                basic: ["images/upgrades/demo_basic1.jpg"],
-                special: {}
-            },
-            heavy: {
-                basic: ["images/upgrades/heavy_basic1.jpg"],
-                special: {}
-            },
-            engineer: {
-                basic: ["images/upgrades/engi_basic1.jpg"],
-                special: {}
-            },
-            medic: {
-                basic: ["images/upgrades/medic_basic1.jpg"],
-                special: {}
-            },
-            sniper: {
-                basic: ["images/upgrades/sniper_basic1.jpg"],
-                special: {}
-            },
-            spy: {
-                basic: ["images/upgrades/spy_basic1.jpg"],
-                special: {}
             }
         };
 
@@ -199,7 +171,12 @@
             let basicSection = `
                 <div class="upgrade-section">
                     <div class="upgrade-title">Základné upgrady</div>
-                    ${basic.map(img => `<img src="${img}" alt="Základný upgrade">`).join('')}
+                    ${basic.map(upgrade => `
+                        <div>
+                            <img src="${upgrade.img}" alt="Základný upgrade">
+                            <div class="upgrade-description">${upgrade.description}</div>
+                        </div>
+                    `).join('')}
                 </div>
             `;
 
@@ -207,7 +184,12 @@
                 .map(([weapon, upgrades]) => `
                     <div class="upgrade-section">
                         <div class="upgrade-title">Pre zbraň: ${weapon}</div>
-                        ${upgrades.map(img => `<img src="${img}" alt="${weapon} upgrade">`).join('')}
+                        ${upgrades.map(upgrade => `
+                            <div>
+                                <img src="${upgrade.img}" alt="${weapon} upgrade">
+                                <div class="upgrade-description">${upgrade.description}</div>
+                            </div>
+                        `).join('')}
                     </div>
                 `)
                 .join('');
