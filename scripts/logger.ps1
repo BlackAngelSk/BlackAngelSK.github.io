@@ -1,5 +1,5 @@
 # Cesta k logovaciemu súboru
-$logFile = "C:\Users\jakub\Desktop\test\log.txt"
+$logFile = "C:\Users\username\Desktop\test\log.txt"
 $dnsServer = "8.8.8.8"
 
 # Funkcia na získanie dňa v týždni
