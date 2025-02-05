@@ -1,43 +1,114 @@
 <!DOCTYPE html>
 <html lang="en">
-    <head>
-        <style> html, body { font: 12px Courier New; padding: 0px; margin: 0px; border: 0px; vertical-align: top; }
-			* { background: black; color: silver; }
-			pre {text-align: center; overflow: hidden; margin-top: 5em;}</style>
-        <script src='title.js'></script>
-        <link rel="icon" href="unnamed.png">
-        <div style="text-align: center; margin-top: 20px;">
-        <meta name="robots" content="noindex,nofollow">
-        <link rel="stylesheet" href="cfg.css">
-        <link rel="stylesheet" href="style.css">
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=devite-width, initial-scale=1">
-    </head>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>BlackangelSK</title>
+    <script src='title.js'></script>
+    <link rel="icon" href="unnamed.png">
+    <link rel="stylesheet" href="style.css">
+    <style>
+        body {
+            font-family: 'Courier New', monospace;
+            background-color: #000000;
+            color: #00ff00;
+            margin: 0;
+            padding: 0;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+        header {
+            background-color: #111111;
+            padding: 20px;
+            font-size: 24px;
+            font-weight: bold;
+            text-transform: uppercase;
+            border-bottom: 2px solid #00ff00;
+        }
+        .container {
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+            z-index: 1;
+        }
+        .link-button {
+            display: inline-block;
+            margin: 10px;
+            padding: 10px 20px;
+            background: #222222;
+            color: #00ff00;
+            text-decoration: none;
+            border: 2px solid #00ff00;
+            font-family: 'Courier New', monospace;
+        }
+        .link-button:hover {
+            background: #00ff00;
+            color: #000000;
+        }
+        .binary-background {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            pointer-events: none;
+            z-index: 0;
+        }
+        .binary-digit {
+            position: absolute;
+            color: #00ff00;
+            font-size: random(10, 30)px;
+            opacity: 0.2;
+            animation: float 10s linear infinite;
+        }
+        @keyframes float {
+            0% { transform: translateY(0); opacity: 0.5; }
+            100% { transform: translateY(100vh); opacity: 0; }
+        }
+        footer {
+            background-color: #111111;
+            padding: 10px;
+            font-size: 16px;
+            border-top: 2px solid #00ff00;
+        }
+    </style>
+</head>
+<body>
+    <div class="binary-background">
+        <script>
+            for (let i = 0; i < 100; i++) {
+                let digit = document.createElement('div');
+                digit.className = 'binary-digit';
+                digit.innerText = Math.random() > 0.5 ? '1' : '0';
+                digit.style.left = Math.random() * 100 + 'vw';
+                digit.style.top = Math.random() * 100 + 'vh';
+                digit.style.fontSize = (Math.random() * 20 + 10) + 'px';
+                digit.style.animationDuration = (Math.random() * 5 + 5) + 's';
+                document.querySelector('.binary-background').appendChild(digit);
+            }
+        </script>
+    </div>
     <header>
-        <h3>BlackangelSK.github.io</h3>
+        BlackangelSK.github.io
     </header>
-    <body>
-       <!-- <section>
-            <h1>hviedoslavov</h1>
-            <h4><p class="paragraph"><a href="hviezodlavov/index.html">hviezodlavov</a></p></h4>
-        </section>-->
-        <section>
-            <h1>TF2</h1>
-            <h4><p class="paragraph"><a href="ft2/tf2.html">tf2 mvm buys </a></p></h4>
-            <h1>________________________________________________________________________________</h1>
-            <h1><a href="https://github.com/BlackAngelSk/BlackAngelSK.github.io">github</h1>
-        </section>
-        <!--<<section>
-            <h4><p class="paragraph"><a href="ft2/tf3.html">memes </a></p></h4>
-            <h1>payday 2 (Bulds)</h1>
-            <h4><p class="paragraph"><a href="payday-2/index.html">payday 2</a></p></h4>
-            h0><p class="paragraph"><a href="galery/index.html">payday 2 gallery</a></p></h0
-        </section>
-        <section>
-            <h1>________________________________________________________________________________</h1>
-            <h1>Bonus</h1>
-            <h4><p class="paragraph"><a href="hviezodlavov/style/costom/metal.html">just somme music</a></p></h4>
-            <h0><p class="paragraph"><a href="hviezodlavov/style/costom/Matrix Background.html">:></a></p></h0>
-        </section>-->
-    </body>
+    <div class="container">
+        <h1>TF2</h1>
+        <a href="ft2/tf2.html" class="link-button">TF2 MVM Buys</a>
+        <br>
+        <a href="https://github.com/BlackAngelSk/BlackAngelSK.github.io" class="link-button">GitHub</a>
+        <br>
+    </div>
+    <footer>
+        © 2025 BlackangelSK. All Rights Reserved.
+    </footer>
+</body>
 </html>

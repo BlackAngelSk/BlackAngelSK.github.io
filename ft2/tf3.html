@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TF2 MVM - Postavy</title>
+    <title>TF2 MVM - Výber mapy</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -13,8 +13,37 @@
             margin: 0;
             padding: 0;
         }
-        h1 {
+        h1, h2 {
             margin-top: 20px;
+        }
+        .map-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            padding: 20px;
+        }
+        .map-card {
+            background-color: #2b2b2b;
+            border-radius: 10px;
+            padding: 10px;
+            cursor: pointer;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+        .map-card:hover {
+            transform: scale(1.1);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.5);
+        }
+        .map-card img {
+            width: 100%;
+            border-radius: 8px;
+        }
+        .map-name {
+            margin-top: 10px;
+            font-size: 18px;
+            font-weight: bold;
+        }
+        .hidden {
+            display: none;
         }
         .character-grid {
             display: grid;
@@ -26,8 +55,8 @@
             background-color: #2b2b2b;
             border-radius: 10px;
             padding: 10px;
-            transition: transform 0.2s ease, box-shadow 0.2s ease;
             cursor: pointer;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
         }
         .character-card:hover {
             transform: scale(1.1);
@@ -42,165 +71,114 @@
             font-size: 18px;
             font-weight: bold;
         }
-        .character-details {
-            display: none;
-            margin-top: 20px;
-            padding: 20px;
+        .footer {
+            margin-top: 40px;
+            padding: 10px;
             background-color: #2b2b2b;
-            border-radius: 10px;
-        }
-        .character-details img {
-            max-width: 200px;
-            margin: 10px;
-            border-radius: 8px;
-        }
-        .close-button {
-            margin-top: 10px;
-            padding: 10px 20px;
-            font-size: 16px;
-            background-color: #ff5757;
             color: white;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-        }
-        .close-button:hover {
-            background-color: #ff2b2b;
-        }
-        .upgrade-section {
-            margin-top: 20px;
-        }
-        .upgrade-title {
-            font-size: 20px;
-            margin-bottom: 10px;
-        }
-        .upgrade-description {
-            font-size: 14px;
-            margin-top: 5px;
-            color: #c9c9c9;
         }
     </style>
 </head>
 <body>
-    <h1>TF2 MVM - Postavy</h1>
-    <div class="character-grid">
-        <div class="character-card" onclick="showDetails('scout')">
-            <img src="images/tokens/scouttoken.jpg" alt="Scout">
-            <div class="character-name">Scout</div>
+
+    <h1>Vyber si mapu pre MvM</h1>
+    <div class="map-grid">
+        <div class="map-card" onclick="selectMap('coalTown')">
+            <img src="images/maps/coal_town.jpg" alt="Coal Town">
+            <div class="map-name">Coal Town</div>
         </div>
-        <div class="character-card" onclick="showDetails('soldier')">
-            <img src="images/tokens/soldiertoken.jpg" alt="Soldier">
-            <div class="character-name">Soldier</div>
+        <div class="map-card" onclick="selectMap('decoy')">
+            <img src="images/maps/decoy.jpg" alt="Decoy">
+            <div class="map-name">Decoy</div>
         </div>
-        <div class="character-card" onclick="showDetails('pyro')">
-            <img src="images/tokens/pyrotoken.jpg" alt="Pyro">
-            <div class="character-name">Pyro</div>
+        <div class="map-card" onclick="selectMap('mannworks')">
+            <img src="images/maps/mannworks.jpg" alt="Mannworks">
+            <div class="map-name">Mannworks</div>
         </div>
-        <div class="character-card" onclick="showDetails('demoman')">
-            <img src="images/tokens/demotoken.jpg" alt="Demoman">
-            <div class="character-name">Demoman</div>
+        <div class="map-card" onclick="selectMap('bigrock')">
+            <img src="images/maps/bigrock.jpg" alt="Bigrock">
+            <div class="map-name">Bigrock</div>
         </div>
-        <div class="character-card" onclick="showDetails('heavy')">
-            <img src="images/tokens/heavytoken.jpg" alt="Heavy">
-            <div class="character-name">Heavy</div>
+        <div class="map-card" onclick="selectMap('rottenburg')">
+            <img src="images/maps/rottenburg.jpg" alt="Rottenburg">
+            <div class="map-name">Rottenburg</div>
         </div>
-        <div class="character-card" onclick="showDetails('engineer')">
-            <img src="images/tokens/engitoken.jpg" alt="Engineer">
-            <div class="character-name">Engineer</div>
+    </div>
+
+    <div id="difficulty-section" class="hidden">
+        <h2>Vyber si obtiažnosť</h2>
+        <div>
+            <button onclick="selectDifficulty('normal')"></button>
+            <button onclick="selectDifficulty('advanced')">Pokročilá</button>
+            <button onclick="selectDifficulty('expert')">Expertná</button>
+            <button onclick="selectDifficulty('normal')">Normálna</button>
+            <button onclick="selectDifficulty('advanced')">Pokročilá</button>
+
         </div>
-        <div class="character-card" onclick="showDetails('medic')">
-            <img src="images/tokens/medictoken.jpg" alt="Medic">
-            <div class="character-name">Medic</div>
-        </div>
-        <div class="character-card" onclick="showDetails('sniper')">
-            <img src="images/tokens/snipertoken.jpg" alt="Sniper">
-            <div class="character-name">Sniper</div>
-        </div>
-        <div class="character-card" onclick="showDetails('spy')">
-            <img src="images/tokens/spytoken.jpg" alt="Spy">
-            <div class="character-name">Spy</div>
+    </div>
+
+    <div id="character-section" class="hidden">
+        <h2>Vyber si postavu</h2>
+        <div class="character-grid">
+            <div class="character-card" onclick="showDetails('scout')">
+                <img src="images/tokens/scouttoken.jpg" alt="Scout">
+                <div class="character-name">Scout</div>
+            </div>
+            <div class="character-card" onclick="showDetails('soldier')">
+                <img src="images/tokens/soldiertoken.jpg" alt="Soldier">
+                <div class="character-name">Soldier</div>
+            </div>
+            <div class="character-card" onclick="showDetails('pyro')">
+                <img src="images/tokens/pyrotoken.jpg" alt="Pyro">
+                <div class="character-name">Pyro</div>
+            </div>
+            <div class="character-card" onclick="showDetails('demoman')">
+                <img src="images/tokens/demotoken.jpg" alt="Demoman">
+                <div class="character-name">Demoman</div>
+            </div>
+            <div class="character-card" onclick="showDetails('heavy')">
+                <img src="images/tokens/heavytoken.jpg" alt="Heavy">
+                <div class="character-name">Heavy</div>
+            </div>
+            <div class="character-card" onclick="showDetails('engineer')">
+                <img src="images/tokens/engitoken.jpg" alt="Engineer">
+                <div class="character-name">Engineer</div>
+            </div>
+            <div class="character-card" onclick="showDetails('medic')">
+                <img src="images/tokens/medictoken.jpg" alt="Medic">
+                <div class="character-name">Medic</div>
+            </div>
+            <div class="character-card" onclick="showDetails('sniper')">
+                <img src="images/tokens/snipertoken.jpg" alt="Sniper">
+                <div class="character-name">Sniper</div>
+            </div>
+            <div class="character-card" onclick="showDetails('spy')">
+                <img src="images/tokens/spytoken.jpg" alt="Spy">
+                <div class="character-name">Spy</div>
+            </div>
         </div>
     </div>
 
     <script>
-        // Dáta pre postavy a ich upgrady
-        const characterData = {
-            scout: {
-                basic: [
-                    { img: "images/upgrades/scout_basic1.jpg", description: "Tento upgrade je užitočný na začiatok hry." },
-                    { img: "images/upgrades/scout_basic2.jpg", description: "Odporúča sa kúpiť na 2. vlnu." }
-                ],
-                special: {
-                    "Force-A-Nature": [
-                        { img: "images/upgrades/scout_force1.jpg", description: "Vynikajúci na rýchle eliminácie robotov." },
-                        { img: "images/upgrades/scout_force2.jpg", description: "Zvyšuje efektivitu v tesných priestoroch." }
-                    ],
-                    "Scattergun": [
-                        { img: "images/upgrades/scout_scatter1.jpg", description: "Kúpiť pri ťažkých vlnách." },
-                        { img: "images/upgrades/scout_scatter2.jpg", description: "Doplnkový upgrade na zvýšenie poškodenia." }
-                    ]
-                }
-            },
-            soldier: {
-                basic: [
-                    { img: "images/upgrades/soldier_basic1.jpg", description: "Dôležité pre raketomet." },
-                    { img: "images/upgrades/soldier_basic2.jpg", description: "Zvyšuje prežitie na stredných vlnách." }
-                ],
-                special: {
-                    "Rocket Launcher": [
-                        { img: "images/upgrades/soldier_rocket1.jpg", description: "Skvelé pre rýchle odstránenie tankov." },
-                        { img: "images/upgrades/soldier_rocket2.jpg", description: "Zlepšuje rýchlosť streľby." }
-                    ],
-                    "Shotgun": [
-                        { img: "images/upgrades/soldier_shotgun1.jpg", description: "Efektívne proti ľahkým robotom." },
-                        { img: "images/upgrades/soldier_shotgun2.jpg", description: "Pridáva rýchlejšie nabíjanie." }
-                    ]
-                }
-            }
-        };
+        function selectMap(map) {
+            console.log("Vybraná mapa: " + map);
+            document.getElementById("difficulty-section").classList.remove("hidden");
+            document.getElementById("character-section").classList.add("hidden");
+        }
+
+        function selectDifficulty(difficulty) {
+            console.log("Vybraná obtiažnosť: " + difficulty);
+            document.getElementById("character-section").classList.remove("hidden");
+        }
 
         function showDetails(character) {
-            if (!characterData[character]) {
-                alert("Údaje pre túto postavu nie sú k dispozícii!");
-                return;
-            }
-
-            const { basic, special } = characterData[character];
-            const detailsDiv = document.getElementById('character-info');
-
-            let basicSection = `
-                <div class="upgrade-section">
-                    <div class="upgrade-title">Základné upgrady</div>
-                    ${basic.map(upgrade => `
-                        <div>
-                            <img src="${upgrade.img}" alt="Základný upgrade">
-                            <div class="upgrade-description">${upgrade.description}</div>
-                        </div>
-                    `).join('')}
-                </div>
-            `;
-
-            let specialSections = Object.entries(special)
-                .map(([weapon, upgrades]) => `
-                    <div class="upgrade-section">
-                        <div class="upgrade-title">Pre zbraň: ${weapon}</div>
-                        ${upgrades.map(upgrade => `
-                            <div>
-                                <img src="${upgrade.img}" alt="${weapon} upgrade">
-                                <div class="upgrade-description">${upgrade.description}</div>
-                            </div>
-                        `).join('')}
-                    </div>
-                `)
-                .join('');
-
-            detailsDiv.innerHTML = basicSection + specialSections;
-            document.getElementById('character-details').style.display = 'block';
-        }
-
-        function hideDetails() {
-            document.getElementById('character-details').style.display = 'none';
+            alert(`Zobrazenie upgradov pre: ${character}`);
         }
     </script>
+
+    <footer class="footer">
+        <p>Version 0.0.4 Alpha | Made by AI because I'm lazy</p>
+    </footer>
+
 </body>
 </html>
