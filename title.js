@@ -3,7 +3,7 @@ const chars = ['$','%','#','@','&','(',')','=','*','/'];
 const charsTotal = chars.length;
 const getRandomInt = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min;
 
-let title = 'Blackangelsk.github.io';
+let title = 'BlackAngelSK.github.io';
 let i = 0;
 setInterval(() => {
 	
