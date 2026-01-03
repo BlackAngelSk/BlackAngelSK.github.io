@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="sk">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Moje odkazy</title>
+  <style>
+:root {
+  --bg: #f4f6f8;
+  --text: #111;
+  --card: #ffffff;
+  --header: #2563eb;
+  --link: #2563eb;
+  --block: #f9fafb;
+  --shadow: 0 10px 25px rgba(0,0,0,0.08);
+}
+body.dark {
+  --bg: #0f172a;
+  --text: #e5e7eb;
+  --card: #020617;
+  --header: #020617;
+  --link: #60a5fa;
+  --block: #020617;
+  --shadow: 0 10px 25px rgba(0,0,0,0.5);
+}
+body {
+  font-family: system-ui, Arial, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  margin: 0;
+}
+header {
+  background: linear-gradient(135deg, var(--header), #1d4ed8);
+  color: white;
+  padding: 30px 20px;
+  text-align: center;
+}
+main {
+  max-width: 900px;
+  margin: 40px auto;
+  padding: 20px;
+}
+h2 {
+  margin-bottom: 15px;
+}
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 20px;
+}
+.card {
+  background: var(--card);
+  border-radius: 16px;
+  padding: 20px;
+  box-shadow: var(--shadow);
+  transition: transform 0.2s ease;
+}
+.card:hover { transform: translateY(-4px); }
+.card a {
+  color: var(--link);
+  font-size: 18px;
+}
+.icon {
+  font-size: 28px;
+  margin-bottom: 10px;
+}
+.text-block {
+  background: var(--card);
+  border-radius: 16px;
+  padding: 20px;
+  box-shadow: var(--shadow);
+}
+.toggle {
+  position: fixed;
+  top: 15px;
+  right: 15px;
+  padding: 8px 12px;
+  border: none;
+  border-radius: 999px;
+  cursor: pointer;
+}
+</style>
+</head>
+<body>
+<button class="toggle" onclick="toggleTheme()">🌙 / ☀️</button>
+  <header>
+    <h1>Programy, texty a poznámky</h1>
+    <p></p>
+  </header>
+
+  <main>
+    <section>
+      <h2>Odkazy na programy</h2>
+      <div class="grid">
+  <div class="card">
+    <div class="icon">🤖</div>
+    <a href="https://app.heygen.com/home" target="_blank">HeyGen</a>
+    <p>AI dabovanie videí</p>
+    <p>AI stránka na dabovanie videa.</p>
+    <p>Do 3 minút zdarma, potom cca 20 € / mesiac za 30 minút.</p>
+  </div>
+</div>
+    </section>
+
+    <section>
+<h2>Texty a poznámky</h2>
+<div class="grid">
+  <div class="text-block">
+    <h3>skusim naist ich viac </h3>
+    <p></p>
+    <p></p>
+  </div>
+  <div class="text-block">
+    <h3>inprogress</h3>
+    <p></p>
+  </div>
+</div>
+</section>
+  </main>
+<script>
+const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+const savedTheme = localStorage.getItem('theme');
+if (savedTheme) {
+  document.body.classList.toggle('dark', savedTheme === 'dark');
+} else if (prefersDark) {
+  document.body.classList.add('dark');
+}
+function toggleTheme() {
+  document.body.classList.toggle('dark');
+  localStorage.setItem('theme', document.body.classList.contains('dark') ? 'dark' : 'light');
+}
+</script>
+</body>
+</html>
