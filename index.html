@@ -55,24 +55,25 @@
         }
         .binary-background {
             position: absolute;
-            top: 0;
             left: 0;
+            top: 0;
             width: 100%;
-            height: 100%;
+            height: 100%; /* fill the main container */
             overflow: hidden;
             pointer-events: none;
             z-index: 0;
+            /* sized and populated by the setup script */
         }
         .binary-digit {
             position: absolute;
             color: #00ff00;
-            font-size: random(10, 30)px;
-            opacity: 0.2;
-            animation: float 10s linear infinite;
+            opacity: 0.6;
+            animation: float linear infinite;
+            will-change: transform, opacity;
         }
         @keyframes float {
-            0% { transform: translateY(0); opacity: 0.5; }
-            100% { transform: translateY(100vh); opacity: 0; }
+            0% { transform: translateY(0); opacity: 0.8; }
+            100% { transform: translateY(var(--binary-area-height, 100vh)); opacity: 0; }
         }
         footer {
             background-color: #111111;
@@ -83,25 +84,13 @@
     </style>
 </head>
 <body>
-    <div class="binary-background">
-        <script>
-            for (let i = 0; i < 100; i++) {
-                let digit = document.createElement('div');
-                digit.className = 'binary-digit';
-                digit.innerText = Math.random() > 0.5 ? '1' : '0';
-                digit.style.left = Math.random() * 100 + 'vw';
-                digit.style.top = Math.random() * 100 + 'vh';
-                digit.style.fontSize = (Math.random() * 20 + 10) + 'px';
-                digit.style.animationDuration = (Math.random() * 9 + 9) + 's';
-                document.querySelector('.binary-background').appendChild(digit);
-            }
-        </script>
-    </div>
+
     <header>
         BlackangelSK.github.io
     </header>
-    <body>
-        <div class="container">
+
+    <main class="container">
+        <div class="binary-background" aria-hidden="true"></div>
         <h1>MY GitHub Profile </h1>
         <a href="https://github.com/BlackAngelSk/BlackAngelSK.github.io" class="link-button">GitHub</a>
         <a href="usefull_tools/tools.html" class="link-button">usefull tools</a>
@@ -109,10 +98,44 @@
         <a href="ft2/tf2.html" class="link-button">TF2 MVM Buys(in progress)</a>
         <br>
         <h1>more soon (maybe)</h1>
-    </div>
-    </body>
+    </main>
     <footer>
         © 2025 BlackAngelSK. All Rights Reserved.
     </footer>
+    <script>
+        (function() {
+            const container = document.querySelector('main.container');
+            const bg = container.querySelector('.binary-background');
+
+            function setup() {
+                const height = container.clientHeight;
+                const width = container.clientWidth;
+                bg.style.top = '0px';
+                bg.style.height = height + 'px';
+                bg.style.setProperty('--binary-area-height', height + 'px');
+
+                // populate digits
+                bg.innerHTML = '';
+                const count = Math.max(20, Math.floor(width / 12));
+                for (let i = 0; i < count; i++) {
+                    const digit = document.createElement('div');
+                    digit.className = 'binary-digit';
+                    digit.setAttribute('aria-hidden', 'true');
+                    digit.innerText = Math.random() > 0.5 ? '1' : '0';
+                    digit.style.left = (Math.random() * 100) + '%';
+                    digit.style.top = (Math.random() * height) + 'px';
+                    digit.style.fontSize = (Math.random() * 20 + 10) + 'px';
+                    digit.style.animationDuration = (Math.random() * 8 + 6) + 's';
+                    digit.style.opacity = (Math.random() * 0.6 + 0.2).toFixed(2);
+                    bg.appendChild(digit);
+                }
+            }
+
+            window.addEventListener('resize', setup);
+            document.addEventListener('DOMContentLoaded', setup);
+            // initial call in case script runs after DOMContentLoaded
+            if (document.readyState === 'complete' || document.readyState === 'interactive') setup();
+        })();
+    </script>
 </body>
 </html>
