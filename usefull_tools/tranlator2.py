@@ -109,7 +109,7 @@ class TranslatorGUI:
     def __init__(self, root):
         self.root = root
         self.root.title("Whisper Transkribér + Prekladač (large-v3)")
-        self.root.geometry("950x700")
+        self.root.geometry("850x700")
         self.dark_mode = True
         self.model = None
         self.translator = None
