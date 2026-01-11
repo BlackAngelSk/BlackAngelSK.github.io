@@ -1,6 +1,19 @@
-# Cesta k logovaciemu súboru
-$logFile = "C:\Users\username\Desktop\test\log.txt"
-$dnsServer = "8.8.8.8"
+Param(
+    [string]$LogFile = "C:\Users\username\Desktop\test\log.txt",
+    [string]$DnsServer = "8.8.8.8",
+    [int]$IntervalSeconds = 4
+)
+
+# Ensure log directory exists
+$logDir = Split-Path $LogFile -Parent
+if (-not (Test-Path -Path $logDir)) {
+    try {
+        New-Item -ItemType Directory -Path $logDir -Force | Out-Null
+    } catch {
+        Write-Error "Unable to create log directory '$logDir': $_"
+        exit 1
+    }
+}
 
 # Funkcia na získanie dňa v týždni
 function Get-DayOfWeekName {
@@ -34,38 +47,40 @@ function Log-PingResult {
     $currentDate = Get-Date
     $dayOfWeek = Get-DayOfWeekName -date $currentDate
     $weekNumber = Get-WeekNumber -date $currentDate
-    $logEntry = "[$dayOfWeek, $weekNumber. týždeň, $($currentDate.ToString("dd. MM. yyyy, HH:mm:ss"))] - $dnsServer - $status, latency: $pingTime ms"
+    $latencyText = if ($pingTime -eq 'N/A') { 'N/A' } else { "$pingTime ms" }
+    $logEntry = "[$dayOfWeek, $weekNumber. týždeň, $($currentDate.ToString('dd. MM. yyyy, HH:mm:ss'))] - $DnsServer - $status, latency: $latencyText"
     Write-Output $logEntry  # Výpis do konzoly
-    Add-Content -Path $logFile -Value $logEntry  # Zápis do logu
+    try {
+        Add-Content -Path $LogFile -Value $logEntry -Encoding UTF8  # Zápis do logu
+    } catch {
+        Write-Error "Failed to write to log file '$LogFile': $_"
+    }
 }
 
 # Začiatok logovacej relácie
 $sessionStart = "========== new session: $(Get-Date) =========="
 Write-Output $sessionStart
-Add-Content -Path $logFile -Value $sessionStart
+try {
+    Add-Content -Path $LogFile -Value $sessionStart -Encoding UTF8
+} catch {
+    Write-Error "Failed to write session start to log file: $_"
+}
 
 # Nekonečná slučka
 while ($true) {
-    # Spustenie príkazu ping
-    $pingOutput = ping -n 1 $dnsServer
-
-    # Spracovanie výstupu
-    $pingTime = $null
-    foreach ($line in $pingOutput) {
-        if ($line -match "time=(\d+)ms") {
-            $pingTime = $matches[1]
-            break
+    try {
+        $reply = Test-Connection -ComputerName $DnsServer -Count 1 -ErrorAction Stop
+        if ($reply) {
+            $pingTime = $reply.ResponseTime
+            Log-PingResult -status "Dostupné" -pingTime $pingTime
+        } else {
+            Log-PingResult -status "Nedostupné" -pingTime "N/A"
         }
-    }
-
-    # Logovanie výsledku
-    if ($pingTime) {
-        Log-PingResult -status "Dostupné" -pingTime $pingTime
-    } else {
+    } catch {
         Log-PingResult -status "Nedostupné" -pingTime "N/A"
     }
 
     # Pauza medzi testami
-    Start-Sleep -Seconds 4
+    Start-Sleep -Seconds $IntervalSeconds
 }
 
