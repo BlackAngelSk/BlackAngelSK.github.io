@@ -64,11 +64,29 @@ h2 {
   font-size: 28px;
   margin-bottom: 10px;
 }
+.card p {
+  margin: 8px 0;
+  font-size: 14px;
+}
+.card-title {
+  font-weight: bold;
+  font-size: 18px;
+  margin-bottom: 5px;
+}
 .text-block {
   background: var(--card);
   border-radius: 16px;
   padding: 20px;
   box-shadow: var(--shadow);
+}
+.code-block {
+  background: var(--block);
+  padding: 10px;
+  border-radius: 8px;
+  font-family: 'Courier New', monospace;
+  font-size: 13px;
+  overflow-x: auto;
+  margin: 10px 0;
 }
 .toggle {
   position: fixed;
@@ -88,52 +106,209 @@ h2 {
     <p></p>
   </header>
 
-  <main>
-    <section>
-      <h2>Odkazy na programy</h2>
-      <div class="grid">
-  <div class="card">
-    <div class="icon">🤖</div>
-    <a href="https://app.heygen.com/home" target="_blank">HeyGen</a>
-    <p>AI dabovanie videí</p>
-    <p>AI stránka na dabovanie videa.</p>
-    <p>Do 3 minút zdarma, potom cca 20 € / mesiac za 30 minút.</p>
-    <a href="https://app.heygen.com/home" target="_blank"></a>
-    <p><iframe width="560" height="315" src="https://app.heygen.com/embedded-player/be16a0500da244f99ff9233fb4fbdaf2-sk" title="HeyGen video player" frameborder="0" allow="encrypted-media; fullscreen;" allowfullscreen></iframe></p>
-    
-    <p>automaticky transcript z nahravky</p>
-    <a href="/usefull_tools/tranlator3.py" download="">moj skript na transcript</a>
-    <p>treba Python 3.10</p>
-    <p>potom treba " pip install faster-whisper transformers torch sentencepiece "</p>
-    <p>Stiahni: https://ffmpeg.org/download.html</p>
-    <p>Rozbaľ (napr. C:\ffmpeg)</p>
-    <p>Pridaj C:\ffmpeg\bin do PATH</p> 
-    <p>ps často ja to ui bude meniť</p>
-    <div class="gallery-item">
-      <a target="_blank" href="/usefull_tools/Snímka obrazovky 2026-01-05 114748.png">
-        <img src="/usefull_tools/Snímka obrazovky 2026-01-05 114748.png" alt="Mountains" width="600" height="400">
-    </a>
-    <div class="desc">program</div>
-</div>
-</div>
-    </section>
-    <section>
-<h2>Texty a poznámky</h2>
-<div class="grid">
-  <div class="text-block">
-    <h3></h3>
-    <p></p>
-    <p></p>
-  </div>
-  <div class="text-block">
-    <h3>Scripty</h3>
-    <p>chis titus</p>
-    <p>irm "https://christitus.com/win" | iex</p>
-  </div>
-</div>
-</section>
+  <main id="mainContent">
   </main>
 <script>
+// ============================================
+// CONFIGURATION - Edit this section to add/modify content
+// ============================================
+const config = {
+  pageTitle: "Programy, texty a poznámky",
+  pageSubtitle: "",
+  sections: [
+    {
+      title: "Odkazy na programy",
+      type: "cards",
+      items: [
+        {
+          icon: "🤖",
+          title: "HeyGen",
+          description: "AI dabovanie videí",
+          details: [
+            "AI stránka na dabovanie videa.",
+            "Do 3 minút zdarma, potom cca 20 € / mesiac za 30 minút."
+          ],
+          links: [
+            { text: "HeyGen odkaz", url: "https://app.heygen.com/home" }
+          ]
+        }
+      ]
+    },
+    {
+      title: "Transcript script",
+      type: "text",
+      items: [
+        {
+          subtitle: "Automatický transcript z nahravky",
+          content: [
+            "Stiahni: moj skript na transcript",
+            "Vyžaduje: Python 3.10+",
+            "Inštalácia balíkov:"
+          ],
+          code: "pip install faster-whisper transformers torch sentencepiece",
+          steps: [
+            "1. Stiahni FFmpeg: https://ffmpeg.org/download.html",
+            "2. Rozbaľ (napr. C:\\ffmpeg)",
+            "3. Pridaj C:\\ffmpeg\\bin do PATH",
+            "4. Poznámka: Script sa čas od času mení"
+          ]
+        }
+      ]
+    },
+    {
+      title: "Texty a poznámky",
+      type: "cards",
+      items: [
+        {
+          icon: "⚙️",
+          title: "Scripty",
+          description: "Užitočné skúšky a skripty",
+          details: [
+            "Chris Titus - Windows optimizácia"
+          ],
+          code: "irm 'https://christitus.com/win' | iex"
+        }
+      ]
+    },
+    {
+      title: "Hitomi-Downloader",
+      type: "cards",
+      items: [
+        {
+          icon: "📚",
+          title: "Hitomi-Downloader",
+          description: "lešie stahovanie z yutube a iných stránok",
+          links: [
+            { text: "link na univeralny dowloader", url: "https://github.com/KurtBestor/Hitomi-Downloader/releases" },
+            
+          ]
+        }
+      ]
+    }
+    ]
+};
+
+// ============================================
+// RENDERING ENGINE - No need to edit below
+// ============================================
+function renderContent() {
+  document.querySelector('header h1').textContent = config.pageTitle;
+  document.querySelector('header p').textContent = config.pageSubtitle;
+  
+  const mainContent = document.getElementById('mainContent');
+  mainContent.innerHTML = '';
+  
+  config.sections.forEach(section => {
+    const sectionEl = document.createElement('section');
+    
+    const titleEl = document.createElement('h2');
+    titleEl.textContent = section.title;
+    sectionEl.appendChild(titleEl);
+    
+    if (section.type === 'cards') {
+      renderCards(sectionEl, section.items);
+    } else if (section.type === 'text') {
+      renderTextBlocks(sectionEl, section.items);
+    }
+    
+    mainContent.appendChild(sectionEl);
+  });
+}
+
+function renderCards(parent, items) {
+  const grid = document.createElement('div');
+  grid.className = 'grid';
+  
+  items.forEach(item => {
+    const card = document.createElement('div');
+    card.className = 'card';
+    
+    let html = '';
+    
+    if (item.icon) {
+      html += `<div class="icon">${item.icon}</div>`;
+    }
+    
+    if (item.title) {
+      html += `<div class="card-title">${item.title}</div>`;
+    }
+    
+    if (item.description) {
+      html += `<p><strong>${item.description}</strong></p>`;
+    }
+    
+    if (item.details && Array.isArray(item.details)) {
+      item.details.forEach(detail => {
+        html += `<p>${detail}</p>`;
+      });
+    }
+    
+    if (item.links && Array.isArray(item.links)) {
+      item.links.forEach(link => {
+        html += `<p><a href="${link.url}" target="_blank">${link.text}</a></p>`;
+      });
+    }
+    
+    if (item.code) {
+      html += `<div class="code-block">${escapeHtml(item.code)}</div>`;
+    }
+    
+    card.innerHTML = html;
+    grid.appendChild(card);
+  });
+  
+  parent.appendChild(grid);
+}
+
+function renderTextBlocks(parent, items) {
+  const grid = document.createElement('div');
+  grid.className = 'grid';
+  
+  items.forEach(item => {
+    const block = document.createElement('div');
+    block.className = 'text-block';
+    
+    let html = '';
+    
+    if (item.subtitle) {
+      html += `<h3>${item.subtitle}</h3>`;
+    }
+    
+    if (item.content && Array.isArray(item.content)) {
+      item.content.forEach(text => {
+        html += `<p>${text}</p>`;
+      });
+    }
+    
+    if (item.code) {
+      html += `<div class="code-block">${escapeHtml(item.code)}</div>`;
+    }
+    
+    if (item.steps && Array.isArray(item.steps)) {
+      item.steps.forEach(step => {
+        html += `<p>${step}</p>`;
+      });
+    }
+    
+    block.innerHTML = html;
+    grid.appendChild(block);
+  });
+  
+  parent.appendChild(grid);
+}
+
+function escapeHtml(text) {
+  const map = {
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#039;'
+  };
+  return text.replace(/[&<>"']/g, m => map[m]);
+}
+
+// Theme toggle
 const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
 const savedTheme = localStorage.getItem('theme');
 if (savedTheme) {
@@ -141,10 +316,14 @@ if (savedTheme) {
 } else if (prefersDark) {
   document.body.classList.add('dark');
 }
+
 function toggleTheme() {
   document.body.classList.toggle('dark');
   localStorage.setItem('theme', document.body.classList.contains('dark') ? 'dark' : 'light');
 }
+
+// Render on load
+document.addEventListener('DOMContentLoaded', renderContent);
 </script>
 </body>
 </html>
