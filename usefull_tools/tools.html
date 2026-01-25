@@ -34,6 +34,20 @@ header {
   color: white;
   padding: 30px 20px;
   text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+}
+.logo {
+  width: 80px;
+  height: 80px;
+  color: white;
+  animation: spin 8s linear infinite;
+}
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
 }
 main {
   max-width: 900px;
@@ -102,6 +116,28 @@ h2 {
 <body>
 <button class="toggle" onclick="toggleTheme()">🌙 / ☀️</button>
   <header>
+    <svg class="logo" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+      <!-- Gear icon -->
+      <circle cx="50" cy="50" r="45" fill="none" stroke="currentColor" stroke-width="2"/>
+      
+      <!-- Center circle -->
+      <circle cx="50" cy="50" r="12" fill="currentColor"/>
+      
+      <!-- Gear teeth -->
+      <rect x="48" y="8" width="4" height="12" fill="currentColor"/>
+      <rect x="48" y="80" width="4" height="12" fill="currentColor"/>
+      <rect x="8" y="48" width="12" height="4" fill="currentColor"/>
+      <rect x="80" y="48" width="12" height="4" fill="currentColor"/>
+      
+      <!-- Diagonal teeth -->
+      <rect x="23" y="23" width="4" height="10" fill="currentColor" transform="rotate(45 25 28)"/>
+      <rect x="73" y="73" width="4" height="10" fill="currentColor" transform="rotate(45 75 78)"/>
+      <rect x="73" y="23" width="4" height="10" fill="currentColor" transform="rotate(-45 75 28)"/>
+      <rect x="23" y="73" width="4" height="10" fill="currentColor" transform="rotate(-45 25 78)"/>
+      
+      <!-- Inner decorative circle -->
+      <circle cx="50" cy="50" r="30" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.5"/>
+    </svg>
     <h1>Programy, texty a poznámky</h1>
     <p></p>
   </header>
@@ -321,13 +357,14 @@ function escapeHtml(text) {
   return text.replace(/[&<>"']/g, m => map[m]);
 }
 
-// Theme toggle
-const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+// Theme toggle - Auto dark mode
 const savedTheme = localStorage.getItem('theme');
 if (savedTheme) {
   document.body.classList.toggle('dark', savedTheme === 'dark');
-} else if (prefersDark) {
+} else {
+  // Default to dark mode
   document.body.classList.add('dark');
+  localStorage.setItem('theme', 'dark');
 }
 
 function toggleTheme() {
