@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Moje odkazy</title>
-  <style>
+<style>
 :root {
   --bg: #f4f6f8;
   --text: #111;
@@ -138,7 +138,7 @@ h2 {
       <!-- Inner decorative circle -->
       <circle cx="50" cy="50" r="30" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.5"/>
     </svg>
-    <h1>Programy, texty a poznámky</h1>
+    <h1>Programy,scripty, ai nástroje</h1>
     <p></p>
   </header>
 
@@ -149,27 +149,9 @@ h2 {
 // CONFIGURATION - Edit this section to add/modify content
 // ============================================
 const config = {
-  pageTitle: "Programy, texty a poznámky",
+  pageTitle: "Programy, scripty, ai nástroje",
   pageSubtitle: "",
-  sections: [
-    {
-      title: "Odkazy na programy",
-      type: "cards",
-      items: [
-        {
-          icon: "🤖",
-          title: "HeyGen",
-          description: "AI dabovanie videí",
-          details: [
-            "AI stránka na dabovanie videa.",
-            "Do 3 minút zdarma, potom cca 20 € / mesiac za 30 minút."
-          ],
-          links: [
-            { text: "HeyGen odkaz", url: "https://app.heygen.com/home" }
-          ]
-        }
-      ]
-    },
+  sections: [ 
     {
       title: "Transcript script",
       type: "text",
@@ -186,7 +168,29 @@ const config = {
             "1. Stiahni FFmpeg: https://ffmpeg.org/download.html",
             "2. Rozbaľ (napr. C:\\ffmpeg)",
             "3. Pridaj C:\\ffmpeg\\bin do PATH",
-            "4. Poznámka: Script sa čas od času mení"
+            "4. Poznámka: Script sa čas od času mení", 
+          ]
+        }
+      ]
+    },
+    { 
+      title: "Užitočné nástroje",
+      type: "cards",
+      items: [
+        {
+          icon: "⚙️",
+          title: "PowerToys",
+          description: "Sada nástrojov od Microsoftu pre Windows",
+          links: [
+            { text: "Stiahnuť PowerToys", url: "https://github.com/microsoft/PowerToys/releases" },
+          ]
+        },
+        {
+          icon: "⚙️",
+          title: "WizTree",
+          description: "Rýchly nástroj na analýzu miesta na disku",
+          links: [
+            { text: "WizTree", url: "https://diskanalyzer.com/download" },
           ]
         }
       ]
@@ -207,7 +211,7 @@ const config = {
       ]
     },
     {
-      title: "Hitomi-Downloader",
+      title: "Downloaders",
       type: "cards",
       items: [
         {
@@ -216,15 +220,8 @@ const config = {
           description: "lešie stahovanie z yutube a iných stránok",
           links: [
             { text: "link na univeralny dowloader", url: "https://github.com/KurtBestor/Hitomi-Downloader/releases" },
-            
-          ]
-        }
-      ]
-    },
-    {
-      title: "YouTube Playlist Downloader",
-      type: "cards",
-      items: [
+             ]
+        },
         {
           icon: "⚙️",
           title: "YouTube Playlist Downloader",
@@ -234,7 +231,57 @@ const config = {
           ]
         }
       ]
-    } 
+    },
+    {
+      title: "AI Nástroje",
+      type: "cards",
+      items: [
+        {
+          icon: "🤖",
+          title: "ChatGPT",
+          description: "AI chat od OpenAI",
+          links: [
+            { text: "ChatGPT odkaz", url: "https://chat.openai.com/" }
+          ]
+        },
+        {
+          icon: "🎨",
+          title: "DALL·E 3",
+          description: "AI generovanie obrázkov od OpenAI",
+          links: [
+            { text: "DALL·E 3 odkaz", url: "https://openai.com/dall-e-3" }
+          ]
+        },
+        {
+          icon: "🎨",
+          title: "Midjourney",
+          description: "AI generovanie obrázkov od Midjourney",
+          links: [
+            { text: "Midjourney odkaz", url: "https://midjourney.com/" }
+          ]
+        },
+        {
+          icon: "🎨",
+          title: "Stable Diffusion",
+          description: "AI generovanie obrázkov od Stable Diffusion",
+          links: [
+            { text: "Stable Diffusion odkaz", url: "https://stablediffusionweb.com/" }
+          ]
+        },
+        {
+          icon: "🤖",
+          title: "HeyGen",
+          description: "AI dabovanie videí",
+          details: [
+            "AI stránka na dabovanie videa.",
+            "Do 3 minút zdarma, potom cca 20 € / mesiac za 30 minút."
+          ],
+          links: [
+            { text: "HeyGen odkaz", url: "https://app.heygen.com/home" }
+          ]
+        }
+      ]
+    }
   ]
 };
 // ============================================
@@ -358,13 +405,15 @@ function escapeHtml(text) {
 }
 
 // Theme toggle - Auto dark mode
-const savedTheme = localStorage.getItem('theme');
-if (savedTheme) {
-  document.body.classList.toggle('dark', savedTheme === 'dark');
-} else {
-  // Default to dark mode
-  document.body.classList.add('dark');
-  localStorage.setItem('theme', 'dark');
+function initTheme() {
+  const savedTheme = localStorage.getItem('theme');
+  if (savedTheme) {
+    document.body.classList.toggle('dark', savedTheme === 'dark');
+  } else {
+    // Default to dark mode
+    document.body.classList.add('dark');
+    localStorage.setItem('theme', 'dark');
+  }
 }
 
 function toggleTheme() {
@@ -373,7 +422,10 @@ function toggleTheme() {
 }
 
 // Render on load
-document.addEventListener('DOMContentLoaded', renderContent);
+document.addEventListener('DOMContentLoaded', () => {
+  initTheme();
+  renderContent();
+});
 </script>
 </body>
 </html>
