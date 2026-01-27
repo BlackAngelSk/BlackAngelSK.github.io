@@ -44,10 +44,20 @@ header {
   height: 80px;
   color: white;
   animation: spin 8s linear infinite;
+  filter: drop-shadow(0 0 0 rgba(0,0,0,0.2));
+}
+/* Quick color/offset glitch layered over spin */
+.logo.glitching {
+  animation: spin 8s linear infinite, glitch 0.38s steps(2, end) 1;
 }
 @keyframes spin {
   from { transform: rotate(0deg); }
   to { transform: rotate(360deg); }
+}
+@keyframes glitch {
+  0% { filter: drop-shadow(2px 0 red) drop-shadow(-2px 0 cyan) hue-rotate(0deg); }
+  50% { filter: drop-shadow(-2px -1px red) drop-shadow(2px 1px cyan) hue-rotate(18deg); }
+  100% { filter: drop-shadow(0 0 0 rgba(0,0,0,0.2)) hue-rotate(0deg); }
 }
 main {
   max-width: 900px;
@@ -162,6 +172,9 @@ const config = {
             "Stiahni: moj skript na transcript",
             "Vyžaduje: Python 3.10+",
             "Inštalácia balíkov:"
+          ],
+          links: [
+            { text: "Stiahnuť transcript skript", url: "tranlator3.py" }
           ],
           code: "pip install faster-whisper transformers torch sentencepiece",
           steps: [
@@ -376,6 +389,12 @@ function renderTextBlocks(parent, items) {
       });
     }
     
+    if (item.links && Array.isArray(item.links)) {
+      item.links.forEach(link => {
+        html += `<p><a href="${link.url}" download>${link.text}</a></p>`;
+      });
+    }
+    
     if (item.code) {
       html += `<div class="code-block">${escapeHtml(item.code)}</div>`;
     }
@@ -421,10 +440,28 @@ function toggleTheme() {
   localStorage.setItem('theme', document.body.classList.contains('dark') ? 'dark' : 'light');
 }
 
+// Occasionally trigger a short glitch on the logo
+function setupLogoGlitch() {
+  const logo = document.querySelector('.logo');
+  if (!logo) return;
+
+  const runGlitch = () => {
+    if (!logo.classList.contains('glitching')) {
+      logo.classList.add('glitching');
+      setTimeout(() => logo.classList.remove('glitching'), 450);
+    }
+    const next = 2500 + Math.random() * 4500; // 2.5s - 7s
+    setTimeout(runGlitch, next);
+  };
+
+  setTimeout(runGlitch, 1800);
+}
+
 // Render on load
 document.addEventListener('DOMContentLoaded', () => {
   initTheme();
   renderContent();
+  setupLogoGlitch();
 });
 </script>
 </body>
