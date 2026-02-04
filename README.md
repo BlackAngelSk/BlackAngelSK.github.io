@@ -47,4 +47,4 @@ A personal GitHub Pages website featuring various projects, tools, and resources
 
 ## 📝 Notes
 
-This repository contains a mix of personal projects, gaming resources, and web development experiments. Feel free to explore, use, and adapt any content as needed..
+This repository contains a mix of personal projects, gaming resources, and web development experiments. Feel free to explore, use, and adapt any content as needed...
