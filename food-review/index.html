@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Food Review - Taste & Tell</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <header>
+        <nav>
+            <h1>🍽️ Taste & Tell</h1>
+            <ul>
+                <li><a href="#home">Home</a></li>
+                <li><a href="#reviews">Reviews</a></li>
+                <li><a href="#add-review">Add Review</a></li>
+            </ul>
+        </nav>
+    </header>
+
+    <main>
+        <section id="home" class="hero">
+            <h2>Welcome to Food Review</h2>
+            <p>Share your culinary experiences and discover amazing dishes</p>
+        </section>
+
+        <section id="reviews" class="reviews-section">
+            <h2>Recent Reviews</h2>
+            <div class="reviews-container" id="reviewsContainer">
+                <!-- Sample Review 1 -->
+                <div class="review-card">
+                    <div class="review-header">
+                        <div class="food-image placeholder-pizza">
+                            <span class="placeholder-text">🍕 Pizza</span>
+                        </div>
+                        <div class="rating">
+                            <span class="stars">★★★★★</span>
+                            <span class="rating-number">5/5</span>
+                        </div>
+                    </div>
+                    <div class="review-content">
+                        <h3>Margherita Pizza</h3>
+                        <p class="restaurant">🏪 Restaurant: Luigi's Pizzeria</p>
+                        <p class="review-text">Amazing authentic Italian pizza! The crust was perfectly crispy, and the fresh mozzarella melted beautifully. Highly recommend!</p>
+                        <div class="review-meta">
+                            <span class="reviewer">Reviewed by: John D.</span>
+                            <span class="date">Jan 15, 2026</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Sample Review 2 -->
+                <div class="review-card">
+                    <div class="review-header">
+                        <div class="food-image placeholder-burger">
+                            <span class="placeholder-text">🍔 Burger</span>
+                        </div>
+                        <div class="rating">
+                            <span class="stars">★★★★☆</span>
+                            <span class="rating-number">4/5</span>
+                        </div>
+                    </div>
+                    <div class="review-content">
+                        <h3>Classic Cheeseburger</h3>
+                        <p class="restaurant">🏪 Restaurant: The Burger Joint</p>
+                        <p class="review-text">Juicy and flavorful! The patty was cooked to perfection. Would love more sauce options though.</p>
+                        <div class="review-meta">
+                            <span class="reviewer">Reviewed by: Sarah M.</span>
+                            <span class="date">Jan 20, 2026</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Sample Review 3 -->
+                <div class="review-card">
+                    <div class="review-header">
+                        <div class="food-image placeholder-sushi">
+                            <span class="placeholder-text">🍣 Sushi</span>
+                        </div>
+                        <div class="rating">
+                            <span class="stars">★★★★★</span>
+                            <span class="rating-number">5/5</span>
+                        </div>
+                    </div>
+                    <div class="review-content">
+                        <h3>Salmon Sushi Platter</h3>
+                        <p class="restaurant">🏪 Restaurant: Sakura Sushi Bar</p>
+                        <p class="review-text">Incredibly fresh fish and expertly crafted. The presentation was beautiful and the taste was exceptional!</p>
+                        <div class="review-meta">
+                            <span class="reviewer">Reviewed by: Mike T.</span>
+                            <span class="date">Feb 01, 2026</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="add-review" class="add-review-section">
+            <h2>Add Your Review</h2>
+            <form id="reviewForm" class="review-form">
+                <div class="form-group">
+                    <label for="dishName">Dish Name:</label>
+                    <input type="text" id="dishName" name="dishName" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="restaurant">Restaurant Name:</label>
+                    <input type="text" id="restaurant" name="restaurant" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="rating">Rating:</label>
+                    <select id="rating" name="rating" required>
+                        <option value="">Select rating</option>
+                        <option value="5">★★★★★ (5/5)</option>
+                        <option value="4">★★★★☆ (4/5)</option>
+                        <option value="3">★★★☆☆ (3/5)</option>
+                        <option value="2">★★☆☆☆ (2/5)</option>
+                        <option value="1">★☆☆☆☆ (1/5)</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="reviewText">Your Review:</label>
+                    <textarea id="reviewText" name="reviewText" rows="5" required></textarea>
+                </div>
+
+                <div class="form-group">
+                    <label for="reviewerName">Your Name:</label>
+                    <input type="text" id="reviewerName" name="reviewerName" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="imageUrl">Image URL (optional):</label>
+                    <input type="url" id="imageUrl" name="imageUrl" placeholder="https://example.com/image.jpg">
+                </div>
+
+                <button type="submit" class="submit-btn">Submit Review</button>
+            </form>
+        </section>
+    </main>
+
+    <footer>
+        <p>&copy; 2026 Taste & Tell - Food Review Platform</p>
+    </footer>
+
+    <script src="script.js"></script>
+</body>
+</html>
