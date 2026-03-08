@@ -32,19 +32,30 @@ body {
 header {
   background: linear-gradient(135deg, var(--header), #1d4ed8);
   color: white;
-  padding: 30px 20px;
+  padding: 40px 20px;
   text-align: center;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
   gap: 20px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+  border-bottom: 3px solid rgba(255, 255, 255, 0.1);
+}
+header h1 {
+  margin: 0;
+  font-size: 32px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
 }
 .logo {
-  width: 80px;
-  height: 80px;
+  width: 70px;
+  height: 70px;
   color: white;
   animation: spin 8s linear infinite;
-  filter: drop-shadow(0 0 0 rgba(0,0,0,0.2));
+  filter: drop-shadow(0 0 10px rgba(255, 255, 255, 0.3));
+  flex-shrink: 0;
 }
 /* Quick color/offset glitch layered over spin */
 .logo.glitching {
@@ -60,66 +71,104 @@ header {
   100% { filter: drop-shadow(0 0 0 rgba(0,0,0,0.2)) hue-rotate(0deg); }
 }
 main {
-  max-width: 900px;
-  margin: 40px auto;
-  padding: 20px;
+  max-width: 1000px;
+  margin: 50px auto;
+  padding: 0 20px;
 }
 h2 {
-  margin-bottom: 15px;
+  margin: 40px 0 25px 0;
+  font-size: 26px;
+  font-weight: 700;
+  color: var(--text);
+  border-bottom: 3px solid var(--link);
+  padding-bottom: 10px;
 }
 .grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-  gap: 20px;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 25px;
 }
 .card {
   background: var(--card);
-  border-radius: 16px;
-  padding: 20px;
+  border-radius: 12px;
+  padding: 25px;
   box-shadow: var(--shadow);
-  transition: transform 0.2s ease;
+  transition: all 0.3s ease;
+  border: 1px solid rgba(0, 0, 0, 0.05);
 }
-.card:hover { transform: translateY(-4px); }
+body.dark .card {
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+.card:hover { 
+  transform: translateY(-6px);
+  box-shadow: 0 15px 40px rgba(0, 0, 0, 0.15);
+}
+body.dark .card:hover {
+  box-shadow: 0 15px 40px rgba(0, 0, 0, 0.4);
+}
 .card a {
   color: var(--link);
-  font-size: 18px;
+  font-size: 16px;
+  font-weight: 600;
+  text-decoration: none;
+  transition: opacity 0.2s ease;
+}
+.card a:hover {
+  opacity: 0.8;
+  text-decoration: underline;
 }
 .icon {
-  font-size: 28px;
-  margin-bottom: 10px;
+  font-size: 36px;
+  margin-bottom: 15px;
+  display: block;
 }
 .card p {
-  margin: 8px 0;
-  font-size: 14px;
+  margin: 10px 0;
+  font-size: 15px;
+  line-height: 1.5;
 }
 .card-title {
-  font-weight: bold;
-  font-size: 18px;
-  margin-bottom: 5px;
+  font-weight: 700;
+  font-size: 19px;
+  margin-bottom: 8px;
+  color: var(--text);
 }
 .text-block {
   background: var(--card);
-  border-radius: 16px;
-  padding: 20px;
+  border-radius: 12px;
+  padding: 25px;
   box-shadow: var(--shadow);
+  border: 1px solid rgba(0, 0, 0, 0.05);
+}
+body.dark .text-block {
+  border: 1px solid rgba(255, 255, 255, 0.05);
 }
 .code-block {
   background: var(--block);
-  padding: 10px;
+  padding: 15px;
   border-radius: 8px;
   font-family: 'Courier New', monospace;
   font-size: 13px;
   overflow-x: auto;
-  margin: 10px 0;
+  margin: 15px 0;
+  border-left: 4px solid var(--link);
 }
 .toggle {
   position: fixed;
-  top: 15px;
-  right: 15px;
-  padding: 8px 12px;
-  border: none;
+  top: 20px;
+  right: 20px;
+  padding: 10px 14px;
+  border: 2px solid white;
   border-radius: 999px;
   cursor: pointer;
+  background: rgba(0, 0, 0, 0.3);
+  font-size: 18px;
+  transition: all 0.3s ease;
+  z-index: 1000;
+}
+.toggle:hover {
+  background: rgba(0, 0, 0, 0.5);
+  transform: scale(1.1);
 }
 </style>
 </head>
@@ -148,8 +197,10 @@ h2 {
       <!-- Inner decorative circle -->
       <circle cx="50" cy="50" r="30" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.5"/>
     </svg>
-    <h1>Programy,scripty, ai nástroje</h1>
-    <p></p>
+    <div>
+      <h1>Programy, Scripty, AI Nástroje</h1>
+      <p style="margin: 8px 0 0 0; font-size: 14px; opacity: 0.9;">Zbierka užitočných zdrojov a nástrojov</p>
+    </div>
   </header>
 
   <main id="mainContent">
@@ -308,8 +359,45 @@ const config = {
           links: [
             { text: "HeyGen odkaz", url: "https://app.heygen.com/home" }
           ]
+        }
+      ]
+    },
+    {
+      title: "Mapy konfliktov",
+      type: "cards",
+      items: [ 
+        {
+          icon: "🗺️",
+          title: "Liveuamap",
+          description: "Interaktívna mapa konfliktov a udalostí vo svete",
+          links: [
+            { text: "Liveuamap odkaz", url: "https://liveuamap.com/" }
+          ]
         },
-          
+        {
+          icon: "🗺️",
+          title: "Global Conflict Tracker",
+          description: "Mapa a sledovanie globálnych konfliktov od Council on Foreign Relations",
+          links: [
+            { text: "Global Conflict Tracker odkaz", url: "https://www.cfr.org/global-conflict-tracker" }
+          ]
+        },
+         {
+          icon: "🗺️",
+          title: "ACLED",
+          description: "Armed Conflict Location & Event Data Project - databáza konfliktov a násilných udalostí",
+          links: [
+            { text: "ACLED odkaz", url: "https://acleddata.com/" }
+          ]
+        },
+        {
+          icon: "🗺️",
+          title: "conflictly.app",
+          description: "Interaktívna mapa konfliktov a vojenských operácií",
+          links: [
+            { text: "conflictly.app odkaz", url: "https://www.conflictly.app/" }
+          ]
+        }
       ]
     }
   ]
