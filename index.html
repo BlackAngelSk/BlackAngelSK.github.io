@@ -71,9 +71,21 @@
             animation: float linear infinite;
             will-change: transform, opacity;
         }
+        .binary-digit.glitch {
+            animation: float linear infinite, glitch-flicker 140ms steps(2, end) 2;
+            color: #7cff7c;
+            text-shadow: -2px 0 #00ffaa, 2px 0 #66ff00;
+            filter: brightness(1.35) contrast(1.25);
+        }
         @keyframes float {
             0% { transform: translateY(0); opacity: 0.8; }
             100% { transform: translateY(var(--binary-area-height, 100vh)); opacity: 0; }
+        }
+        @keyframes glitch-flicker {
+            0% { opacity: 1; filter: brightness(1.3); }
+            40% { opacity: 0.35; filter: brightness(2); }
+            70% { opacity: 0.9; filter: contrast(2); }
+            100% { opacity: 1; filter: brightness(1.35); }
         }
         footer {
             background-color: #111111;
@@ -91,7 +103,6 @@
         <div class="binary-background" aria-hidden="true"></div>
         <h1>MY GitHub Profile </h1>
         <a href="https://github.com/BlackAngelSk/BlackAngelSK.github.io" class="link-button">GitHub</a>
-        
         <h1>Team Fortress 2 MAN vs MACHINE (guide) </h1>
         <a href="ft2/tf2.html" class="link-button">TF2 MVM Buys(in progress)</a>
         <br>
@@ -107,12 +118,13 @@
         <br>
     </main>
     <footer>
-        © 2025 BlackAngelSK. All Rights Reserved.
+        © 2026 BlackAngelSK. All Rights Reserved.
     </footer>
     <script>
         (function() {
             const container = document.querySelector('main.container');
             const bg = container.querySelector('.binary-background');
+            let glitchStarted = false;
 
             function setup() {
                 const height = container.clientHeight;
@@ -138,10 +150,39 @@
                 }
             }
 
+            function triggerGlitchBurst() {
+                const digits = bg.querySelectorAll('.binary-digit');
+                if (!digits.length) return;
+                const burstCount = Math.min(digits.length, Math.floor(Math.random() * 10) + 3);
+                for (let i = 0; i < burstCount; i++) {
+                    const d = digits[Math.floor(Math.random() * digits.length)];
+                    if (!d) continue;
+                    d.classList.add('glitch');
+                    const original = d.textContent;
+                    d.textContent = Math.random() > 0.5 ? '1' : '0';
+                    setTimeout(() => {
+                        d.classList.remove('glitch');
+                        d.textContent = original;
+                    }, 260);
+                }
+            }
+
+            function startGlitchLoop() {
+                if (glitchStarted) return;
+                glitchStarted = true;
+                const loop = () => {
+                    triggerGlitchBurst();
+                    const nextInMs = 8 + Math.random() * 700;
+                    setTimeout(loop, nextInMs);
+                };
+                setTimeout(loop, 1200);
+            }
+
             window.addEventListener('resize', setup);
             document.addEventListener('DOMContentLoaded', setup);
             // initial call in case script runs after DOMContentLoaded
             if (document.readyState === 'complete' || document.readyState === 'interactive') setup();
+            startGlitchLoop();
         })();
     </script>
 </body>
