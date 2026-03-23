@@ -5,193 +5,37 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Basic Photo Editor Pro</title>
   <style>
-    :root {
-      --bg: #0f172a;
-      --card: #111827;
-      --text: #e5e7eb;
-      --muted: #9ca3af;
-      --accent: #60a5fa;
-      --border: #1f2937;
-    }
-
+    :root { --bg:#0f172a; --card:#111827; --text:#e5e7eb; --muted:#9ca3af; --accent:#60a5fa; --border:#1f2937; }
     * { box-sizing: border-box; }
-
-    body {
-      margin: 0;
-      font-family: system-ui, Arial, sans-serif;
-      background: radial-gradient(circle at top, #1e293b, #020617 65%);
-      color: var(--text);
-      min-height: 100vh;
-      padding: 24px;
-    }
-
-    .wrap {
-      max-width: 1200px;
-      margin: 0 auto;
-      display: grid;
-      grid-template-columns: 340px 1fr;
-      gap: 20px;
-    }
-
-    .panel,
-    .canvas-box {
-      background: rgba(17, 24, 39, 0.92);
-      border: 1px solid var(--border);
-      border-radius: 14px;
-      box-shadow: 0 16px 45px rgba(0, 0, 0, 0.35);
-      backdrop-filter: blur(5px);
-    }
-
-    .panel {
-      padding: 16px;
-      display: flex;
-      flex-direction: column;
-      gap: 14px;
-      max-height: calc(100vh - 48px);
-      overflow: auto;
-    }
-
-    .panel h1 {
-      margin: 0;
-      font-size: 1.15rem;
-    }
-
-    .hint {
-      margin: 0;
-      color: var(--muted);
-      font-size: 0.9rem;
-      line-height: 1.4;
-    }
-
-    .group {
-      border-top: 1px solid var(--border);
-      padding-top: 12px;
-    }
-
-    label {
-      display: block;
-      font-size: 0.9rem;
-      margin-bottom: 6px;
-      color: #d1d5db;
-    }
-
-    input[type="range"],
-    input[type="text"],
-    input[type="number"],
-    select,
-    input[type="file"] {
-      width: 100%;
-    }
-
-    input[type="range"] {
-      accent-color: var(--accent);
-    }
-
-    input[type="text"],
-    input[type="number"],
-    select {
-      border: 1px solid #374151;
-      background: #0b1220;
-      color: var(--text);
-      border-radius: 8px;
-      padding: 8px 10px;
-      font-size: 0.92rem;
-    }
-
-    .range-line {
-      display: grid;
-      grid-template-columns: 1fr auto;
-      align-items: center;
-      gap: 10px;
-      margin-bottom: 10px;
-    }
-
-    .inline-grid-2 {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 8px;
-    }
-
-    .inline-grid-3 {
-      display: grid;
-      grid-template-columns: 1fr 1fr 1fr;
-      gap: 8px;
-    }
-
-    .range-line output {
-      color: #cbd5e1;
-      font-size: 0.82rem;
-      min-width: 46px;
-      text-align: right;
-    }
-
-    .btn-row {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 10px;
-    }
-
-    .btn-row-3 {
-      display: grid;
-      grid-template-columns: 1fr 1fr 1fr;
-      gap: 8px;
-    }
-
-    button {
-      border: none;
-      border-radius: 9px;
-      padding: 10px 12px;
-      font-weight: 700;
-      cursor: pointer;
-      color: #0b1220;
-      background: linear-gradient(135deg, #93c5fd, #60a5fa);
-    }
-
-    button.secondary {
-      color: #dbeafe;
-      border: 1px solid #2563eb;
-      background: transparent;
-    }
-
-    button:disabled {
-      opacity: 0.4;
-      cursor: not-allowed;
-    }
-
-    button.warn {
-      color: #fecaca;
-      border: 1px solid #ef4444;
-      background: transparent;
-    }
-
-    .small {
-      font-size: 0.82rem;
-      color: #94a3b8;
-      margin: 0;
-    }
-
-    .canvas-box {
-      padding: 12px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      min-height: 60vh;
-      overflow: auto;
-    }
-
-    canvas {
-      max-width: 100%;
-      border-radius: 10px;
-      background: #0b1220;
-      border: 1px solid #374151;
-      touch-action: none;
-    }
-
-    @media (max-width: 900px) {
-      .wrap {
-        grid-template-columns: 1fr;
-      }
-    }
+    body { margin:0; font-family:system-ui,Arial,sans-serif; background:radial-gradient(circle at top,#1e293b,#020617 65%); color:var(--text); min-height:100vh; padding:24px; }
+    .wrap { max-width:1200px; margin:0 auto; display:grid; grid-template-columns:340px 1fr; gap:20px; }
+    .panel,.canvas-box { background:rgba(17,24,39,.92); border:1px solid var(--border); border-radius:14px; box-shadow:0 16px 45px rgba(0,0,0,.35); backdrop-filter:blur(5px); }
+    .panel { padding:16px; display:flex; flex-direction:column; gap:14px; max-height:calc(100vh - 48px); overflow:auto; }
+    .panel h1 { margin:0; font-size:1.15rem; }
+    .hint { margin:0; color:var(--muted); font-size:.9rem; line-height:1.4; }
+    .group { border-top:1px solid var(--border); padding-top:12px; }
+    label { display:block; font-size:.9rem; margin-bottom:6px; color:#d1d5db; }
+    input[type="range"], input[type="text"], input[type="number"], select, input[type="file"] { width:100%; }
+    input[type="range"] { accent-color:var(--accent); }
+    input[type="text"], input[type="number"], select { border:1px solid #374151; background:#0b1220; color:var(--text); border-radius:8px; padding:8px 10px; font-size:.92rem; }
+    .range-line { display:grid; grid-template-columns:1fr auto; align-items:center; gap:10px; margin-bottom:10px; }
+    .range-line output { color:#cbd5e1; font-size:.82rem; min-width:46px; text-align:right; }
+    .inline-grid-2 { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+    .btn-row { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+    .btn-row-3 { display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; }
+    button { border:none; border-radius:9px; padding:10px 12px; font-weight:700; cursor:pointer; color:#0b1220; background:linear-gradient(135deg,#93c5fd,#60a5fa); }
+    button.secondary { color:#dbeafe; border:1px solid #2563eb; background:transparent; }
+    button.warn { color:#fecaca; border:1px solid #ef4444; background:transparent; }
+    button:disabled { opacity:.4; cursor:not-allowed; }
+    .small { font-size:.82rem; color:#94a3b8; margin:0; }
+    .status { font-size:.8rem; color:#93c5fd; margin:4px 0 0 0; min-height:18px; }
+    .status.error { color:#fca5a5; }
+      .canvas-box { position:relative; padding:12px; display:flex; align-items:center; justify-content:center; min-height:60vh; overflow:auto; transition:border-color .18s ease, box-shadow .18s ease, background-color .18s ease; }
+      .canvas-box.drag-over { border-color:#60a5fa; box-shadow:0 0 0 2px rgba(96,165,250,.35), 0 16px 45px rgba(0,0,0,.35); background:rgba(15,23,42,.97); }
+    canvas { max-width:100%; border-radius:10px; background:#0b1220; border:1px solid #374151; touch-action:none; }
+      .drop-hint { position:absolute; left:50%; bottom:22px; transform:translateX(-50%); padding:8px 12px; border:1px dashed rgba(148,163,184,.45); border-radius:999px; background:rgba(2,6,23,.82); color:#cbd5e1; font-size:.82rem; pointer-events:none; opacity:.92; transition:opacity .18s ease, border-color .18s ease, color .18s ease; }
+      .canvas-box.drag-over .drop-hint { color:#dbeafe; border-color:rgba(96,165,250,.9); }
+    @media (max-width:900px) { .wrap { grid-template-columns:1fr; } }
   </style>
 </head>
 <body>
@@ -200,266 +44,141 @@
       <h1>Basic Photo Editor Pro</h1>
       <p class="hint">Filtre, text/logo watermark, crop, undo/redo, preview, export PNG/JPG/WebP.</p>
 
+      <div class="group"><label for="upload">Vyber obrázok</label><input id="upload" type="file" accept="image/*" /></div>
+      <div class="group"><div class="btn-row"><button id="undoBtn" class="secondary" disabled>Undo</button><button id="redoBtn" class="secondary" disabled>Redo</button></div></div>
+
       <div class="group">
-        <label for="upload">Vyber obrázok</label>
-        <input id="upload" type="file" accept="image/*" />
+        <label>Auto-save project</label>
+        <p id="autosaveStatus" class="status">Auto-save pripravené</p>
+        <div class="btn-row" style="margin-top:8px;"><button id="restoreAutosaveBtn" class="secondary" disabled>Restore</button><button id="clearAutosaveBtn" class="warn" disabled>Clear save</button></div>
       </div>
 
       <div class="group">
-        <div class="btn-row">
-          <button id="undoBtn" class="secondary" disabled>Undo</button>
-          <button id="redoBtn" class="secondary" disabled>Redo</button>
-        </div>
+        <label for="presetName">Preset name</label>
+        <input id="presetName" type="text" placeholder="napr. Dark watermark" />
+        <div class="btn-row" style="margin-top:10px;"><button id="savePresetBtn" class="secondary">Save/Update</button><button id="loadPresetBtn" class="secondary">Load</button></div>
+        <label for="presetSelect" style="margin-top:10px;">Saved presets</label>
+        <select id="presetSelect"><option value="">-- žiadny preset --</option></select>
+        <button id="deletePresetBtn" class="warn" style="margin-top:10px;">Delete preset</button>
       </div>
 
       <div class="group">
         <label for="previewMode">Preview</label>
-        <select id="previewMode">
-          <option value="edited">Edited</option>
-          <option value="original">Original</option>
-          <option value="split">Split Before/After</option>
-        </select>
-
+        <select id="previewMode"><option value="edited">Edited</option><option value="original">Original</option><option value="split">Split Before/After</option></select>
         <label style="margin-top:10px;">Split pozícia</label>
-        <div class="range-line">
-          <input id="splitPos" type="range" min="0" max="100" value="50" />
-          <output id="splitPosOut">50%</output>
-        </div>
+        <div class="range-line"><input id="splitPos" type="range" min="0" max="100" value="50" /><output id="splitPosOut">50%</output></div>
       </div>
 
       <div class="group">
-        <label>Brightness</label>
-        <div class="range-line">
-          <input id="brightness" type="range" min="0" max="200" value="100" />
-          <output id="brightnessOut">100%</output>
-        </div>
-
-        <label>Contrast</label>
-        <div class="range-line">
-          <input id="contrast" type="range" min="0" max="200" value="100" />
-          <output id="contrastOut">100%</output>
-        </div>
-
-        <label>Saturate</label>
-        <div class="range-line">
-          <input id="saturate" type="range" min="0" max="200" value="100" />
-          <output id="saturateOut">100%</output>
-        </div>
+        <label>Brightness</label><div class="range-line"><input id="brightness" type="range" min="0" max="200" value="100" /><output id="brightnessOut">100%</output></div>
+        <label>Contrast</label><div class="range-line"><input id="contrast" type="range" min="0" max="200" value="100" /><output id="contrastOut">100%</output></div>
+        <label>Saturate</label><div class="range-line"><input id="saturate" type="range" min="0" max="200" value="100" /><output id="saturateOut">100%</output></div>
       </div>
 
       <div class="group">
         <label for="watermarkText">Watermark text</label>
         <input id="watermarkText" type="text" placeholder="napr. © BlackAngel" value="© BlackAngel" />
-
         <label for="textPos" style="margin-top:10px;">Text pozícia</label>
-        <select id="textPos">
-          <option value="bottom-right">Dole vpravo</option>
-          <option value="bottom-left">Dole vľavo</option>
-          <option value="top-right">Hore vpravo</option>
-          <option value="top-left">Hore vľavo</option>
-          <option value="center">Stred</option>
-          <option value="custom">Vlastná (ťahaním)</option>
-        </select>
-
+        <select id="textPos"><option value="bottom-right">Dole vpravo</option><option value="bottom-left">Dole vľavo</option><option value="top-right">Hore vpravo</option><option value="top-left">Hore vľavo</option><option value="center">Stred</option><option value="custom">Vlastná (ťahaním)</option></select>
         <label for="fontFamily" style="margin-top:10px;">Font</label>
-        <select id="fontFamily">
-          <option value="Arial, sans-serif">Arial</option>
-          <option value="Verdana, sans-serif">Verdana</option>
-          <option value="Tahoma, sans-serif">Tahoma</option>
-          <option value="Georgia, serif">Georgia</option>
-          <option value="Times New Roman, serif">Times New Roman</option>
-          <option value="Courier New, monospace">Courier New</option>
-        </select>
-
-        <div class="inline-grid-2" style="margin-top:10px;">
-          <button id="toggleBold" class="secondary">Bold</button>
-          <button id="toggleItalic" class="secondary">Italic</button>
-        </div>
-
-        <label style="margin-top:10px;">Opacity</label>
-        <div class="range-line">
-          <input id="textOpacity" type="range" min="0" max="100" value="45" />
-          <output id="textOpacityOut">45%</output>
-        </div>
-
-        <label>Veľkosť textu</label>
-        <div class="range-line">
-          <input id="textSize" type="range" min="12" max="120" value="30" />
-          <output id="textSizeOut">30px</output>
-        </div>
-
-        <label>Rotácia textu</label>
-        <div class="range-line">
-          <input id="textRotate" type="range" min="-180" max="180" value="0" />
-          <output id="textRotateOut">0°</output>
-        </div>
-
-        <label for="textStrokeColor">Stroke farba</label>
-        <input id="textStrokeColor" type="color" value="#000000" />
-
-        <label style="margin-top:10px;">Stroke hrúbka</label>
-        <div class="range-line">
-          <input id="textStrokeWidth" type="range" min="0" max="20" value="3" />
-          <output id="textStrokeWidthOut">3px</output>
-        </div>
-
-        <label for="textShadowColor">Shadow farba</label>
-        <input id="textShadowColor" type="color" value="#000000" />
-
-        <label style="margin-top:10px;">Shadow blur</label>
-        <div class="range-line">
-          <input id="textShadowBlur" type="range" min="0" max="50" value="8" />
-          <output id="textShadowBlurOut">8</output>
-        </div>
-
-        <div class="inline-grid-2">
-          <div>
-            <label for="textShadowX">Shadow X</label>
-            <input id="textShadowX" type="number" value="2" />
-          </div>
-          <div>
-            <label for="textShadowY">Shadow Y</label>
-            <input id="textShadowY" type="number" value="2" />
-          </div>
-        </div>
+        <select id="fontFamily"><option value="Arial, sans-serif">Arial</option><option value="Verdana, sans-serif">Verdana</option><option value="Tahoma, sans-serif">Tahoma</option><option value="Georgia, serif">Georgia</option><option value="Times New Roman, serif">Times New Roman</option><option value="Courier New, monospace">Courier New</option></select>
+        <div class="inline-grid-2" style="margin-top:10px;"><button id="toggleBold" class="secondary">Bold</button><button id="toggleItalic" class="secondary">Italic</button></div>
+        <label style="margin-top:10px;">Opacity</label><div class="range-line"><input id="textOpacity" type="range" min="0" max="100" value="45" /><output id="textOpacityOut">45%</output></div>
+        <label>Veľkosť textu</label><div class="range-line"><input id="textSize" type="range" min="12" max="120" value="30" /><output id="textSizeOut">30px</output></div>
+        <label>Rotácia textu</label><div class="range-line"><input id="textRotate" type="range" min="-180" max="180" value="0" /><output id="textRotateOut">0°</output></div>
+        <label for="textStrokeColor">Stroke farba</label><input id="textStrokeColor" type="color" value="#000000" />
+        <label style="margin-top:10px;">Stroke hrúbka</label><div class="range-line"><input id="textStrokeWidth" type="range" min="0" max="20" value="3" /><output id="textStrokeWidthOut">3px</output></div>
+        <label for="textShadowColor">Shadow farba</label><input id="textShadowColor" type="color" value="#000000" />
+        <label style="margin-top:10px;">Shadow blur</label><div class="range-line"><input id="textShadowBlur" type="range" min="0" max="50" value="8" /><output id="textShadowBlurOut">8</output></div>
+        <div class="inline-grid-2"><div><label for="textShadowX">Shadow X</label><input id="textShadowX" type="number" value="2" /></div><div><label for="textShadowY">Shadow Y</label><input id="textShadowY" type="number" value="2" /></div></div>
       </div>
 
       <div class="group">
-        <label for="logoUpload">Logo watermark (obrázok)</label>
-        <input id="logoUpload" type="file" accept="image/*" />
-
-        <div class="btn-row" style="margin-top:10px;">
-          <button id="removeLogoBtn" class="warn" disabled>Odstrániť logo</button>
-          <button id="centerLogoBtn" class="secondary" disabled>Logo do stredu</button>
-        </div>
-
-        <label style="margin-top:10px;">Logo opacity</label>
-        <div class="range-line">
-          <input id="logoOpacity" type="range" min="0" max="100" value="60" />
-          <output id="logoOpacityOut">60%</output>
-        </div>
-
-        <label>Logo scale</label>
-        <div class="range-line">
-          <input id="logoScale" type="range" min="10" max="300" value="100" />
-          <output id="logoScaleOut">100%</output>
-        </div>
-
-        <label>Logo rotácia</label>
-        <div class="range-line">
-          <input id="logoRotate" type="range" min="-180" max="180" value="0" />
-          <output id="logoRotateOut">0°</output>
-        </div>
+        <label for="logoUpload">Logo watermark (obrázok)</label><input id="logoUpload" type="file" accept="image/*" />
+        <div class="btn-row" style="margin-top:10px;"><button id="removeLogoBtn" class="warn" disabled>Odstrániť logo</button><button id="centerLogoBtn" class="secondary" disabled>Logo do stredu</button></div>
+        <label style="margin-top:10px;">Logo opacity</label><div class="range-line"><input id="logoOpacity" type="range" min="0" max="100" value="60" /><output id="logoOpacityOut">60%</output></div>
+        <label>Logo scale</label><div class="range-line"><input id="logoScale" type="range" min="10" max="300" value="100" /><output id="logoScaleOut">100%</output></div>
+        <label>Logo rotácia</label><div class="range-line"><input id="logoRotate" type="range" min="-180" max="180" value="0" /><output id="logoRotateOut">0°</output></div>
       </div>
+
+      <div class="group"><label>Nudge target (šípky na klávesnici)</label><select id="nudgeTarget"><option value="text">Text watermark</option><option value="logo">Logo watermark</option></select><p class="small">Šípky = posun o 1px, Shift + šípky = 10px.</p></div>
 
       <div class="group">
-        <label>Nudge target (šípky na klávesnici)</label>
-        <select id="nudgeTarget">
-          <option value="text">Text watermark</option>
-          <option value="logo">Logo watermark</option>
-        </select>
-        <p class="small">Šípky = posun o 1px, Shift + šípky = 10px.</p>
+        <label>Guides + snap</label>
+        <label style="display:flex; align-items:center; gap:8px; margin-bottom:8px;"><input id="showCenterGuides" type="checkbox" checked />Center lines</label>
+        <label style="display:flex; align-items:center; gap:8px; margin-bottom:8px;"><input id="showThirdsGuides" type="checkbox" />Thirds grid</label>
+        <label style="display:flex; align-items:center; gap:8px; margin-bottom:10px;"><input id="enableSnap" type="checkbox" checked />Snap to edges / center while dragging</label>
+        <label>Snap distance</label>
+        <div class="range-line"><input id="snapDistance" type="range" min="2" max="60" value="12" /><output id="snapDistanceOut">12px</output></div>
       </div>
 
-      <div class="group">
-        <label>Crop tool</label>
-        <div class="btn-row-3">
-          <button id="cropModeBtn" class="secondary" disabled>Crop mode</button>
-          <button id="applyCropBtn" disabled>Apply crop</button>
-          <button id="cancelCropBtn" class="secondary" disabled>Cancel</button>
-        </div>
-        <p class="small">V crop mode potiahni myšou po obrázku.</p>
-      </div>
-
-      <div class="group">
-        <label for="exportFormat">Export formát</label>
-        <select id="exportFormat">
-          <option value="png">PNG</option>
-          <option value="jpeg">JPG</option>
-          <option value="webp">WebP</option>
-        </select>
-
-        <label style="margin-top:10px;">Kvalita (JPG/WEBP)</label>
-        <div class="range-line">
-          <input id="exportQuality" type="range" min="1" max="100" value="92" />
-          <output id="exportQualityOut">92%</output>
-        </div>
-      </div>
-
-      <div class="group btn-row">
-        <button id="downloadBtn" disabled>Stiahnuť</button>
-        <button id="resetBtn" class="secondary" disabled>Reset</button>
-      </div>
+      <div class="group"><label>Crop tool</label><div class="btn-row-3"><button id="cropModeBtn" class="secondary" disabled>Crop mode</button><button id="applyCropBtn" disabled>Apply crop</button><button id="cancelCropBtn" class="secondary" disabled>Cancel</button></div><p class="small">V crop mode potiahni myšou po obrázku.</p></div>
+      <div class="group"><label for="exportFormat">Export formát</label><select id="exportFormat"><option value="png">PNG</option><option value="jpeg">JPG</option><option value="webp">WebP</option></select><label style="margin-top:10px;">Kvalita (JPG/WEBP)</label><div class="range-line"><input id="exportQuality" type="range" min="1" max="100" value="92" /><output id="exportQualityOut">92%</output></div></div>
+      <div class="group btn-row"><button id="downloadBtn" disabled>Stiahnuť</button><button id="resetBtn" class="secondary" disabled>Reset</button></div>
     </aside>
-
-    <section class="canvas-box">
-      <canvas id="canvas"></canvas>
-    </section>
+    <section id="canvasBox" class="canvas-box"><canvas id="canvas"></canvas><div id="dropHint" class="drop-hint">Pretiahni obrázok sem alebo použi Vyber obrázok</div></section>
   </div>
 
   <script>
-    const uploadInput = document.getElementById('upload');
-    const logoUpload = document.getElementById('logoUpload');
-    const canvas = document.getElementById('canvas');
+    const byId = id => document.getElementById(id);
+    const uploadInput = byId('upload');
+    const logoUpload = byId('logoUpload');
+    const canvas = byId('canvas');
+    const canvasBox = byId('canvasBox');
+    const dropHint = byId('dropHint');
     const ctx = canvas.getContext('2d');
 
-    const undoBtn = document.getElementById('undoBtn');
-    const redoBtn = document.getElementById('redoBtn');
-
-    const previewMode = document.getElementById('previewMode');
-    const splitPos = document.getElementById('splitPos');
-
-    const brightness = document.getElementById('brightness');
-    const contrast = document.getElementById('contrast');
-    const saturate = document.getElementById('saturate');
-
-    const watermarkText = document.getElementById('watermarkText');
-    const textPos = document.getElementById('textPos');
-    const fontFamily = document.getElementById('fontFamily');
-    const toggleBold = document.getElementById('toggleBold');
-    const toggleItalic = document.getElementById('toggleItalic');
-    const textOpacity = document.getElementById('textOpacity');
-    const textSize = document.getElementById('textSize');
-    const textRotate = document.getElementById('textRotate');
-    const textStrokeColor = document.getElementById('textStrokeColor');
-    const textStrokeWidth = document.getElementById('textStrokeWidth');
-    const textShadowColor = document.getElementById('textShadowColor');
-    const textShadowBlur = document.getElementById('textShadowBlur');
-    const textShadowX = document.getElementById('textShadowX');
-    const textShadowY = document.getElementById('textShadowY');
-
-    const removeLogoBtn = document.getElementById('removeLogoBtn');
-    const centerLogoBtn = document.getElementById('centerLogoBtn');
-    const logoOpacity = document.getElementById('logoOpacity');
-    const logoScale = document.getElementById('logoScale');
-    const logoRotate = document.getElementById('logoRotate');
-
-    const nudgeTarget = document.getElementById('nudgeTarget');
-
-    const cropModeBtn = document.getElementById('cropModeBtn');
-    const applyCropBtn = document.getElementById('applyCropBtn');
-    const cancelCropBtn = document.getElementById('cancelCropBtn');
-
-    const exportFormat = document.getElementById('exportFormat');
-    const exportQuality = document.getElementById('exportQuality');
-
-    const downloadBtn = document.getElementById('downloadBtn');
-    const resetBtn = document.getElementById('resetBtn');
+    const undoBtn = byId('undoBtn');
+    const redoBtn = byId('redoBtn');
+    const autosaveStatus = byId('autosaveStatus');
+    const restoreAutosaveBtn = byId('restoreAutosaveBtn');
+    const clearAutosaveBtn = byId('clearAutosaveBtn');
+    const presetName = byId('presetName');
+    const presetSelect = byId('presetSelect');
+    const savePresetBtn = byId('savePresetBtn');
+    const loadPresetBtn = byId('loadPresetBtn');
+    const deletePresetBtn = byId('deletePresetBtn');
+    const previewMode = byId('previewMode');
+    const splitPos = byId('splitPos');
+    const brightness = byId('brightness');
+    const contrast = byId('contrast');
+    const saturate = byId('saturate');
+    const watermarkText = byId('watermarkText');
+    const textPos = byId('textPos');
+    const fontFamily = byId('fontFamily');
+    const toggleBold = byId('toggleBold');
+    const toggleItalic = byId('toggleItalic');
+    const textOpacity = byId('textOpacity');
+    const textSize = byId('textSize');
+    const textRotate = byId('textRotate');
+    const textStrokeColor = byId('textStrokeColor');
+    const textStrokeWidth = byId('textStrokeWidth');
+    const textShadowColor = byId('textShadowColor');
+    const textShadowBlur = byId('textShadowBlur');
+    const textShadowX = byId('textShadowX');
+    const textShadowY = byId('textShadowY');
+    const removeLogoBtn = byId('removeLogoBtn');
+    const centerLogoBtn = byId('centerLogoBtn');
+    const logoOpacity = byId('logoOpacity');
+    const logoScale = byId('logoScale');
+    const logoRotate = byId('logoRotate');
+    const nudgeTarget = byId('nudgeTarget');
+    const showCenterGuides = byId('showCenterGuides');
+    const showThirdsGuides = byId('showThirdsGuides');
+    const enableSnap = byId('enableSnap');
+    const snapDistance = byId('snapDistance');
+    const cropModeBtn = byId('cropModeBtn');
+    const applyCropBtn = byId('applyCropBtn');
+    const cancelCropBtn = byId('cancelCropBtn');
+    const exportFormat = byId('exportFormat');
+    const exportQuality = byId('exportQuality');
+    const downloadBtn = byId('downloadBtn');
+    const resetBtn = byId('resetBtn');
 
     const outputs = {
-      splitPos: document.getElementById('splitPosOut'),
-      brightness: document.getElementById('brightnessOut'),
-      contrast: document.getElementById('contrastOut'),
-      saturate: document.getElementById('saturateOut'),
-      textOpacity: document.getElementById('textOpacityOut'),
-      textSize: document.getElementById('textSizeOut'),
-      textRotate: document.getElementById('textRotateOut'),
-      textStrokeWidth: document.getElementById('textStrokeWidthOut'),
-      textShadowBlur: document.getElementById('textShadowBlurOut'),
-      logoOpacity: document.getElementById('logoOpacityOut'),
-      logoScale: document.getElementById('logoScaleOut'),
-      logoRotate: document.getElementById('logoRotateOut'),
-      exportQuality: document.getElementById('exportQualityOut')
+      splitPos: byId('splitPosOut'), brightness: byId('brightnessOut'), contrast: byId('contrastOut'), saturate: byId('saturateOut'),
+      textOpacity: byId('textOpacityOut'), textSize: byId('textSizeOut'), textRotate: byId('textRotateOut'), textStrokeWidth: byId('textStrokeWidthOut'), textShadowBlur: byId('textShadowBlurOut'),
+      logoOpacity: byId('logoOpacityOut'), logoScale: byId('logoScaleOut'), logoRotate: byId('logoRotateOut'), snapDistance: byId('snapDistanceOut'), exportQuality: byId('exportQualityOut')
     };
 
     const img = new Image();
@@ -467,23 +186,28 @@
     let hasImage = false;
     let textBounds = null;
     let logoBounds = null;
-
     let textIsBold = true;
     let textIsItalic = false;
     let customTextPos = null;
     let customLogoPos = null;
-
     let isDraggingText = false;
     let isDraggingLogo = false;
     let dragOffset = { x: 0, y: 0 };
-
+    let activeSnapGuides = [];
     let cropMode = false;
     let isCropping = false;
     let cropRect = null;
-
     let history = [];
     let historyIndex = -1;
     const MAX_HISTORY = 20;
+    const AUTO_SAVE_KEY = 'photoEditorProject.v1';
+    const AUTO_SAVE_DB_NAME = 'photoEditorProAutosave';
+    const AUTO_SAVE_STORE = 'projects';
+    const AUTO_SAVE_RECORD_ID = 'latest';
+    const PRESETS_KEY = 'photoEditorPresets.v1';
+    let autoSaveTimer = null;
+    let presets = {};
+    let autoSaveDbPromise = null;
 
     function updateOutputValues() {
       outputs.splitPos.textContent = `${splitPos.value}%`;
@@ -498,10 +222,200 @@
       outputs.logoOpacity.textContent = `${logoOpacity.value}%`;
       outputs.logoScale.textContent = `${logoScale.value}%`;
       outputs.logoRotate.textContent = `${logoRotate.value}°`;
+      outputs.snapDistance.textContent = `${snapDistance.value}px`;
       outputs.exportQuality.textContent = `${exportQuality.value}%`;
+      exportQuality.disabled = exportFormat.value === 'png';
+    }
 
-      const qualityDisabled = exportFormat.value === 'png';
-      exportQuality.disabled = qualityDisabled;
+    function setDropActive(active) { canvasBox.classList.toggle('drag-over', active); }
+    function refreshDropHint() {
+      dropHint.hidden = hasImage;
+      dropHint.style.opacity = hasImage ? '0' : '.92';
+    }
+    function isImageFile(file) { return Boolean(file && typeof file.type === 'string' && file.type.startsWith('image/')); }
+
+    function loadMainImageFromDataUrl(dataUrl) {
+      img.onload = () => {
+        canvas.width = img.naturalWidth; canvas.height = img.naturalHeight; hasImage = true;
+        downloadBtn.disabled = false; resetBtn.disabled = false;
+        cropMode = false; isCropping = false; cropRect = null; activeSnapGuides = [];
+        history = []; historyIndex = -1; setDropActive(false); refreshHistoryButtons(); refreshCropButtons(); refreshDropHint();
+        redraw(); pushHistory(); scheduleAutoSave();
+      };
+      img.src = dataUrl;
+    }
+
+    function loadMainImageFile(file) {
+      if (!isImageFile(file)) { setAutosaveStatus('Dropni alebo vyber image súbor', true); return; }
+      const reader = new FileReader();
+      reader.onload = () => loadMainImageFromDataUrl(reader.result);
+      reader.readAsDataURL(file);
+    }
+
+    function setAutosaveStatus(message, isError = false) {
+      autosaveStatus.textContent = message;
+      autosaveStatus.classList.toggle('error', isError);
+    }
+
+    function formatTime(ts) { try { return new Date(ts).toLocaleTimeString(); } catch { return ''; } }
+    function refreshAutoSaveButtons() { const has = Boolean(localStorage.getItem(AUTO_SAVE_KEY)); restoreAutosaveBtn.disabled = !has; clearAutosaveBtn.disabled = !has; }
+    function openAutoSaveDb() {
+      if (!('indexedDB' in window)) return Promise.reject(new Error('IndexedDB unavailable'));
+      if (autoSaveDbPromise) return autoSaveDbPromise;
+      autoSaveDbPromise = new Promise((resolve, reject) => {
+        const request = indexedDB.open(AUTO_SAVE_DB_NAME, 1);
+        request.onupgradeneeded = () => {
+          const db = request.result;
+          if (!db.objectStoreNames.contains(AUTO_SAVE_STORE)) db.createObjectStore(AUTO_SAVE_STORE);
+        };
+        request.onsuccess = () => resolve(request.result);
+        request.onerror = () => reject(request.error || new Error('IndexedDB open failed'));
+      });
+      return autoSaveDbPromise;
+    }
+
+    async function writeAutoSavePayload(payload) {
+      const db = await openAutoSaveDb();
+      await new Promise((resolve, reject) => {
+        const tx = db.transaction(AUTO_SAVE_STORE, 'readwrite');
+        tx.objectStore(AUTO_SAVE_STORE).put(payload, AUTO_SAVE_RECORD_ID);
+        tx.oncomplete = () => resolve();
+        tx.onerror = () => reject(tx.error || new Error('IndexedDB write failed'));
+        tx.onabort = () => reject(tx.error || new Error('IndexedDB write aborted'));
+      });
+    }
+
+    async function readAutoSavePayload() {
+      const db = await openAutoSaveDb();
+      return await new Promise((resolve, reject) => {
+        const tx = db.transaction(AUTO_SAVE_STORE, 'readonly');
+        const request = tx.objectStore(AUTO_SAVE_STORE).get(AUTO_SAVE_RECORD_ID);
+        request.onsuccess = () => resolve(request.result || null);
+        request.onerror = () => reject(request.error || new Error('IndexedDB read failed'));
+      });
+    }
+
+    async function deleteAutoSavePayload() {
+      const db = await openAutoSaveDb();
+      await new Promise((resolve, reject) => {
+        const tx = db.transaction(AUTO_SAVE_STORE, 'readwrite');
+        tx.objectStore(AUTO_SAVE_STORE).delete(AUTO_SAVE_RECORD_ID);
+        tx.oncomplete = () => resolve();
+        tx.onerror = () => reject(tx.error || new Error('IndexedDB delete failed'));
+        tx.onabort = () => reject(tx.error || new Error('IndexedDB delete aborted'));
+      });
+    }
+
+    function scheduleAutoSave() { clearTimeout(autoSaveTimer); autoSaveTimer = setTimeout(() => { saveProjectToStorage(); }, 350); }
+    async function saveProjectToStorage() {
+      if (!hasImage) return;
+      try {
+        const payload = { version: 2, savedAt: Date.now(), storage: 'indexeddb', data: getStateSnapshot() };
+        await writeAutoSavePayload(payload);
+        localStorage.setItem(AUTO_SAVE_KEY, JSON.stringify({ version: payload.version, savedAt: payload.savedAt, storage: payload.storage }));
+        refreshAutoSaveButtons();
+        setAutosaveStatus(`Auto-saved ${formatTime(payload.savedAt)}`);
+      } catch {
+        setAutosaveStatus('Auto-save failed (browser storage unavailable)', true);
+      }
+    }
+
+    async function restoreAutoSave() {
+      const raw = localStorage.getItem(AUTO_SAVE_KEY);
+      if (!raw) { setAutosaveStatus('No auto-save found'); refreshAutoSaveButtons(); return; }
+      try {
+        const parsed = JSON.parse(raw);
+        let payload = parsed;
+        if (parsed?.storage === 'indexeddb') payload = await readAutoSavePayload();
+        if (!payload && parsed?.data) payload = parsed;
+        if (!payload) throw new Error('Autosave payload missing');
+        await applySnapshot(payload?.data || payload);
+        pushHistory();
+        setAutosaveStatus(`Restored ${formatTime(payload?.savedAt || parsed?.savedAt || Date.now())}`);
+      } catch { setAutosaveStatus('Restore failed', true); }
+    }
+
+    async function clearAutoSave() {
+      localStorage.removeItem(AUTO_SAVE_KEY);
+      try { await deleteAutoSavePayload(); } catch (_) {}
+      refreshAutoSaveButtons();
+      setAutosaveStatus('Auto-save cleared');
+    }
+    function loadPresets() { try { presets = JSON.parse(localStorage.getItem(PRESETS_KEY) || '{}') || {}; } catch { presets = {}; } }
+    function savePresets() { localStorage.setItem(PRESETS_KEY, JSON.stringify(presets)); }
+    function renderPresetOptions() {
+      const current = presetSelect.value;
+      presetSelect.innerHTML = '<option value="">-- žiadny preset --</option>';
+      Object.keys(presets).sort((a,b) => a.localeCompare(b,'sk')).forEach(name => {
+        const option = document.createElement('option'); option.value = name; option.textContent = name; presetSelect.appendChild(option);
+      });
+      if (current && presets[current]) presetSelect.value = current;
+    }
+
+    function getPresetData() {
+      return {
+        controls: {
+          brightness: brightness.value, contrast: contrast.value, saturate: saturate.value, watermarkText: watermarkText.value,
+          textPos: textPos.value, fontFamily: fontFamily.value, textOpacity: textOpacity.value, textSize: textSize.value, textRotate: textRotate.value,
+          textStrokeColor: textStrokeColor.value, textStrokeWidth: textStrokeWidth.value, textShadowColor: textShadowColor.value, textShadowBlur: textShadowBlur.value,
+          textShadowX: textShadowX.value, textShadowY: textShadowY.value, logoOpacity: logoOpacity.value, logoScale: logoScale.value, logoRotate: logoRotate.value,
+          showCenterGuides: showCenterGuides.checked, showThirdsGuides: showThirdsGuides.checked, enableSnap: enableSnap.checked, snapDistance: snapDistance.value
+        },
+        textIsBold, textIsItalic,
+        customTextPos: customTextPos ? { ...customTextPos } : null,
+        customLogoPos: customLogoPos ? { ...customLogoPos } : null
+      };
+    }
+
+    function applyPresetData(data) {
+      if (!data || !data.controls) return;
+      const c = data.controls;
+      brightness.value = c.brightness ?? brightness.value;
+      contrast.value = c.contrast ?? contrast.value;
+      saturate.value = c.saturate ?? saturate.value;
+      watermarkText.value = c.watermarkText ?? watermarkText.value;
+      textPos.value = c.textPos ?? textPos.value;
+      fontFamily.value = c.fontFamily ?? fontFamily.value;
+      textOpacity.value = c.textOpacity ?? textOpacity.value;
+      textSize.value = c.textSize ?? textSize.value;
+      textRotate.value = c.textRotate ?? textRotate.value;
+      textStrokeColor.value = c.textStrokeColor ?? textStrokeColor.value;
+      textStrokeWidth.value = c.textStrokeWidth ?? textStrokeWidth.value;
+      textShadowColor.value = c.textShadowColor ?? textShadowColor.value;
+      textShadowBlur.value = c.textShadowBlur ?? textShadowBlur.value;
+      textShadowX.value = c.textShadowX ?? textShadowX.value;
+      textShadowY.value = c.textShadowY ?? textShadowY.value;
+      logoOpacity.value = c.logoOpacity ?? logoOpacity.value;
+      logoScale.value = c.logoScale ?? logoScale.value;
+      logoRotate.value = c.logoRotate ?? logoRotate.value;
+      showCenterGuides.checked = c.showCenterGuides ?? showCenterGuides.checked;
+      showThirdsGuides.checked = c.showThirdsGuides ?? showThirdsGuides.checked;
+      enableSnap.checked = c.enableSnap ?? enableSnap.checked;
+      snapDistance.value = c.snapDistance ?? snapDistance.value;
+      textIsBold = Boolean(data.textIsBold);
+      textIsItalic = Boolean(data.textIsItalic);
+      customTextPos = data.customTextPos ? { ...data.customTextPos } : null;
+      customLogoPos = data.customLogoPos ? { ...data.customLogoPos } : null;
+      refreshToggleButtons(); updateOutputValues(); redraw(); pushHistory(); scheduleAutoSave();
+    }
+
+    function saveCurrentPreset() {
+      const name = presetName.value.trim();
+      if (!name) { setAutosaveStatus('Preset name is empty', true); return; }
+      presets[name] = { updatedAt: Date.now(), data: getPresetData() };
+      savePresets(); renderPresetOptions(); presetSelect.value = name; setAutosaveStatus(`Preset saved: ${name}`);
+    }
+
+    function loadSelectedPreset() {
+      const name = presetSelect.value;
+      if (!name || !presets[name]) { setAutosaveStatus('Select preset first'); return; }
+      applyPresetData(presets[name].data); presetName.value = name; setAutosaveStatus(`Preset loaded: ${name}`);
+    }
+
+    function deleteSelectedPreset() {
+      const name = presetSelect.value || presetName.value.trim();
+      if (!name || !presets[name]) { setAutosaveStatus('Preset not found'); return; }
+      delete presets[name]; savePresets(); renderPresetOptions(); if (presetName.value.trim() === name) presetName.value = ''; setAutosaveStatus(`Preset deleted: ${name}`);
     }
 
     function isPointInRotatedText(px, py, bounds) {
@@ -512,7 +426,6 @@
       const sin = Math.sin(-bounds.angle);
       const lx = dx * cos - dy * sin;
       const ly = dx * sin + dy * cos;
-
       return lx >= 0 && lx <= bounds.width && ly >= -bounds.ascent && ly <= bounds.descent;
     }
 
@@ -527,27 +440,37 @@
       return lx >= -bounds.width / 2 && lx <= bounds.width / 2 && ly >= -bounds.height / 2 && ly <= bounds.height / 2;
     }
 
+    function getSnapResult(rect) {
+      if (!enableSnap.checked) return { dx: 0, dy: 0, guides: [] };
+      const threshold = Number(snapDistance.value) || 0;
+      if (threshold <= 0) return { dx: 0, dy: 0, guides: [] };
+      const xCandidates = [{ delta: -rect.left, guide: { axis:'x', value:0 } }, { delta: canvas.width - rect.right, guide: { axis:'x', value:canvas.width } }, { delta: canvas.width / 2 - rect.cx, guide: { axis:'x', value:canvas.width / 2 } }];
+      const yCandidates = [{ delta: -rect.top, guide: { axis:'y', value:0 } }, { delta: canvas.height - rect.bottom, guide: { axis:'y', value:canvas.height } }, { delta: canvas.height / 2 - rect.cy, guide: { axis:'y', value:canvas.height / 2 } }];
+      let bestX = null, bestY = null;
+      xCandidates.forEach(c => { const abs = Math.abs(c.delta); if (abs <= threshold && (!bestX || abs < Math.abs(bestX.delta))) bestX = c; });
+      yCandidates.forEach(c => { const abs = Math.abs(c.delta); if (abs <= threshold && (!bestY || abs < Math.abs(bestY.delta))) bestY = c; });
+      return { dx: bestX ? bestX.delta : 0, dy: bestY ? bestY.delta : 0, guides: [bestX?.guide, bestY?.guide].filter(Boolean) };
+    }
+
     function getDefaultTextPosition(textWidth, fontSize) {
       const pad = Math.max(12, Math.round(canvas.width * 0.02));
       const xRight = canvas.width - textWidth - pad;
       const yBottom = canvas.height - pad;
-
       switch (textPos.value) {
         case 'bottom-left': return { x: pad, y: yBottom };
         case 'top-right': return { x: xRight, y: pad + fontSize };
         case 'top-left': return { x: pad, y: pad + fontSize };
         case 'center': return { x: (canvas.width - textWidth) / 2, y: canvas.height / 2 };
-        case 'bottom-right':
-        default:
-          return { x: xRight, y: yBottom };
+        default: return { x: xRight, y: yBottom };
       }
     }
 
     function getTextPosition(textWidth, fontSize) {
       if (textPos.value === 'custom' && customTextPos) {
-        const x = Math.min(Math.max(customTextPos.x, 0), Math.max(0, canvas.width - textWidth));
-        const y = Math.min(Math.max(customTextPos.y, fontSize), canvas.height);
-        return { x, y };
+        return {
+          x: Math.min(Math.max(customTextPos.x, 0), Math.max(0, canvas.width - textWidth)),
+          y: Math.min(Math.max(customTextPos.y, fontSize), canvas.height)
+        };
       }
       return getDefaultTextPosition(textWidth, fontSize);
     }
@@ -555,26 +478,19 @@
     function getLogoSize() {
       if (!logoImg.src) return { width: 0, height: 0 };
       const scale = Number(logoScale.value) / 100;
-      return {
-        width: logoImg.naturalWidth * scale,
-        height: logoImg.naturalHeight * scale
-      };
+      return { width: logoImg.naturalWidth * scale, height: logoImg.naturalHeight * scale };
     }
 
     function getDefaultLogoPosition() {
       const { width, height } = getLogoSize();
       const pad = Math.max(12, Math.round(canvas.width * 0.02));
-      return {
-        x: canvas.width - width / 2 - pad,
-        y: canvas.height - height / 2 - pad
-      };
+      return { x: canvas.width - width / 2 - pad, y: canvas.height - height / 2 - pad };
     }
 
     function getLogoPosition() {
       if (!logoImg.src) return { x: 0, y: 0 };
       const { width, height } = getLogoSize();
       if (!customLogoPos) customLogoPos = getDefaultLogoPosition();
-
       return {
         x: Math.min(Math.max(customLogoPos.x, width / 2), canvas.width - width / 2),
         y: Math.min(Math.max(customLogoPos.y, height / 2), canvas.height - height / 2)
@@ -583,50 +499,25 @@
 
     function getCanvasPoint(evt) {
       const rect = canvas.getBoundingClientRect();
-      return {
-        x: (evt.clientX - rect.left) * (canvas.width / rect.width),
-        y: (evt.clientY - rect.top) * (canvas.height / rect.height)
-      };
+      return { x: (evt.clientX - rect.left) * (canvas.width / rect.width), y: (evt.clientY - rect.top) * (canvas.height / rect.height) };
     }
 
-    function drawOriginalBase() {
-      ctx.filter = 'none';
-      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-    }
-
-    function drawEditedBase() {
-      ctx.filter = `brightness(${brightness.value}%) contrast(${contrast.value}%) saturate(${saturate.value}%)`;
-      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-      ctx.filter = 'none';
-    }
-
-    function getTextFont(size) {
-      const stylePart = textIsItalic ? 'italic ' : '';
-      const weightPart = textIsBold ? '700 ' : '400 ';
-      return `${stylePart}${weightPart}${size}px ${fontFamily.value}`;
-    }
+    function drawOriginalBase() { ctx.filter = 'none'; ctx.drawImage(img, 0, 0, canvas.width, canvas.height); }
+    function drawEditedBase() { ctx.filter = `brightness(${brightness.value}%) contrast(${contrast.value}%) saturate(${saturate.value}%)`; ctx.drawImage(img, 0, 0, canvas.width, canvas.height); ctx.filter = 'none'; }
+    function getTextFont(size) { return `${textIsItalic ? 'italic ' : ''}${textIsBold ? '700 ' : '400 '}${size}px ${fontFamily.value}`; }
 
     function drawTextWatermark() {
       const text = watermarkText.value.trim();
-      if (!text) {
-        textBounds = null;
-        return;
-      }
-
+      if (!text) { textBounds = null; return; }
       const fontSize = Number(textSize.value);
       const angle = Number(textRotate.value) * Math.PI / 180;
-
       ctx.font = getTextFont(fontSize);
       const metrics = ctx.measureText(text);
       const textWidth = metrics.width;
       const ascent = metrics.actualBoundingBoxAscent || fontSize * 0.8;
       const descent = metrics.actualBoundingBoxDescent || fontSize * 0.2;
       const { x, y } = getTextPosition(textWidth, fontSize);
-
-      if (textPos.value === 'custom') {
-        customTextPos = { x, y };
-      }
-
+      if (textPos.value === 'custom') customTextPos = { x, y };
       ctx.save();
       ctx.globalAlpha = Number(textOpacity.value) / 100;
       ctx.translate(x, y);
@@ -635,64 +526,59 @@
       ctx.shadowBlur = Number(textShadowBlur.value);
       ctx.shadowOffsetX = Number(textShadowX.value) || 0;
       ctx.shadowOffsetY = Number(textShadowY.value) || 0;
-      ctx.fillStyle = '#ffffff';
-
+      ctx.fillStyle = '#fff';
       const strokeW = Number(textStrokeWidth.value);
-      if (strokeW > 0) {
-        ctx.strokeStyle = textStrokeColor.value;
-        ctx.lineWidth = strokeW;
-        ctx.strokeText(text, 0, 0);
-      }
-
+      if (strokeW > 0) { ctx.strokeStyle = textStrokeColor.value; ctx.lineWidth = strokeW; ctx.strokeText(text, 0, 0); }
       ctx.fillText(text, 0, 0);
       ctx.restore();
-
-      textBounds = {
-        x,
-        y,
-        width: textWidth,
-        ascent,
-        descent,
-        angle
-      };
+      textBounds = { x, y, width: textWidth, ascent, descent, angle };
     }
 
     function drawLogoWatermark() {
-      if (!logoImg.src) {
-        logoBounds = null;
-        return;
-      }
-
+      if (!logoImg.src) { logoBounds = null; return; }
       const { width, height } = getLogoSize();
-      if (width <= 0 || height <= 0) {
-        logoBounds = null;
-        return;
-      }
-
+      if (width <= 0 || height <= 0) { logoBounds = null; return; }
       const pos = getLogoPosition();
       customLogoPos = { x: pos.x, y: pos.y };
       const angle = Number(logoRotate.value) * Math.PI / 180;
-
       ctx.save();
       ctx.globalAlpha = Number(logoOpacity.value) / 100;
       ctx.translate(pos.x, pos.y);
       ctx.rotate(angle);
       ctx.drawImage(logoImg, -width / 2, -height / 2, width, height);
       ctx.restore();
-
-      logoBounds = {
-        cx: pos.x,
-        cy: pos.y,
-        width,
-        height,
-        angle
-      };
+      logoBounds = { cx: pos.x, cy: pos.y, width, height, angle };
     }
 
-    function drawEditedScene() {
-      drawEditedBase();
-      drawTextWatermark();
-      drawLogoWatermark();
+    function drawEditedScene() { drawEditedBase(); drawTextWatermark(); drawLogoWatermark(); }
+
+    function drawGuidesOverlay() {
+      if (!hasImage) return;
+      const drawCenter = showCenterGuides.checked;
+      const drawThirds = showThirdsGuides.checked;
+      if (!drawCenter && !drawThirds && activeSnapGuides.length === 0) return;
+      ctx.save();
+      if (drawThirds) {
+        ctx.strokeStyle = 'rgba(191, 219, 254, 0.45)'; ctx.lineWidth = 1; ctx.setLineDash([6, 6]);
+        const x1 = canvas.width / 3, x2 = (canvas.width * 2) / 3, y1 = canvas.height / 3, y2 = (canvas.height * 2) / 3;
+        ctx.beginPath();
+        ctx.moveTo(x1,0); ctx.lineTo(x1,canvas.height); ctx.moveTo(x2,0); ctx.lineTo(x2,canvas.height);
+        ctx.moveTo(0,y1); ctx.lineTo(canvas.width,y1); ctx.moveTo(0,y2); ctx.lineTo(canvas.width,y2);
+        ctx.stroke();
+      }
+      if (drawCenter) {
+        ctx.strokeStyle = 'rgba(96, 165, 250, 0.6)'; ctx.lineWidth = 1; ctx.setLineDash([10, 8]);
+        const cx = canvas.width / 2, cy = canvas.height / 2;
+        ctx.beginPath(); ctx.moveTo(cx,0); ctx.lineTo(cx,canvas.height); ctx.moveTo(0,cy); ctx.lineTo(canvas.width,cy); ctx.stroke();
+      }
+      if (activeSnapGuides.length > 0) {
+        const uniqueX = new Set(), uniqueY = new Set();
+        activeSnapGuides.forEach(g => { if (g.axis === 'x') uniqueX.add(Math.round(g.value)); if (g.axis === 'y') uniqueY.add(Math.round(g.value)); });
+        ctx.strokeStyle = 'rgba(250, 204, 21, 0.95)'; ctx.lineWidth = 2; ctx.setLineDash([]);
+        uniqueX.forEach(x => { ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,canvas.height); ctx.stroke(); });
+        uniqueY.forEach(y => { ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(canvas.width,y); ctx.stroke(); });
+      }
+      ctx.restore();
     }
 
     function drawCropOverlay() {
@@ -702,94 +588,27 @@
       const w = Math.abs(cropRect.width);
       const h = Math.abs(cropRect.height);
       if (w < 1 || h < 1) return;
-
-      ctx.save();
-      ctx.fillStyle = 'rgba(0, 0, 0, 0.45)';
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-      ctx.clearRect(x, y, w, h);
-      ctx.strokeStyle = '#60a5fa';
-      ctx.lineWidth = 2;
-      ctx.setLineDash([8, 6]);
-      ctx.strokeRect(x, y, w, h);
-      ctx.restore();
+      ctx.save(); ctx.fillStyle = 'rgba(0,0,0,0.45)'; ctx.fillRect(0,0,canvas.width,canvas.height); ctx.clearRect(x,y,w,h);
+      ctx.strokeStyle = '#60a5fa'; ctx.lineWidth = 2; ctx.setLineDash([8,6]); ctx.strokeRect(x,y,w,h); ctx.restore();
     }
 
     function redraw() {
       if (!hasImage) return;
-
       ctx.clearRect(0, 0, canvas.width, canvas.height);
-
       textBounds = null;
       logoBounds = null;
-
       if (previewMode.value === 'original') {
         drawOriginalBase();
       } else if (previewMode.value === 'split') {
         drawOriginalBase();
         const splitX = (Number(splitPos.value) / 100) * canvas.width;
-
-        ctx.save();
-        ctx.beginPath();
-        ctx.rect(splitX, 0, canvas.width - splitX, canvas.height);
-        ctx.clip();
-        drawEditedScene();
-        ctx.restore();
-
-        ctx.save();
-        ctx.strokeStyle = '#93c5fd';
-        ctx.lineWidth = 2;
-        ctx.beginPath();
-        ctx.moveTo(splitX, 0);
-        ctx.lineTo(splitX, canvas.height);
-        ctx.stroke();
-        ctx.restore();
+        ctx.save(); ctx.beginPath(); ctx.rect(splitX, 0, canvas.width - splitX, canvas.height); ctx.clip(); drawEditedScene(); ctx.restore();
+        ctx.save(); ctx.strokeStyle = '#93c5fd'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(splitX,0); ctx.lineTo(splitX,canvas.height); ctx.stroke(); ctx.restore();
       } else {
         drawEditedScene();
       }
-
+      drawGuidesOverlay();
       if (cropMode) drawCropOverlay();
-    }
-
-    function resetControls() {
-      brightness.value = 100;
-      contrast.value = 100;
-      saturate.value = 100;
-
-      previewMode.value = 'edited';
-      splitPos.value = 50;
-
-      watermarkText.value = '© BlackAngel';
-      textPos.value = 'bottom-right';
-      fontFamily.value = 'Arial, sans-serif';
-      textIsBold = true;
-      textIsItalic = false;
-      textOpacity.value = 45;
-      textSize.value = 30;
-      textRotate.value = 0;
-      textStrokeColor.value = '#000000';
-      textStrokeWidth.value = 3;
-      textShadowColor.value = '#000000';
-      textShadowBlur.value = 8;
-      textShadowX.value = 2;
-      textShadowY.value = 2;
-
-      logoOpacity.value = 60;
-      logoScale.value = 100;
-      logoRotate.value = 0;
-
-      exportFormat.value = 'png';
-      exportQuality.value = 92;
-
-      customTextPos = null;
-      customLogoPos = null;
-      cropMode = false;
-      isCropping = false;
-      cropRect = null;
-
-      refreshToggleButtons();
-      refreshCropButtons();
-      updateOutputValues();
-      redraw();
     }
 
     function refreshToggleButtons() {
@@ -798,55 +617,33 @@
       toggleItalic.style.borderColor = textIsItalic ? '#60a5fa' : '#2563eb';
       toggleItalic.style.color = textIsItalic ? '#93c5fd' : '#dbeafe';
     }
+    function refreshHistoryButtons() { undoBtn.disabled = historyIndex <= 0; redoBtn.disabled = historyIndex < 0 || historyIndex >= history.length - 1; }
+    function refreshCropButtons() { cropModeBtn.disabled = !hasImage; applyCropBtn.disabled = !cropMode || !cropRect; cancelCropBtn.disabled = !cropMode; cropModeBtn.textContent = cropMode ? 'Crop ON' : 'Crop mode'; }
+    function refreshLogoButtons() { const hasLogo = Boolean(logoImg.src); removeLogoBtn.disabled = !hasLogo; centerLogoBtn.disabled = !hasLogo; }
 
-    function refreshHistoryButtons() {
-      undoBtn.disabled = historyIndex <= 0;
-      redoBtn.disabled = historyIndex < 0 || historyIndex >= history.length - 1;
-    }
-
-    function refreshCropButtons() {
-      cropModeBtn.disabled = !hasImage;
-      applyCropBtn.disabled = !cropMode || !cropRect;
-      cancelCropBtn.disabled = !cropMode;
-      cropModeBtn.textContent = cropMode ? 'Crop ON' : 'Crop mode';
-    }
-
-    function refreshLogoButtons() {
-      const hasLogo = Boolean(logoImg.src);
-      removeLogoBtn.disabled = !hasLogo;
-      centerLogoBtn.disabled = !hasLogo;
+    function resetControls() {
+      brightness.value = 100; contrast.value = 100; saturate.value = 100; previewMode.value = 'edited'; splitPos.value = 50;
+      watermarkText.value = '© BlackAngel'; textPos.value = 'bottom-right'; fontFamily.value = 'Arial, sans-serif'; textIsBold = true; textIsItalic = false;
+      textOpacity.value = 45; textSize.value = 30; textRotate.value = 0; textStrokeColor.value = '#000000'; textStrokeWidth.value = 3;
+      textShadowColor.value = '#000000'; textShadowBlur.value = 8; textShadowX.value = 2; textShadowY.value = 2;
+      logoOpacity.value = 60; logoScale.value = 100; logoRotate.value = 0;
+      showCenterGuides.checked = true; showThirdsGuides.checked = false; enableSnap.checked = true; snapDistance.value = 12;
+      exportFormat.value = 'png'; exportQuality.value = 92;
+      customTextPos = null; customLogoPos = null; cropMode = false; isCropping = false; cropRect = null; activeSnapGuides = [];
+      refreshToggleButtons(); refreshCropButtons(); updateOutputValues(); redraw();
     }
 
     function getStateSnapshot() {
       return {
-        imageSrc: img.src || '',
-        logoSrc: logoImg.src || '',
+        imageSrc: img.src || '', logoSrc: logoImg.src || '',
         controls: {
-          previewMode: previewMode.value,
-          splitPos: splitPos.value,
-          brightness: brightness.value,
-          contrast: contrast.value,
-          saturate: saturate.value,
-          watermarkText: watermarkText.value,
-          textPos: textPos.value,
-          fontFamily: fontFamily.value,
-          textIsBold,
-          textIsItalic,
-          textOpacity: textOpacity.value,
-          textSize: textSize.value,
-          textRotate: textRotate.value,
-          textStrokeColor: textStrokeColor.value,
-          textStrokeWidth: textStrokeWidth.value,
-          textShadowColor: textShadowColor.value,
-          textShadowBlur: textShadowBlur.value,
-          textShadowX: textShadowX.value,
-          textShadowY: textShadowY.value,
-          logoOpacity: logoOpacity.value,
-          logoScale: logoScale.value,
-          logoRotate: logoRotate.value,
-          nudgeTarget: nudgeTarget.value,
-          exportFormat: exportFormat.value,
-          exportQuality: exportQuality.value
+          previewMode: previewMode.value, splitPos: splitPos.value, brightness: brightness.value, contrast: contrast.value, saturate: saturate.value,
+          watermarkText: watermarkText.value, textPos: textPos.value, fontFamily: fontFamily.value, textIsBold, textIsItalic,
+          textOpacity: textOpacity.value, textSize: textSize.value, textRotate: textRotate.value, textStrokeColor: textStrokeColor.value,
+          textStrokeWidth: textStrokeWidth.value, textShadowColor: textShadowColor.value, textShadowBlur: textShadowBlur.value,
+          textShadowX: textShadowX.value, textShadowY: textShadowY.value, logoOpacity: logoOpacity.value, logoScale: logoScale.value, logoRotate: logoRotate.value,
+          showCenterGuides: showCenterGuides.checked, showThirdsGuides: showThirdsGuides.checked, enableSnap: enableSnap.checked, snapDistance: snapDistance.value,
+          nudgeTarget: nudgeTarget.value, exportFormat: exportFormat.value, exportQuality: exportQuality.value
         },
         customTextPos: customTextPos ? { ...customTextPos } : null,
         customLogoPos: customLogoPos ? { ...customLogoPos } : null
@@ -854,46 +651,25 @@
     }
 
     function setStateControls(snapshot) {
-      const c = snapshot.controls;
-      previewMode.value = c.previewMode;
-      splitPos.value = c.splitPos;
-      brightness.value = c.brightness;
-      contrast.value = c.contrast;
-      saturate.value = c.saturate;
-      watermarkText.value = c.watermarkText;
-      textPos.value = c.textPos;
-      fontFamily.value = c.fontFamily;
-      textIsBold = c.textIsBold;
-      textIsItalic = c.textIsItalic;
-      textOpacity.value = c.textOpacity;
-      textSize.value = c.textSize;
-      textRotate.value = c.textRotate;
-      textStrokeColor.value = c.textStrokeColor;
-      textStrokeWidth.value = c.textStrokeWidth;
-      textShadowColor.value = c.textShadowColor;
-      textShadowBlur.value = c.textShadowBlur;
-      textShadowX.value = c.textShadowX;
-      textShadowY.value = c.textShadowY;
-      logoOpacity.value = c.logoOpacity;
-      logoScale.value = c.logoScale;
-      logoRotate.value = c.logoRotate;
-      nudgeTarget.value = c.nudgeTarget;
-      exportFormat.value = c.exportFormat;
-      exportQuality.value = c.exportQuality;
-
+      const c = snapshot.controls || {};
+      previewMode.value = c.previewMode ?? 'edited'; splitPos.value = c.splitPos ?? 50;
+      brightness.value = c.brightness ?? 100; contrast.value = c.contrast ?? 100; saturate.value = c.saturate ?? 100;
+      watermarkText.value = c.watermarkText ?? '© BlackAngel'; textPos.value = c.textPos ?? 'bottom-right'; fontFamily.value = c.fontFamily ?? 'Arial, sans-serif';
+      textIsBold = c.textIsBold ?? true; textIsItalic = c.textIsItalic ?? false;
+      textOpacity.value = c.textOpacity ?? 45; textSize.value = c.textSize ?? 30; textRotate.value = c.textRotate ?? 0;
+      textStrokeColor.value = c.textStrokeColor ?? '#000000'; textStrokeWidth.value = c.textStrokeWidth ?? 3;
+      textShadowColor.value = c.textShadowColor ?? '#000000'; textShadowBlur.value = c.textShadowBlur ?? 8; textShadowX.value = c.textShadowX ?? 2; textShadowY.value = c.textShadowY ?? 2;
+      logoOpacity.value = c.logoOpacity ?? 60; logoScale.value = c.logoScale ?? 100; logoRotate.value = c.logoRotate ?? 0;
+      showCenterGuides.checked = c.showCenterGuides ?? true; showThirdsGuides.checked = c.showThirdsGuides ?? false; enableSnap.checked = c.enableSnap ?? true; snapDistance.value = c.snapDistance ?? 12;
+      nudgeTarget.value = c.nudgeTarget ?? 'text'; exportFormat.value = c.exportFormat ?? 'png'; exportQuality.value = c.exportQuality ?? 92;
       customTextPos = snapshot.customTextPos ? { ...snapshot.customTextPos } : null;
       customLogoPos = snapshot.customLogoPos ? { ...snapshot.customLogoPos } : null;
-      refreshToggleButtons();
-      updateOutputValues();
+      refreshToggleButtons(); updateOutputValues();
     }
 
     function loadImageTo(imageEl, src) {
       return new Promise(resolve => {
-        if (!src) {
-          imageEl.src = '';
-          resolve(false);
-          return;
-        }
+        if (!src) { imageEl.src = ''; resolve(false); return; }
         imageEl.onload = () => resolve(true);
         imageEl.onerror = () => resolve(false);
         imageEl.src = src;
@@ -903,68 +679,35 @@
     async function applySnapshot(snapshot) {
       const loadedBase = await loadImageTo(img, snapshot.imageSrc);
       hasImage = loadedBase;
-      if (hasImage) {
-        canvas.width = img.naturalWidth;
-        canvas.height = img.naturalHeight;
-      }
-
+      if (hasImage) { canvas.width = img.naturalWidth; canvas.height = img.naturalHeight; }
       await loadImageTo(logoImg, snapshot.logoSrc);
       setStateControls(snapshot);
-
       downloadBtn.disabled = !hasImage;
       resetBtn.disabled = !hasImage;
-
-      cropMode = false;
-      isCropping = false;
-      cropRect = null;
-      refreshCropButtons();
-      refreshLogoButtons();
-      redraw();
+      cropMode = false; isCropping = false; cropRect = null; activeSnapGuides = [];
+      setDropActive(false); refreshDropHint(); refreshCropButtons(); refreshLogoButtons(); redraw();
     }
 
     function pushHistory() {
       if (!hasImage) return;
       const snapshot = getStateSnapshot();
-      if (historyIndex >= 0) {
-        const prev = JSON.stringify(history[historyIndex]);
-        const curr = JSON.stringify(snapshot);
-        if (prev === curr) return;
-      }
-
+      if (historyIndex >= 0 && JSON.stringify(history[historyIndex]) === JSON.stringify(snapshot)) return;
       history = history.slice(0, historyIndex + 1);
       history.push(snapshot);
-      if (history.length > MAX_HISTORY) {
-        history.shift();
-      }
+      if (history.length > MAX_HISTORY) history.shift();
       historyIndex = history.length - 1;
       refreshHistoryButtons();
     }
 
-    async function undo() {
-      if (historyIndex <= 0) return;
-      historyIndex -= 1;
-      refreshHistoryButtons();
-      await applySnapshot(history[historyIndex]);
-    }
-
-    async function redo() {
-      if (historyIndex < 0 || historyIndex >= history.length - 1) return;
-      historyIndex += 1;
-      refreshHistoryButtons();
-      await applySnapshot(history[historyIndex]);
-    }
+    async function undo() { if (historyIndex <= 0) return; historyIndex -= 1; refreshHistoryButtons(); await applySnapshot(history[historyIndex]); }
+    async function redo() { if (historyIndex < 0 || historyIndex >= history.length - 1) return; historyIndex += 1; refreshHistoryButtons(); await applySnapshot(history[historyIndex]); }
 
     function clampCropRect(rect) {
       const x = Math.max(0, Math.min(canvas.width, rect.x));
       const y = Math.max(0, Math.min(canvas.height, rect.y));
       const endX = Math.max(0, Math.min(canvas.width, rect.x + rect.width));
       const endY = Math.max(0, Math.min(canvas.height, rect.y + rect.height));
-      return {
-        x,
-        y,
-        width: endX - x,
-        height: endY - y
-      };
+      return { x, y, width: endX - x, height: endY - y };
     }
 
     function applyCrop() {
@@ -973,255 +716,169 @@
       const w = Math.floor(Math.abs(clamped.width));
       const h = Math.floor(Math.abs(clamped.height));
       if (w < 5 || h < 5) return;
-
       const sx = Math.floor(Math.min(clamped.x, clamped.x + clamped.width));
       const sy = Math.floor(Math.min(clamped.y, clamped.y + clamped.height));
-
-      const temp = document.createElement('canvas');
-      temp.width = w;
-      temp.height = h;
-      const tctx = temp.getContext('2d');
-      tctx.drawImage(img, sx, sy, w, h, 0, 0, w, h);
-
+      const temp = document.createElement('canvas'); temp.width = w; temp.height = h;
+      temp.getContext('2d').drawImage(img, sx, sy, w, h, 0, 0, w, h);
       img.onload = () => {
-        canvas.width = img.naturalWidth;
-        canvas.height = img.naturalHeight;
-        hasImage = true;
-        customTextPos = null;
-        customLogoPos = null;
-        cropMode = false;
-        isCropping = false;
-        cropRect = null;
-        refreshCropButtons();
-        redraw();
-        pushHistory();
+        canvas.width = img.naturalWidth; canvas.height = img.naturalHeight; hasImage = true;
+        customTextPos = null; customLogoPos = null; cropMode = false; isCropping = false; cropRect = null; activeSnapGuides = [];
+        refreshCropButtons(); redraw(); pushHistory(); scheduleAutoSave();
       };
       img.src = temp.toDataURL('image/png');
     }
 
-    function startCropMode() {
-      if (!hasImage) return;
-      cropMode = !cropMode;
-      isCropping = false;
-      cropRect = null;
-      refreshCropButtons();
-      redraw();
-    }
+    function startCropMode() { if (!hasImage) return; cropMode = !cropMode; isCropping = false; cropRect = null; activeSnapGuides = []; refreshCropButtons(); redraw(); }
+    function cancelCropMode() { cropMode = false; isCropping = false; cropRect = null; activeSnapGuides = []; refreshCropButtons(); redraw(); }
 
-    function cancelCropMode() {
-      cropMode = false;
-      isCropping = false;
-      cropRect = null;
-      refreshCropButtons();
-      redraw();
-    }
-
-    uploadInput.addEventListener('change', (event) => {
+    uploadInput.addEventListener('change', event => {
       const file = event.target.files?.[0];
       if (!file) return;
-
-      const reader = new FileReader();
-      reader.onload = () => {
-        img.onload = () => {
-          canvas.width = img.naturalWidth;
-          canvas.height = img.naturalHeight;
-          hasImage = true;
-          downloadBtn.disabled = false;
-          resetBtn.disabled = false;
-          cropMode = false;
-          isCropping = false;
-          cropRect = null;
-          history = [];
-          historyIndex = -1;
-          refreshHistoryButtons();
-          refreshCropButtons();
-          redraw();
-          pushHistory();
-        };
-        img.src = reader.result;
-      };
-      reader.readAsDataURL(file);
+      loadMainImageFile(file);
+      uploadInput.value = '';
     });
 
-    logoUpload.addEventListener('change', (event) => {
+    ['dragenter', 'dragover'].forEach(type => {
+      canvasBox.addEventListener(type, event => {
+        if (!Array.from(event.dataTransfer?.items || []).some(item => item.kind === 'file')) return;
+        event.preventDefault();
+        setDropActive(true);
+      });
+    });
+
+    canvasBox.addEventListener('dragleave', event => {
+      if (event.relatedTarget && canvasBox.contains(event.relatedTarget)) return;
+      setDropActive(false);
+    });
+
+    canvasBox.addEventListener('drop', event => {
+      const file = Array.from(event.dataTransfer?.files || []).find(isImageFile);
+      event.preventDefault();
+      setDropActive(false);
+      if (!file) { setAutosaveStatus('Nenašiel sa žiadny image súbor', true); return; }
+      loadMainImageFile(file);
+    });
+
+    window.addEventListener('dragover', event => {
+      if (!Array.from(event.dataTransfer?.items || []).some(item => item.kind === 'file')) return;
+      event.preventDefault();
+    });
+
+    window.addEventListener('drop', event => {
+      if (!Array.from(event.dataTransfer?.items || []).some(item => item.kind === 'file')) return;
+      if (canvasBox.contains(event.target)) return;
+      event.preventDefault();
+      setDropActive(false);
+    });
+
+    logoUpload.addEventListener('change', event => {
       const file = event.target.files?.[0];
       if (!file) return;
-
       const reader = new FileReader();
       reader.onload = () => {
-        logoImg.onload = () => {
-          customLogoPos = getDefaultLogoPosition();
-          refreshLogoButtons();
-          redraw();
-          pushHistory();
-        };
+        logoImg.onload = () => { customLogoPos = getDefaultLogoPosition(); refreshLogoButtons(); redraw(); pushHistory(); scheduleAutoSave(); };
         logoImg.src = reader.result;
       };
       reader.readAsDataURL(file);
     });
 
-    removeLogoBtn.addEventListener('click', () => {
-      logoImg.src = '';
-      customLogoPos = null;
-      refreshLogoButtons();
-      redraw();
-      pushHistory();
-    });
+    removeLogoBtn.addEventListener('click', () => { logoImg.src = ''; customLogoPos = null; refreshLogoButtons(); redraw(); pushHistory(); scheduleAutoSave(); });
+    centerLogoBtn.addEventListener('click', () => { if (!logoImg.src || !hasImage) return; customLogoPos = { x: canvas.width / 2, y: canvas.height / 2 }; redraw(); pushHistory(); scheduleAutoSave(); });
+    toggleBold.addEventListener('click', () => { textIsBold = !textIsBold; refreshToggleButtons(); redraw(); pushHistory(); scheduleAutoSave(); });
+    toggleItalic.addEventListener('click', () => { textIsItalic = !textIsItalic; refreshToggleButtons(); redraw(); pushHistory(); scheduleAutoSave(); });
 
-    centerLogoBtn.addEventListener('click', () => {
-      if (!logoImg.src || !hasImage) return;
-      customLogoPos = { x: canvas.width / 2, y: canvas.height / 2 };
-      redraw();
-      pushHistory();
-    });
-
-    toggleBold.addEventListener('click', () => {
-      textIsBold = !textIsBold;
-      refreshToggleButtons();
-      redraw();
-      pushHistory();
-    });
-
-    toggleItalic.addEventListener('click', () => {
-      textIsItalic = !textIsItalic;
-      refreshToggleButtons();
-      redraw();
-      pushHistory();
-    });
-
-    [previewMode, splitPos, brightness, contrast, saturate, watermarkText, textPos, fontFamily, textOpacity, textSize, textRotate, textStrokeColor, textStrokeWidth, textShadowColor, textShadowBlur, textShadowX, textShadowY, logoOpacity, logoScale, logoRotate, exportFormat, exportQuality, nudgeTarget].forEach(el => {
+    [previewMode, splitPos, brightness, contrast, saturate, watermarkText, textPos, fontFamily, textOpacity, textSize, textRotate, textStrokeColor, textStrokeWidth, textShadowColor, textShadowBlur, textShadowX, textShadowY, logoOpacity, logoScale, logoRotate, showCenterGuides, showThirdsGuides, enableSnap, snapDistance, exportFormat, exportQuality, nudgeTarget].forEach(el => {
       el.addEventListener('input', () => {
-        if (el === textPos && textPos.value !== 'custom') {
-          customTextPos = null;
-        }
-        updateOutputValues();
-        redraw();
+        if (el === textPos && textPos.value !== 'custom') customTextPos = null;
+        updateOutputValues(); redraw(); scheduleAutoSave();
       });
-
       el.addEventListener('change', () => {
-        if (el === textPos && textPos.value !== 'custom') {
-          customTextPos = null;
-        }
-        redraw();
-        pushHistory();
+        if (el === textPos && textPos.value !== 'custom') customTextPos = null;
+        redraw(); pushHistory(); scheduleAutoSave();
       });
     });
 
-    canvas.addEventListener('pointerdown', (evt) => {
+    canvas.addEventListener('pointerdown', evt => {
       if (!hasImage) return;
       const p = getCanvasPoint(evt);
-
       if (cropMode) {
-        isCropping = true;
-        cropRect = { x: p.x, y: p.y, width: 0, height: 0 };
-        refreshCropButtons();
-        redraw();
-        canvas.setPointerCapture(evt.pointerId);
-        return;
+        isCropping = true; cropRect = { x: p.x, y: p.y, width: 0, height: 0 };
+        refreshCropButtons(); redraw(); canvas.setPointerCapture(evt.pointerId); return;
       }
-
       if (previewMode.value === 'original') return;
-
       if (logoBounds && isPointInRotatedLogo(p.x, p.y, logoBounds)) {
-        isDraggingLogo = true;
-        nudgeTarget.value = 'logo';
+        isDraggingLogo = true; activeSnapGuides = []; nudgeTarget.value = 'logo';
         customLogoPos = { x: logoBounds.cx, y: logoBounds.cy };
-        dragOffset = {
-          x: p.x - logoBounds.cx,
-          y: p.y - logoBounds.cy
-        };
-        canvas.setPointerCapture(evt.pointerId);
-        return;
+        dragOffset = { x: p.x - logoBounds.cx, y: p.y - logoBounds.cy };
+        canvas.setPointerCapture(evt.pointerId); return;
       }
-
       if (!textBounds || !isPointInRotatedText(p.x, p.y, textBounds)) return;
-
-      isDraggingText = true;
-      textPos.value = 'custom';
-      nudgeTarget.value = 'text';
+      isDraggingText = true; activeSnapGuides = []; textPos.value = 'custom'; nudgeTarget.value = 'text';
       customTextPos = { x: textBounds.x, y: textBounds.y };
-      dragOffset = {
-        x: p.x - textBounds.x,
-        y: p.y - textBounds.y
-      };
+      dragOffset = { x: p.x - textBounds.x, y: p.y - textBounds.y };
       canvas.setPointerCapture(evt.pointerId);
     });
 
-    canvas.addEventListener('pointermove', (evt) => {
+    canvas.addEventListener('pointermove', evt => {
       if (!hasImage) return;
       const p = getCanvasPoint(evt);
-
       if (cropMode && isCropping && cropRect) {
-        cropRect.width = p.x - cropRect.x;
-        cropRect.height = p.y - cropRect.y;
-        refreshCropButtons();
-        redraw();
-        return;
+        cropRect.width = p.x - cropRect.x; cropRect.height = p.y - cropRect.y; refreshCropButtons(); redraw(); return;
       }
-
       if (isDraggingText && textBounds) {
-        const fontSize = Number(textSize.value);
+        const ascent = textBounds.ascent || Number(textSize.value) * 0.8;
+        const descent = textBounds.descent || Number(textSize.value) * 0.2;
         const width = textBounds.width;
-
-        const x = Math.min(Math.max(p.x - dragOffset.x, 0), Math.max(0, canvas.width - width));
-        const y = Math.min(Math.max(p.y - dragOffset.y, fontSize), canvas.height);
+        let x = Math.min(Math.max(p.x - dragOffset.x, 0), Math.max(0, canvas.width - width));
+        let y = Math.min(Math.max(p.y - dragOffset.y, ascent), canvas.height - descent);
+        const snap = getSnapResult({ left: x, right: x + width, top: y - ascent, bottom: y + descent, cx: x + width / 2, cy: y + (descent - ascent) / 2 });
+        x += snap.dx; y += snap.dy;
+        x = Math.min(Math.max(x, 0), Math.max(0, canvas.width - width));
+        y = Math.min(Math.max(y, ascent), canvas.height - descent);
+        activeSnapGuides = snap.guides;
         customTextPos = { x, y };
-        redraw();
-        return;
+        redraw(); return;
       }
-
       if (isDraggingLogo && logoBounds) {
-        const x = p.x - dragOffset.x;
-        const y = p.y - dragOffset.y;
+        let x = p.x - dragOffset.x;
+        let y = p.y - dragOffset.y;
+        const halfW = logoBounds.width / 2;
+        const halfH = logoBounds.height / 2;
+        const snap = getSnapResult({ left: x - halfW, right: x + halfW, top: y - halfH, bottom: y + halfH, cx: x, cy: y });
+        x += snap.dx; y += snap.dy; activeSnapGuides = snap.guides;
         customLogoPos = { x, y };
-        redraw();
+        redraw(); return;
       }
+      activeSnapGuides = [];
     });
 
-    const stopPointer = (evt) => {
+    const stopPointer = evt => {
       if (isDraggingText || isDraggingLogo || isCropping) {
         if (evt?.pointerId !== undefined) {
-          try {
-            canvas.releasePointerCapture(evt.pointerId);
-          } catch (_) {
-            // ignore capture errors
-          }
+          try { canvas.releasePointerCapture(evt.pointerId); } catch (_) {}
         }
       }
-
       const hadAction = isDraggingText || isDraggingLogo || isCropping;
-      isDraggingText = false;
-      isDraggingLogo = false;
-      isCropping = false;
-      if (hadAction) {
-        refreshCropButtons();
-        redraw();
-        pushHistory();
-      }
+      isDraggingText = false; isDraggingLogo = false; isCropping = false; activeSnapGuides = [];
+      if (hadAction) { refreshCropButtons(); redraw(); pushHistory(); scheduleAutoSave(); }
     };
 
     canvas.addEventListener('pointerup', stopPointer);
     canvas.addEventListener('pointercancel', stopPointer);
 
-    window.addEventListener('keydown', (evt) => {
+    window.addEventListener('keydown', evt => {
       if (!hasImage) return;
-
-      const targetTag = (evt.target?.tagName || '').toLowerCase();
-      if (targetTag === 'input' || targetTag === 'textarea' || targetTag === 'select') return;
-
+      const tag = (evt.target?.tagName || '').toLowerCase();
+      if (tag === 'input' || tag === 'textarea' || tag === 'select') return;
       const key = evt.key;
       if (!['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(key)) return;
-
       evt.preventDefault();
       const step = evt.shiftKey ? 10 : 1;
-
-      let dx = 0;
-      let dy = 0;
+      let dx = 0, dy = 0;
       if (key === 'ArrowLeft') dx = -step;
       if (key === 'ArrowRight') dx = step;
       if (key === 'ArrowUp') dy = -step;
       if (key === 'ArrowDown') dy = step;
-
       if (nudgeTarget.value === 'logo' && logoImg.src) {
         const current = customLogoPos || getDefaultLogoPosition();
         customLogoPos = { x: current.x + dx, y: current.y + dy };
@@ -1231,46 +888,45 @@
         const current = customTextPos || { x: textBounds.x, y: textBounds.y };
         customTextPos = { x: current.x + dx, y: current.y + dy };
       }
-
-      redraw();
-      pushHistory();
+      redraw(); pushHistory(); scheduleAutoSave();
     });
 
     undoBtn.addEventListener('click', undo);
     redoBtn.addEventListener('click', redo);
-
+    restoreAutosaveBtn.addEventListener('click', restoreAutoSave);
+    clearAutosaveBtn.addEventListener('click', clearAutoSave);
+    savePresetBtn.addEventListener('click', saveCurrentPreset);
+    loadPresetBtn.addEventListener('click', loadSelectedPreset);
+    deletePresetBtn.addEventListener('click', deleteSelectedPreset);
+    presetSelect.addEventListener('change', () => { if (presetSelect.value) presetName.value = presetSelect.value; });
     cropModeBtn.addEventListener('click', startCropMode);
     applyCropBtn.addEventListener('click', applyCrop);
     cancelCropBtn.addEventListener('click', cancelCropMode);
 
     downloadBtn.addEventListener('click', () => {
       if (!hasImage) return;
-
       const format = exportFormat.value;
       const mime = format === 'png' ? 'image/png' : (format === 'webp' ? 'image/webp' : 'image/jpeg');
       const extension = format === 'jpeg' ? 'jpg' : format;
       const quality = Number(exportQuality.value) / 100;
-
       const link = document.createElement('a');
       link.download = `edited-image.${extension}`;
-      if (mime === 'image/png') {
-        link.href = canvas.toDataURL(mime);
-      } else {
-        link.href = canvas.toDataURL(mime, quality);
-      }
+      link.href = mime === 'image/png' ? canvas.toDataURL(mime) : canvas.toDataURL(mime, quality);
       link.click();
     });
 
-    resetBtn.addEventListener('click', () => {
-      resetControls();
-      pushHistory();
-    });
+    resetBtn.addEventListener('click', () => { resetControls(); pushHistory(); scheduleAutoSave(); });
 
     refreshToggleButtons();
     refreshHistoryButtons();
     refreshCropButtons();
     refreshLogoButtons();
+    loadPresets();
+    renderPresetOptions();
+    refreshAutoSaveButtons();
     updateOutputValues();
+    refreshDropHint();
+    if (localStorage.getItem(AUTO_SAVE_KEY)) restoreAutoSave();
   </script>
 </body>
 </html>
