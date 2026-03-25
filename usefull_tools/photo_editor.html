@@ -23,9 +23,12 @@
     .inline-grid-2 { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
     .btn-row { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
     .btn-row-3 { display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; }
+    .btn-row-5 { display:grid; grid-template-columns:repeat(auto-fit,minmax(96px,1fr)); gap:6px; }
+    .btn-row-5 button { padding:8px 10px; font-size:.84rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
     button { border:none; border-radius:9px; padding:10px 12px; font-weight:700; cursor:pointer; color:#0b1220; background:linear-gradient(135deg,#93c5fd,#60a5fa); }
     button.secondary { color:#dbeafe; border:1px solid #2563eb; background:transparent; }
     button.warn { color:#fecaca; border:1px solid #ef4444; background:transparent; }
+    button.is-active { border-color:#60a5fa; color:#93c5fd; box-shadow:0 0 0 1px rgba(96,165,250,.35) inset; }
     button:disabled { opacity:.4; cursor:not-allowed; }
     .small { font-size:.82rem; color:#94a3b8; margin:0; }
     .status { font-size:.8rem; color:#93c5fd; margin:4px 0 0 0; min-height:18px; }
@@ -43,6 +46,25 @@
     <aside class="panel">
       <h1>Basic Photo Editor Pro</h1>
       <p class="hint">Filtre, text/logo watermark, crop, undo/redo, preview, export PNG/JPG/WebP.</p>
+
+      <div id="modeSwitchGroup" class="group">
+        <label>Editor mode</label>
+        <div class="btn-row">
+          <button id="basicModeBtn" class="secondary is-active">Basic</button>
+          <button id="advancedModeBtn" class="secondary">Advanced</button>
+        </div>
+      </div>
+
+      <div id="sectionSwitchGroup" class="group">
+        <label>Edit section</label>
+        <div class="btn-row-5">
+          <button id="editAllBtn" class="secondary is-active">All</button>
+          <button id="editImageBtn" class="secondary">Image</button>
+          <button id="editWatermarkBtn" class="secondary">Watermark</button>
+          <button id="editGuidesBtn" class="secondary">Guides</button>
+          <button id="editExportBtn" class="secondary">Export</button>
+        </div>
+      </div>
 
       <div class="group"><label for="upload">Vyber obrázok</label><input id="upload" type="file" accept="image/*" /></div>
       <div class="group"><div class="btn-row"><button id="undoBtn" class="secondary" disabled>Undo</button><button id="redoBtn" class="secondary" disabled>Redo</button></div></div>
@@ -101,7 +123,21 @@
         <label>Logo rotácia</label><div class="range-line"><input id="logoRotate" type="range" min="-180" max="180" value="0" /><output id="logoRotateOut">0°</output></div>
       </div>
 
-      <div class="group"><label>Nudge target (šípky na klávesnici)</label><select id="nudgeTarget"><option value="text">Text watermark</option><option value="logo">Logo watermark</option></select><p class="small">Šípky = posun o 1px, Shift + šípky = 10px.</p></div>
+      <div class="group" id="layersGroup">
+        <label>Thumbnail + image layers</label>
+        <div class="btn-row" style="margin-bottom:8px;"><button id="newThumbBtn" class="secondary">New YouTube 1280×720</button><button id="centerLayerBtn" class="secondary" disabled>Center layer</button></div>
+        <label for="layerUpload">Add image layer(s)</label><input id="layerUpload" type="file" accept="image/*" multiple />
+        <label for="layerSelect" style="margin-top:10px;">Layers</label><select id="layerSelect" size="5"></select>
+        <div class="btn-row-3" style="margin-top:8px;"><button id="layerUpBtn" class="secondary" disabled>Up</button><button id="layerDownBtn" class="secondary" disabled>Down</button><button id="removeLayerBtn" class="warn" disabled>Remove</button></div>
+        <label style="margin-top:10px;">Layer opacity</label><div class="range-line"><input id="layerOpacity" type="range" min="0" max="100" value="100" /><output id="layerOpacityOut">100%</output></div>
+        <label>Layer scale</label><div class="range-line"><input id="layerScale" type="range" min="10" max="300" value="100" /><output id="layerScaleOut">100%</output></div>
+        <label for="layerBlend">Blend mode</label><select id="layerBlend"><option value="source-over">Normal</option><option value="multiply">Multiply</option><option value="screen">Screen</option><option value="overlay">Overlay</option><option value="darken">Darken</option><option value="lighten">Lighten</option></select>
+        <label style="margin-top:10px;">BG remove tolerance</label><div class="range-line"><input id="bgTolerance" type="range" min="0" max="180" value="45" /><output id="bgToleranceOut">45</output></div>
+        <div class="btn-row"><button id="pickBgBtn" class="secondary" disabled>Pick BG color</button><button id="removeBgBtn" class="warn" disabled>Remove BG</button></div>
+        <p id="layerHint" class="small" style="margin-top:8px;">Select layer → Pick BG color → click on layer → Remove BG.</p>
+      </div>
+
+      <div class="group"><label>Nudge target (šípky na klávesnici)</label><select id="nudgeTarget"><option value="text">Text watermark</option><option value="logo">Logo watermark</option></select><p class="small">Šípky = posun o 1px, Shift + šípky = 10px.</p><button id="watermarkEditBtn" class="secondary" style="margin-top:10px;" disabled>Watermark edit: OFF</button><p class="small" style="margin-top:8px;">Photoshop-like: vyber target a na canvase použi box + handles (move/scale/rotate).</p></div>
 
       <div class="group">
         <label>Guides + snap</label>
@@ -138,6 +174,15 @@
     const savePresetBtn = byId('savePresetBtn');
     const loadPresetBtn = byId('loadPresetBtn');
     const deletePresetBtn = byId('deletePresetBtn');
+    const modeSwitchGroup = byId('modeSwitchGroup');
+    const basicModeBtn = byId('basicModeBtn');
+    const advancedModeBtn = byId('advancedModeBtn');
+    const sectionSwitchGroup = byId('sectionSwitchGroup');
+    const editAllBtn = byId('editAllBtn');
+    const editImageBtn = byId('editImageBtn');
+    const editWatermarkBtn = byId('editWatermarkBtn');
+    const editGuidesBtn = byId('editGuidesBtn');
+    const editExportBtn = byId('editExportBtn');
     const previewMode = byId('previewMode');
     const splitPos = byId('splitPos');
     const brightness = byId('brightness');
@@ -162,7 +207,23 @@
     const logoOpacity = byId('logoOpacity');
     const logoScale = byId('logoScale');
     const logoRotate = byId('logoRotate');
+    const newThumbBtn = byId('newThumbBtn');
+    const centerLayerBtn = byId('centerLayerBtn');
+    const layerUpload = byId('layerUpload');
+    const layerSelect = byId('layerSelect');
+    const layerUpBtn = byId('layerUpBtn');
+    const layerDownBtn = byId('layerDownBtn');
+    const removeLayerBtn = byId('removeLayerBtn');
+    const layerOpacity = byId('layerOpacity');
+    const layerScale = byId('layerScale');
+    const layerBlend = byId('layerBlend');
+    const bgTolerance = byId('bgTolerance');
+    const pickBgBtn = byId('pickBgBtn');
+    const removeBgBtn = byId('removeBgBtn');
+    const layerHint = byId('layerHint');
+    const layersGroup = byId('layersGroup');
     const nudgeTarget = byId('nudgeTarget');
+    const watermarkEditBtn = byId('watermarkEditBtn');
     const showCenterGuides = byId('showCenterGuides');
     const showThirdsGuides = byId('showThirdsGuides');
     const enableSnap = byId('enableSnap');
@@ -178,7 +239,8 @@
     const outputs = {
       splitPos: byId('splitPosOut'), brightness: byId('brightnessOut'), contrast: byId('contrastOut'), saturate: byId('saturateOut'),
       textOpacity: byId('textOpacityOut'), textSize: byId('textSizeOut'), textRotate: byId('textRotateOut'), textStrokeWidth: byId('textStrokeWidthOut'), textShadowBlur: byId('textShadowBlurOut'),
-      logoOpacity: byId('logoOpacityOut'), logoScale: byId('logoScaleOut'), logoRotate: byId('logoRotateOut'), snapDistance: byId('snapDistanceOut'), exportQuality: byId('exportQualityOut')
+      logoOpacity: byId('logoOpacityOut'), logoScale: byId('logoScaleOut'), logoRotate: byId('logoRotateOut'), snapDistance: byId('snapDistanceOut'), exportQuality: byId('exportQualityOut'),
+      layerOpacity: byId('layerOpacityOut'), layerScale: byId('layerScaleOut'), bgTolerance: byId('bgToleranceOut')
     };
 
     const img = new Image();
@@ -192,13 +254,23 @@
     let customLogoPos = null;
     let isDraggingText = false;
     let isDraggingLogo = false;
+    let isDraggingLayer = false;
     let dragOffset = { x: 0, y: 0 };
+    let layerDragOffset = { x: 0, y: 0 };
+    let imageLayers = [];
+    let selectedLayerId = null;
+    let layerBoundsMap = new Map();
+    let pickBgColorMode = false;
     let activeSnapGuides = [];
+    let watermarkEditMode = false;
+    let transformDrag = null;
     let cropMode = false;
     let isCropping = false;
     let cropRect = null;
     let history = [];
     let historyIndex = -1;
+    let currentEditorMode = 'basic';
+    let currentEditSection = 'all';
     const MAX_HISTORY = 20;
     const AUTO_SAVE_KEY = 'photoEditorProject.v1';
     const AUTO_SAVE_DB_NAME = 'photoEditorProAutosave';
@@ -222,6 +294,9 @@
       outputs.logoOpacity.textContent = `${logoOpacity.value}%`;
       outputs.logoScale.textContent = `${logoScale.value}%`;
       outputs.logoRotate.textContent = `${logoRotate.value}°`;
+      outputs.layerOpacity.textContent = `${layerOpacity.value}%`;
+      outputs.layerScale.textContent = `${layerScale.value}%`;
+      outputs.bgTolerance.textContent = `${bgTolerance.value}`;
       outputs.snapDistance.textContent = `${snapDistance.value}px`;
       outputs.exportQuality.textContent = `${exportQuality.value}%`;
       exportQuality.disabled = exportFormat.value === 'png';
@@ -239,7 +314,8 @@
         canvas.width = img.naturalWidth; canvas.height = img.naturalHeight; hasImage = true;
         downloadBtn.disabled = false; resetBtn.disabled = false;
         cropMode = false; isCropping = false; cropRect = null; activeSnapGuides = [];
-        history = []; historyIndex = -1; setDropActive(false); refreshHistoryButtons(); refreshCropButtons(); refreshDropHint();
+        imageLayers = []; selectedLayerId = null; pickBgColorMode = false; refreshLayerControls();
+        history = []; historyIndex = -1; setDropActive(false); refreshHistoryButtons(); refreshCropButtons(); refreshDropHint(); refreshWatermarkEditButton();
         redraw(); pushHistory(); scheduleAutoSave();
       };
       img.src = dataUrl;
@@ -252,9 +328,253 @@
       reader.readAsDataURL(file);
     }
 
+    function getSelectedLayer() {
+      return imageLayers.find(l => l.id === selectedLayerId) || null;
+    }
+
+    function refreshLayerControls() {
+      const selected = getSelectedLayer();
+      layerSelect.innerHTML = '';
+      imageLayers.forEach(layer => {
+        const option = document.createElement('option');
+        option.value = layer.id;
+        option.textContent = layer.name;
+        option.selected = layer.id === selectedLayerId;
+        layerSelect.appendChild(option);
+      });
+      const hasLayer = Boolean(selected);
+      layerUpload.disabled = !hasImage;
+      layerSelect.disabled = imageLayers.length === 0;
+      removeLayerBtn.disabled = !hasLayer;
+      layerUpBtn.disabled = !hasLayer || imageLayers.indexOf(selected) === imageLayers.length - 1;
+      layerDownBtn.disabled = !hasLayer || imageLayers.indexOf(selected) <= 0;
+      centerLayerBtn.disabled = !hasLayer;
+      layerOpacity.disabled = !hasLayer;
+      layerScale.disabled = !hasLayer;
+      layerBlend.disabled = !hasLayer;
+      pickBgBtn.disabled = !hasLayer;
+      removeBgBtn.disabled = !hasLayer;
+      if (hasLayer) {
+        layerOpacity.value = String(Math.round((selected.opacity ?? 1) * 100));
+        layerScale.value = String(Math.round(selected.scale ?? 100));
+        layerBlend.value = selected.blendMode || 'source-over';
+      }
+      pickBgBtn.textContent = pickBgColorMode ? 'Cancel pick' : 'Pick BG color';
+      layerHint.textContent = pickBgColorMode ? 'Click on selected layer area in canvas to sample color.' : 'Select layer → Pick BG color → click on layer → Remove BG.';
+      updateOutputValues();
+    }
+
+    async function addLayerFromDataUrl(dataUrl, name = 'Layer') {
+      if (!hasImage) return;
+      const layerImg = new Image();
+      const loaded = await loadImageTo(layerImg, dataUrl);
+      if (!loaded) return;
+      const fit = Math.min(1, Math.min((canvas.width * 0.55) / Math.max(1, layerImg.naturalWidth), (canvas.height * 0.55) / Math.max(1, layerImg.naturalHeight)));
+      const layer = {
+        id: `layer_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+        name,
+        src: dataUrl,
+        img: layerImg,
+        x: canvas.width / 2,
+        y: canvas.height / 2,
+        scale: Math.round(100 * fit),
+        opacity: 1,
+        blendMode: 'source-over',
+        bgColor: null
+      };
+      imageLayers.push(layer);
+      selectedLayerId = layer.id;
+      pickBgColorMode = false;
+      refreshLayerControls();
+      redraw();
+      pushHistory();
+      scheduleAutoSave();
+    }
+
+    function drawImageLayers() {
+      layerBoundsMap = new Map();
+      imageLayers.forEach(layer => {
+        if (!layer.img?.src) return;
+        const w = Math.max(1, layer.img.naturalWidth * ((layer.scale ?? 100) / 100));
+        const h = Math.max(1, layer.img.naturalHeight * ((layer.scale ?? 100) / 100));
+        const left = layer.x - w / 2;
+        const top = layer.y - h / 2;
+        ctx.save();
+        ctx.globalAlpha = Math.max(0, Math.min(1, layer.opacity ?? 1));
+        ctx.globalCompositeOperation = layer.blendMode || 'source-over';
+        ctx.drawImage(layer.img, left, top, w, h);
+        ctx.restore();
+        layerBoundsMap.set(layer.id, { left, top, width: w, height: h, right: left + w, bottom: top + h, cx: layer.x, cy: layer.y });
+      });
+
+      const selected = getSelectedLayer();
+      const b = selected ? layerBoundsMap.get(selected.id) : null;
+      if (b && previewMode.value !== 'original') {
+        ctx.save();
+        ctx.strokeStyle = 'rgba(56,189,248,.95)';
+        ctx.lineWidth = 1.5;
+        ctx.setLineDash([8, 6]);
+        ctx.strokeRect(b.left, b.top, b.width, b.height);
+        ctx.setLineDash([]);
+        ctx.fillStyle = 'rgba(34,211,238,.95)';
+        ctx.fillRect(b.right - 6, b.bottom - 6, 12, 12);
+        ctx.restore();
+      }
+    }
+
+    function getTopLayerAtPoint(p) {
+      for (let i = imageLayers.length - 1; i >= 0; i--) {
+        const l = imageLayers[i];
+        const b = layerBoundsMap.get(l.id);
+        if (!b) continue;
+        if (p.x >= b.left && p.x <= b.right && p.y >= b.top && p.y <= b.bottom) return l;
+      }
+      return null;
+    }
+
+    function sampleLayerColorAtPoint(layer, p) {
+      const b = layerBoundsMap.get(layer.id);
+      if (!b) return null;
+      if (p.x < b.left || p.x > b.right || p.y < b.top || p.y > b.bottom) return null;
+      const sx = Math.floor(((p.x - b.left) / Math.max(1, b.width)) * layer.img.naturalWidth);
+      const sy = Math.floor(((p.y - b.top) / Math.max(1, b.height)) * layer.img.naturalHeight);
+      const probe = document.createElement('canvas');
+      probe.width = 1; probe.height = 1;
+      const pctx = probe.getContext('2d', { willReadFrequently: true });
+      pctx.drawImage(layer.img, sx, sy, 1, 1, 0, 0, 1, 1);
+      const px = pctx.getImageData(0, 0, 1, 1).data;
+      return [px[0], px[1], px[2]];
+    }
+
+    async function removeBackgroundFromLayer(layer) {
+      if (!layer?.img?.src) return;
+      if (!Array.isArray(layer.bgColor)) { setAutosaveStatus('Pick BG color first', true); return; }
+      const tol = Number(bgTolerance.value) || 0;
+      const srcCanvas = document.createElement('canvas');
+      srcCanvas.width = layer.img.naturalWidth;
+      srcCanvas.height = layer.img.naturalHeight;
+      const sctx = srcCanvas.getContext('2d', { willReadFrequently: true });
+      sctx.drawImage(layer.img, 0, 0);
+      const imageData = sctx.getImageData(0, 0, srcCanvas.width, srcCanvas.height);
+      const d = imageData.data;
+      const [tr, tg, tb] = layer.bgColor;
+      for (let i = 0; i < d.length; i += 4) {
+        const dr = d[i] - tr, dg = d[i + 1] - tg, db = d[i + 2] - tb;
+        const dist = Math.sqrt(dr * dr + dg * dg + db * db);
+        if (dist <= tol) d[i + 3] = 0;
+      }
+      sctx.putImageData(imageData, 0, 0);
+      layer.src = srcCanvas.toDataURL('image/png');
+      await loadImageTo(layer.img, layer.src);
+      redraw();
+      pushHistory();
+      scheduleAutoSave();
+      setAutosaveStatus('Background removed');
+    }
+
+    function createThumbnailCanvas() {
+      const thumb = document.createElement('canvas');
+      thumb.width = 1280;
+      thumb.height = 720;
+      const tctx = thumb.getContext('2d');
+      const grad = tctx.createLinearGradient(0, 0, 1280, 720);
+      grad.addColorStop(0, '#111827');
+      grad.addColorStop(1, '#0f172a');
+      tctx.fillStyle = grad;
+      tctx.fillRect(0, 0, 1280, 720);
+      loadMainImageFromDataUrl(thumb.toDataURL('image/png'));
+      setAutosaveStatus('New YouTube canvas created');
+    }
+
     function setAutosaveStatus(message, isError = false) {
       autosaveStatus.textContent = message;
       autosaveStatus.classList.toggle('error', isError);
+    }
+
+    function getSectionGroups() {
+      const groupOf = el => el?.closest('.group');
+      return {
+        image: [groupOf(previewMode), groupOf(brightness)],
+        watermark: [groupOf(watermarkText), groupOf(logoUpload), layersGroup, groupOf(nudgeTarget)],
+        guides: [groupOf(showCenterGuides)],
+        export: [groupOf(cropModeBtn), groupOf(exportFormat), groupOf(downloadBtn)]
+      };
+    }
+
+    function updateSectionButtons() {
+      const map = {
+        all: editAllBtn,
+        image: editImageBtn,
+        watermark: editWatermarkBtn,
+        guides: editGuidesBtn,
+        export: editExportBtn
+      };
+      Object.entries(map).forEach(([key, btn]) => btn.classList.toggle('is-active', key === currentEditSection));
+    }
+
+    function updateModeButtons() {
+      basicModeBtn.classList.toggle('is-active', currentEditorMode === 'basic');
+      advancedModeBtn.classList.toggle('is-active', currentEditorMode === 'advanced');
+    }
+
+    function getAdvancedOnlyGroups() {
+      const groupOf = el => el?.closest('.group');
+      return new Set([
+        groupOf(autosaveStatus),
+        groupOf(presetName),
+        groupOf(previewMode),
+        layersGroup,
+        groupOf(nudgeTarget),
+        groupOf(showCenterGuides),
+        groupOf(cropModeBtn)
+      ].filter(Boolean));
+    }
+
+    function refreshPanelVisibility() {
+      const allGroups = Array.from(document.querySelectorAll('.panel > .group'));
+      const sectionGroups = getSectionGroups();
+      const sectionVisible = new Set(currentEditSection === 'all' ? allGroups : (sectionGroups[currentEditSection] || []));
+      const advancedOnlyGroups = getAdvancedOnlyGroups();
+
+      allGroups.forEach(group => {
+        if (group === sectionSwitchGroup || group === modeSwitchGroup) {
+          group.style.display = '';
+          return;
+        }
+        const sectionAllowed = currentEditSection === 'all' || sectionVisible.has(group);
+        const modeAllowed = currentEditorMode === 'advanced' || !advancedOnlyGroups.has(group);
+        group.style.display = sectionAllowed && modeAllowed ? '' : 'none';
+      });
+    }
+
+    function applyEditorMode(mode) {
+      currentEditorMode = ['basic', 'advanced'].includes(mode) ? mode : 'basic';
+      refreshPanelVisibility();
+      updateModeButtons();
+    }
+
+    function applySectionFilter(section) {
+      const mode = ['all', 'image', 'watermark', 'guides', 'export'].includes(section) ? section : 'all';
+      currentEditSection = mode;
+      refreshPanelVisibility();
+      updateSectionButtons();
+    }
+
+    function setWatermarkEditMode(enabled) {
+      watermarkEditMode = Boolean(enabled) && hasImage;
+      transformDrag = null;
+      activeSnapGuides = [];
+      refreshWatermarkEditButton();
+      canvas.style.cursor = watermarkEditMode ? 'crosshair' : 'default';
+      redraw();
+    }
+
+    function refreshWatermarkEditButton() {
+      watermarkEditBtn.disabled = !hasImage;
+      if (!hasImage) watermarkEditMode = false;
+      watermarkEditBtn.textContent = watermarkEditMode ? 'Watermark edit: ON' : 'Watermark edit: OFF';
+      watermarkEditBtn.style.borderColor = watermarkEditMode ? '#60a5fa' : '#2563eb';
+      watermarkEditBtn.style.color = watermarkEditMode ? '#93c5fd' : '#dbeafe';
     }
 
     function formatTime(ts) { try { return new Date(ts).toLocaleTimeString(); } catch { return ''; } }
@@ -440,6 +760,95 @@
       return lx >= -bounds.width / 2 && lx <= bounds.width / 2 && ly >= -bounds.height / 2 && ly <= bounds.height / 2;
     }
 
+    function rotateLocalToWorld(originX, originY, angle, lx, ly) {
+      const cos = Math.cos(angle), sin = Math.sin(angle);
+      return { x: originX + lx * cos - ly * sin, y: originY + lx * sin + ly * cos };
+    }
+
+    function getTextTransformData() {
+      if (!textBounds) return null;
+      const left = 0, right = textBounds.width, top = -textBounds.ascent, bottom = textBounds.descent;
+      const cx = textBounds.width / 2, cy = (top + bottom) / 2;
+      const corners = [
+        rotateLocalToWorld(textBounds.x, textBounds.y, textBounds.angle, left, top),
+        rotateLocalToWorld(textBounds.x, textBounds.y, textBounds.angle, right, top),
+        rotateLocalToWorld(textBounds.x, textBounds.y, textBounds.angle, right, bottom),
+        rotateLocalToWorld(textBounds.x, textBounds.y, textBounds.angle, left, bottom)
+      ];
+      return {
+        type: 'text',
+        center: rotateLocalToWorld(textBounds.x, textBounds.y, textBounds.angle, cx, cy),
+        corners,
+        rotateHandle: rotateLocalToWorld(textBounds.x, textBounds.y, textBounds.angle, cx, top - 26),
+        scaleHandle: rotateLocalToWorld(textBounds.x, textBounds.y, textBounds.angle, right, bottom)
+      };
+    }
+
+    function getLogoTransformData() {
+      if (!logoBounds) return null;
+      const halfW = logoBounds.width / 2, halfH = logoBounds.height / 2;
+      const corners = [
+        rotateLocalToWorld(logoBounds.cx, logoBounds.cy, logoBounds.angle, -halfW, -halfH),
+        rotateLocalToWorld(logoBounds.cx, logoBounds.cy, logoBounds.angle, halfW, -halfH),
+        rotateLocalToWorld(logoBounds.cx, logoBounds.cy, logoBounds.angle, halfW, halfH),
+        rotateLocalToWorld(logoBounds.cx, logoBounds.cy, logoBounds.angle, -halfW, halfH)
+      ];
+      return {
+        type: 'logo',
+        center: { x: logoBounds.cx, y: logoBounds.cy },
+        corners,
+        rotateHandle: rotateLocalToWorld(logoBounds.cx, logoBounds.cy, logoBounds.angle, 0, -halfH - 30),
+        scaleHandle: rotateLocalToWorld(logoBounds.cx, logoBounds.cy, logoBounds.angle, halfW, halfH)
+      };
+    }
+
+    function getActiveWatermarkTransformData() {
+      if (!watermarkEditMode || previewMode.value === 'original') return null;
+      return nudgeTarget.value === 'logo' ? getLogoTransformData() : getTextTransformData();
+    }
+
+    function distanceSq(a, b) { const dx = a.x - b.x, dy = a.y - b.y; return dx * dx + dy * dy; }
+    function isPointInPolygon(point, polygon) {
+      let inside = false;
+      for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+        const xi = polygon[i].x, yi = polygon[i].y;
+        const xj = polygon[j].x, yj = polygon[j].y;
+        const intersects = ((yi > point.y) !== (yj > point.y)) && (point.x < (xj - xi) * (point.y - yi) / ((yj - yi) || 1e-9) + xi);
+        if (intersects) inside = !inside;
+      }
+      return inside;
+    }
+
+    function detectTransformHit(point, tf) {
+      const radiusSq = 11 * 11;
+      if (distanceSq(point, tf.rotateHandle) <= radiusSq) return 'rotate';
+      if (distanceSq(point, tf.scaleHandle) <= radiusSq) return 'scale';
+      if (isPointInPolygon(point, tf.corners)) return 'move';
+      return null;
+    }
+
+    function drawWatermarkTransformOverlay() {
+      const tf = getActiveWatermarkTransformData();
+      if (!tf) return;
+      ctx.save();
+      ctx.strokeStyle = 'rgba(56, 189, 248, 0.95)';
+      ctx.lineWidth = 1.6;
+      ctx.setLineDash([8, 6]);
+      ctx.beginPath();
+      ctx.moveTo(tf.corners[0].x, tf.corners[0].y);
+      for (let i = 1; i < tf.corners.length; i++) ctx.lineTo(tf.corners[i].x, tf.corners[i].y);
+      ctx.closePath();
+      ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.strokeStyle = 'rgba(56, 189, 248, 0.9)';
+      ctx.beginPath(); ctx.moveTo(tf.center.x, tf.center.y); ctx.lineTo(tf.rotateHandle.x, tf.rotateHandle.y); ctx.stroke();
+      ctx.fillStyle = 'rgba(34, 211, 238, 0.95)';
+      ctx.beginPath(); ctx.arc(tf.scaleHandle.x, tf.scaleHandle.y, 6.5, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = 'rgba(250, 204, 21, 0.95)';
+      ctx.beginPath(); ctx.arc(tf.rotateHandle.x, tf.rotateHandle.y, 6.5, 0, Math.PI * 2); ctx.fill();
+      ctx.restore();
+    }
+
     function getSnapResult(rect) {
       if (!enableSnap.checked) return { dx: 0, dy: 0, guides: [] };
       const threshold = Number(snapDistance.value) || 0;
@@ -550,7 +959,7 @@
       logoBounds = { cx: pos.x, cy: pos.y, width, height, angle };
     }
 
-    function drawEditedScene() { drawEditedBase(); drawTextWatermark(); drawLogoWatermark(); }
+    function drawEditedScene() { drawEditedBase(); drawImageLayers(); drawTextWatermark(); drawLogoWatermark(); }
 
     function drawGuidesOverlay() {
       if (!hasImage) return;
@@ -608,6 +1017,7 @@
         drawEditedScene();
       }
       drawGuidesOverlay();
+      drawWatermarkTransformOverlay();
       if (cropMode) drawCropOverlay();
     }
 
@@ -618,7 +1028,7 @@
       toggleItalic.style.color = textIsItalic ? '#93c5fd' : '#dbeafe';
     }
     function refreshHistoryButtons() { undoBtn.disabled = historyIndex <= 0; redoBtn.disabled = historyIndex < 0 || historyIndex >= history.length - 1; }
-    function refreshCropButtons() { cropModeBtn.disabled = !hasImage; applyCropBtn.disabled = !cropMode || !cropRect; cancelCropBtn.disabled = !cropMode; cropModeBtn.textContent = cropMode ? 'Crop ON' : 'Crop mode'; }
+    function refreshCropButtons() { cropModeBtn.disabled = !hasImage; applyCropBtn.disabled = !cropMode || !cropRect; cancelCropBtn.disabled = !cropMode; cropModeBtn.textContent = cropMode ? 'Crop ON' : 'Crop mode'; refreshWatermarkEditButton(); }
     function refreshLogoButtons() { const hasLogo = Boolean(logoImg.src); removeLogoBtn.disabled = !hasLogo; centerLogoBtn.disabled = !hasLogo; }
 
     function resetControls() {
@@ -627,10 +1037,12 @@
       textOpacity.value = 45; textSize.value = 30; textRotate.value = 0; textStrokeColor.value = '#000000'; textStrokeWidth.value = 3;
       textShadowColor.value = '#000000'; textShadowBlur.value = 8; textShadowX.value = 2; textShadowY.value = 2;
       logoOpacity.value = 60; logoScale.value = 100; logoRotate.value = 0;
+      layerOpacity.value = 100; layerScale.value = 100; layerBlend.value = 'source-over'; bgTolerance.value = 45;
       showCenterGuides.checked = true; showThirdsGuides.checked = false; enableSnap.checked = true; snapDistance.value = 12;
       exportFormat.value = 'png'; exportQuality.value = 92;
       customTextPos = null; customLogoPos = null; cropMode = false; isCropping = false; cropRect = null; activeSnapGuides = [];
-      refreshToggleButtons(); refreshCropButtons(); updateOutputValues(); redraw();
+      pickBgColorMode = false;
+      refreshToggleButtons(); refreshCropButtons(); refreshLayerControls(); updateOutputValues(); redraw();
     }
 
     function getStateSnapshot() {
@@ -643,10 +1055,22 @@
           textStrokeWidth: textStrokeWidth.value, textShadowColor: textShadowColor.value, textShadowBlur: textShadowBlur.value,
           textShadowX: textShadowX.value, textShadowY: textShadowY.value, logoOpacity: logoOpacity.value, logoScale: logoScale.value, logoRotate: logoRotate.value,
           showCenterGuides: showCenterGuides.checked, showThirdsGuides: showThirdsGuides.checked, enableSnap: enableSnap.checked, snapDistance: snapDistance.value,
-          nudgeTarget: nudgeTarget.value, exportFormat: exportFormat.value, exportQuality: exportQuality.value
+          nudgeTarget: nudgeTarget.value, exportFormat: exportFormat.value, exportQuality: exportQuality.value, bgTolerance: bgTolerance.value
         },
         customTextPos: customTextPos ? { ...customTextPos } : null,
-        customLogoPos: customLogoPos ? { ...customLogoPos } : null
+        customLogoPos: customLogoPos ? { ...customLogoPos } : null,
+        selectedLayerId,
+        layers: imageLayers.map(layer => ({
+          id: layer.id,
+          name: layer.name,
+          src: layer.src,
+          x: layer.x,
+          y: layer.y,
+          scale: layer.scale,
+          opacity: layer.opacity,
+          blendMode: layer.blendMode,
+          bgColor: Array.isArray(layer.bgColor) ? [...layer.bgColor] : null
+        }))
       };
     }
 
@@ -662,9 +1086,35 @@
       logoOpacity.value = c.logoOpacity ?? 60; logoScale.value = c.logoScale ?? 100; logoRotate.value = c.logoRotate ?? 0;
       showCenterGuides.checked = c.showCenterGuides ?? true; showThirdsGuides.checked = c.showThirdsGuides ?? false; enableSnap.checked = c.enableSnap ?? true; snapDistance.value = c.snapDistance ?? 12;
       nudgeTarget.value = c.nudgeTarget ?? 'text'; exportFormat.value = c.exportFormat ?? 'png'; exportQuality.value = c.exportQuality ?? 92;
+      bgTolerance.value = c.bgTolerance ?? 45;
       customTextPos = snapshot.customTextPos ? { ...snapshot.customTextPos } : null;
       customLogoPos = snapshot.customLogoPos ? { ...snapshot.customLogoPos } : null;
       refreshToggleButtons(); updateOutputValues();
+    }
+
+    async function loadLayersFromSnapshot(layers) {
+      imageLayers = [];
+      if (!Array.isArray(layers)) { selectedLayerId = null; refreshLayerControls(); return; }
+      for (const raw of layers) {
+        if (!raw?.src) continue;
+        const layerImg = new Image();
+        const ok = await loadImageTo(layerImg, raw.src);
+        if (!ok) continue;
+        imageLayers.push({
+          id: raw.id || `layer_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+          name: raw.name || 'Layer',
+          src: raw.src,
+          img: layerImg,
+          x: Number(raw.x ?? canvas.width / 2),
+          y: Number(raw.y ?? canvas.height / 2),
+          scale: Number(raw.scale ?? 100),
+          opacity: Math.max(0, Math.min(1, Number(raw.opacity ?? 1))),
+          blendMode: raw.blendMode || 'source-over',
+          bgColor: Array.isArray(raw.bgColor) ? [...raw.bgColor] : null
+        });
+      }
+      selectedLayerId = imageLayers.find(l => l.id === selectedLayerId)?.id || (imageLayers[imageLayers.length - 1]?.id || null);
+      refreshLayerControls();
     }
 
     function loadImageTo(imageEl, src) {
@@ -681,10 +1131,13 @@
       hasImage = loadedBase;
       if (hasImage) { canvas.width = img.naturalWidth; canvas.height = img.naturalHeight; }
       await loadImageTo(logoImg, snapshot.logoSrc);
+      selectedLayerId = snapshot.selectedLayerId ?? null;
+      await loadLayersFromSnapshot(snapshot.layers);
       setStateControls(snapshot);
       downloadBtn.disabled = !hasImage;
       resetBtn.disabled = !hasImage;
       cropMode = false; isCropping = false; cropRect = null; activeSnapGuides = [];
+      if (!hasImage) watermarkEditMode = false;
       setDropActive(false); refreshDropHint(); refreshCropButtons(); refreshLogoButtons(); redraw();
     }
 
@@ -723,6 +1176,7 @@
       img.onload = () => {
         canvas.width = img.naturalWidth; canvas.height = img.naturalHeight; hasImage = true;
         customTextPos = null; customLogoPos = null; cropMode = false; isCropping = false; cropRect = null; activeSnapGuides = [];
+        imageLayers = []; selectedLayerId = null; pickBgColorMode = false; refreshLayerControls();
         refreshCropButtons(); redraw(); pushHistory(); scheduleAutoSave();
       };
       img.src = temp.toDataURL('image/png');
@@ -787,7 +1241,7 @@
     toggleBold.addEventListener('click', () => { textIsBold = !textIsBold; refreshToggleButtons(); redraw(); pushHistory(); scheduleAutoSave(); });
     toggleItalic.addEventListener('click', () => { textIsItalic = !textIsItalic; refreshToggleButtons(); redraw(); pushHistory(); scheduleAutoSave(); });
 
-    [previewMode, splitPos, brightness, contrast, saturate, watermarkText, textPos, fontFamily, textOpacity, textSize, textRotate, textStrokeColor, textStrokeWidth, textShadowColor, textShadowBlur, textShadowX, textShadowY, logoOpacity, logoScale, logoRotate, showCenterGuides, showThirdsGuides, enableSnap, snapDistance, exportFormat, exportQuality, nudgeTarget].forEach(el => {
+    [previewMode, splitPos, brightness, contrast, saturate, watermarkText, textPos, fontFamily, textOpacity, textSize, textRotate, textStrokeColor, textStrokeWidth, textShadowColor, textShadowBlur, textShadowX, textShadowY, logoOpacity, logoScale, logoRotate, showCenterGuides, showThirdsGuides, enableSnap, snapDistance, exportFormat, exportQuality, nudgeTarget, bgTolerance].forEach(el => {
       el.addEventListener('input', () => {
         if (el === textPos && textPos.value !== 'custom') customTextPos = null;
         updateOutputValues(); redraw(); scheduleAutoSave();
@@ -798,6 +1252,96 @@
       });
     });
 
+    newThumbBtn.addEventListener('click', createThumbnailCanvas);
+
+    layerUpload.addEventListener('change', async event => {
+      const files = Array.from(event.target.files || []).filter(isImageFile);
+      if (!hasImage) { setAutosaveStatus('Load base image first', true); layerUpload.value = ''; return; }
+      for (const file of files) {
+        const reader = new FileReader();
+        const dataUrl = await new Promise(resolve => { reader.onload = () => resolve(reader.result); reader.readAsDataURL(file); });
+        await addLayerFromDataUrl(dataUrl, file.name || 'Layer');
+      }
+      layerUpload.value = '';
+    });
+
+    layerSelect.addEventListener('change', () => {
+      selectedLayerId = layerSelect.value || null;
+      refreshLayerControls();
+      redraw();
+    });
+
+    layerUpBtn.addEventListener('click', () => {
+      const selected = getSelectedLayer();
+      if (!selected) return;
+      const idx = imageLayers.indexOf(selected);
+      if (idx < 0 || idx >= imageLayers.length - 1) return;
+      [imageLayers[idx], imageLayers[idx + 1]] = [imageLayers[idx + 1], imageLayers[idx]];
+      refreshLayerControls(); redraw(); pushHistory(); scheduleAutoSave();
+    });
+
+    layerDownBtn.addEventListener('click', () => {
+      const selected = getSelectedLayer();
+      if (!selected) return;
+      const idx = imageLayers.indexOf(selected);
+      if (idx <= 0) return;
+      [imageLayers[idx], imageLayers[idx - 1]] = [imageLayers[idx - 1], imageLayers[idx]];
+      refreshLayerControls(); redraw(); pushHistory(); scheduleAutoSave();
+    });
+
+    removeLayerBtn.addEventListener('click', () => {
+      const selected = getSelectedLayer();
+      if (!selected) return;
+      imageLayers = imageLayers.filter(l => l.id !== selected.id);
+      selectedLayerId = imageLayers[imageLayers.length - 1]?.id || null;
+      pickBgColorMode = false;
+      refreshLayerControls(); redraw(); pushHistory(); scheduleAutoSave();
+    });
+
+    centerLayerBtn.addEventListener('click', () => {
+      const selected = getSelectedLayer();
+      if (!selected) return;
+      selected.x = canvas.width / 2; selected.y = canvas.height / 2;
+      redraw(); pushHistory(); scheduleAutoSave();
+    });
+
+    layerOpacity.addEventListener('input', () => {
+      const selected = getSelectedLayer();
+      if (!selected) return;
+      selected.opacity = Number(layerOpacity.value) / 100;
+      updateOutputValues(); redraw(); scheduleAutoSave();
+    });
+    layerOpacity.addEventListener('change', () => { if (!getSelectedLayer()) return; pushHistory(); scheduleAutoSave(); });
+
+    layerScale.addEventListener('input', () => {
+      const selected = getSelectedLayer();
+      if (!selected) return;
+      selected.scale = Number(layerScale.value);
+      updateOutputValues(); redraw(); scheduleAutoSave();
+    });
+    layerScale.addEventListener('change', () => { if (!getSelectedLayer()) return; pushHistory(); scheduleAutoSave(); });
+
+    layerBlend.addEventListener('change', () => {
+      const selected = getSelectedLayer();
+      if (!selected) return;
+      selected.blendMode = layerBlend.value;
+      redraw(); pushHistory(); scheduleAutoSave();
+    });
+
+    pickBgBtn.addEventListener('click', () => {
+      if (!getSelectedLayer()) return;
+      pickBgColorMode = !pickBgColorMode;
+      refreshLayerControls();
+      canvas.style.cursor = pickBgColorMode ? 'crosshair' : 'default';
+    });
+
+    removeBgBtn.addEventListener('click', async () => {
+      const selected = getSelectedLayer();
+      if (!selected) return;
+      await removeBackgroundFromLayer(selected);
+      refreshLayerControls();
+    });
+
     canvas.addEventListener('pointerdown', evt => {
       if (!hasImage) return;
       const p = getCanvasPoint(evt);
@@ -806,6 +1350,65 @@
         refreshCropButtons(); redraw(); canvas.setPointerCapture(evt.pointerId); return;
       }
       if (previewMode.value === 'original') return;
+
+      const layerHit = getTopLayerAtPoint(p);
+      if (pickBgColorMode) {
+        const layer = layerHit || getSelectedLayer();
+        if (!layer) return;
+        const sampled = sampleLayerColorAtPoint(layer, p);
+        if (!sampled) { setAutosaveStatus('Click inside selected layer', true); return; }
+        layer.bgColor = sampled;
+        pickBgColorMode = false;
+        refreshLayerControls();
+        setAutosaveStatus(`BG color picked rgb(${sampled[0]}, ${sampled[1]}, ${sampled[2]})`);
+        redraw();
+        return;
+      }
+
+      if (!watermarkEditMode && layerHit) {
+        selectedLayerId = layerHit.id;
+        refreshLayerControls();
+        isDraggingLayer = true;
+        layerDragOffset = { x: p.x - layerHit.x, y: p.y - layerHit.y };
+        activeSnapGuides = [];
+        canvas.setPointerCapture(evt.pointerId);
+        redraw();
+        return;
+      }
+
+      if (watermarkEditMode) {
+        const tf = getActiveWatermarkTransformData();
+        const hit = tf ? detectTransformHit(p, tf) : null;
+        if (!tf || !hit) return;
+        activeSnapGuides = [];
+        if (tf.type === 'logo') {
+          nudgeTarget.value = 'logo';
+          customLogoPos = { x: logoBounds.cx, y: logoBounds.cy };
+          transformDrag = {
+            type: 'logo', mode: hit, center: { ...tf.center },
+            dragOffset: { x: p.x - logoBounds.cx, y: p.y - logoBounds.cy },
+            startScale: Number(logoScale.value),
+            startRotate: Number(logoRotate.value),
+            startDist: Math.max(1, Math.hypot(p.x - tf.center.x, p.y - tf.center.y)),
+            startAngle: Math.atan2(p.y - tf.center.y, p.x - tf.center.x)
+          };
+        } else {
+          nudgeTarget.value = 'text';
+          textPos.value = 'custom';
+          customTextPos = { x: textBounds.x, y: textBounds.y };
+          transformDrag = {
+            type: 'text', mode: hit, center: { ...tf.center },
+            dragOffset: { x: p.x - textBounds.x, y: p.y - textBounds.y },
+            startSize: Number(textSize.value),
+            startRotate: Number(textRotate.value),
+            startDist: Math.max(1, Math.hypot(p.x - tf.center.x, p.y - tf.center.y)),
+            startAngle: Math.atan2(p.y - tf.center.y, p.x - tf.center.x)
+          };
+        }
+        canvas.setPointerCapture(evt.pointerId);
+        return;
+      }
+
       if (logoBounds && isPointInRotatedLogo(p.x, p.y, logoBounds)) {
         isDraggingLogo = true; activeSnapGuides = []; nudgeTarget.value = 'logo';
         customLogoPos = { x: logoBounds.cx, y: logoBounds.cy };
@@ -822,6 +1425,81 @@
     canvas.addEventListener('pointermove', evt => {
       if (!hasImage) return;
       const p = getCanvasPoint(evt);
+
+      if (isDraggingLayer) {
+        const layer = getSelectedLayer();
+        const b = layer ? layerBoundsMap.get(layer.id) : null;
+        if (layer && b) {
+          let x = p.x - layerDragOffset.x;
+          let y = p.y - layerDragOffset.y;
+          const halfW = b.width / 2;
+          const halfH = b.height / 2;
+          const snap = getSnapResult({ left: x - halfW, right: x + halfW, top: y - halfH, bottom: y + halfH, cx: x, cy: y });
+          x += snap.dx; y += snap.dy;
+          layer.x = x; layer.y = y;
+          activeSnapGuides = snap.guides;
+          redraw();
+          return;
+        }
+      }
+
+      if (transformDrag) {
+        if (transformDrag.type === 'logo') {
+          if (transformDrag.mode === 'move' && logoBounds) {
+            let x = p.x - transformDrag.dragOffset.x;
+            let y = p.y - transformDrag.dragOffset.y;
+            const halfW = logoBounds.width / 2, halfH = logoBounds.height / 2;
+            const snap = getSnapResult({ left: x - halfW, right: x + halfW, top: y - halfH, bottom: y + halfH, cx: x, cy: y });
+            x += snap.dx; y += snap.dy; activeSnapGuides = snap.guides;
+            customLogoPos = { x, y };
+          } else if (transformDrag.mode === 'scale') {
+            const dist = Math.max(1, Math.hypot(p.x - transformDrag.center.x, p.y - transformDrag.center.y));
+            logoScale.value = Math.round(Math.min(300, Math.max(10, transformDrag.startScale * (dist / transformDrag.startDist))));
+            updateOutputValues();
+          } else if (transformDrag.mode === 'rotate') {
+            const angle = Math.atan2(p.y - transformDrag.center.y, p.x - transformDrag.center.x);
+            const deltaDeg = (angle - transformDrag.startAngle) * 180 / Math.PI;
+            let value = Math.round(transformDrag.startRotate + deltaDeg);
+            if (value > 180) value -= 360;
+            if (value < -180) value += 360;
+            logoRotate.value = value;
+            updateOutputValues();
+          }
+          redraw();
+          return;
+        }
+
+        if (transformDrag.type === 'text' && textBounds) {
+          if (transformDrag.mode === 'move') {
+            const ascent = textBounds.ascent || Number(textSize.value) * 0.8;
+            const descent = textBounds.descent || Number(textSize.value) * 0.2;
+            const width = textBounds.width;
+            let x = Math.min(Math.max(p.x - transformDrag.dragOffset.x, 0), Math.max(0, canvas.width - width));
+            let y = Math.min(Math.max(p.y - transformDrag.dragOffset.y, ascent), canvas.height - descent);
+            const snap = getSnapResult({ left: x, right: x + width, top: y - ascent, bottom: y + descent, cx: x + width / 2, cy: y + (descent - ascent) / 2 });
+            x += snap.dx; y += snap.dy;
+            x = Math.min(Math.max(x, 0), Math.max(0, canvas.width - width));
+            y = Math.min(Math.max(y, ascent), canvas.height - descent);
+            activeSnapGuides = snap.guides;
+            customTextPos = { x, y };
+          } else if (transformDrag.mode === 'scale') {
+            const dist = Math.max(1, Math.hypot(p.x - transformDrag.center.x, p.y - transformDrag.center.y));
+            textSize.value = Math.round(Math.min(120, Math.max(12, transformDrag.startSize * (dist / transformDrag.startDist))));
+            updateOutputValues();
+          } else if (transformDrag.mode === 'rotate') {
+            const angle = Math.atan2(p.y - transformDrag.center.y, p.x - transformDrag.center.x);
+            const deltaDeg = (angle - transformDrag.startAngle) * 180 / Math.PI;
+            let value = Math.round(transformDrag.startRotate + deltaDeg);
+            if (value > 180) value -= 360;
+            if (value < -180) value += 360;
+            textRotate.value = value;
+            updateOutputValues();
+          }
+          redraw();
+          return;
+        }
+      }
+
       if (cropMode && isCropping && cropRect) {
         cropRect.width = p.x - cropRect.x; cropRect.height = p.y - cropRect.y; refreshCropButtons(); redraw(); return;
       }
@@ -849,17 +1527,27 @@
         customLogoPos = { x, y };
         redraw(); return;
       }
+
+      if (watermarkEditMode) {
+        const tf = getActiveWatermarkTransformData();
+        const hit = tf ? detectTransformHit(p, tf) : null;
+        canvas.style.cursor = hit === 'move' ? 'move' : (hit === 'scale' ? 'nwse-resize' : 'crosshair');
+      } else if (pickBgColorMode) {
+        canvas.style.cursor = 'crosshair';
+      } else {
+        canvas.style.cursor = getTopLayerAtPoint(p) ? 'move' : 'default';
+      }
       activeSnapGuides = [];
     });
 
     const stopPointer = evt => {
-      if (isDraggingText || isDraggingLogo || isCropping) {
+      if (isDraggingText || isDraggingLogo || isDraggingLayer || isCropping || transformDrag) {
         if (evt?.pointerId !== undefined) {
           try { canvas.releasePointerCapture(evt.pointerId); } catch (_) {}
         }
       }
-      const hadAction = isDraggingText || isDraggingLogo || isCropping;
-      isDraggingText = false; isDraggingLogo = false; isCropping = false; activeSnapGuides = [];
+      const hadAction = isDraggingText || isDraggingLogo || isDraggingLayer || isCropping || Boolean(transformDrag);
+      isDraggingText = false; isDraggingLogo = false; isDraggingLayer = false; isCropping = false; transformDrag = null; activeSnapGuides = [];
       if (hadAction) { refreshCropButtons(); redraw(); pushHistory(); scheduleAutoSave(); }
     };
 
@@ -898,6 +1586,18 @@
     savePresetBtn.addEventListener('click', saveCurrentPreset);
     loadPresetBtn.addEventListener('click', loadSelectedPreset);
     deletePresetBtn.addEventListener('click', deleteSelectedPreset);
+    watermarkEditBtn.addEventListener('click', () => {
+      if (!hasImage) return;
+      if (cropMode) { cropMode = false; isCropping = false; cropRect = null; refreshCropButtons(); }
+      setWatermarkEditMode(!watermarkEditMode);
+    });
+    editAllBtn.addEventListener('click', () => applySectionFilter('all'));
+    editImageBtn.addEventListener('click', () => applySectionFilter('image'));
+    editWatermarkBtn.addEventListener('click', () => applySectionFilter('watermark'));
+    editGuidesBtn.addEventListener('click', () => applySectionFilter('guides'));
+    editExportBtn.addEventListener('click', () => applySectionFilter('export'));
+    basicModeBtn.addEventListener('click', () => applyEditorMode('basic'));
+    advancedModeBtn.addEventListener('click', () => applyEditorMode('advanced'));
     presetSelect.addEventListener('change', () => { if (presetSelect.value) presetName.value = presetSelect.value; });
     cropModeBtn.addEventListener('click', startCropMode);
     applyCropBtn.addEventListener('click', applyCrop);
@@ -921,11 +1621,15 @@
     refreshHistoryButtons();
     refreshCropButtons();
     refreshLogoButtons();
+    refreshWatermarkEditButton();
+    refreshLayerControls();
     loadPresets();
     renderPresetOptions();
     refreshAutoSaveButtons();
     updateOutputValues();
     refreshDropHint();
+    applySectionFilter('all');
+    applyEditorMode('basic');
     if (localStorage.getItem(AUTO_SAVE_KEY)) restoreAutoSave();
   </script>
 </body>
