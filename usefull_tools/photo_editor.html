@@ -5,159 +5,259 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Basic Photo Editor Pro</title>
   <style>
-    :root { --bg:#0f172a; --card:#111827; --text:#e5e7eb; --muted:#9ca3af; --accent:#60a5fa; --border:#1f2937; }
+    :root { --bg:#0f172a; --card:#111827; --text:#e5e7eb; --muted:#9ca3af; --accent:#60a5fa; --border:#1f2937; --surface:#1a2332; --hover:#1e293b; }
     * { box-sizing: border-box; }
-    body { margin:0; font-family:system-ui,Arial,sans-serif; background:radial-gradient(circle at top,#1e293b,#020617 65%); color:var(--text); min-height:100vh; padding:24px; }
-    .wrap { max-width:1200px; margin:0 auto; display:grid; grid-template-columns:340px 1fr; gap:20px; }
-    .panel,.canvas-box { background:rgba(17,24,39,.92); border:1px solid var(--border); border-radius:14px; box-shadow:0 16px 45px rgba(0,0,0,.35); backdrop-filter:blur(5px); }
-    .panel { padding:16px; display:flex; flex-direction:column; gap:14px; max-height:calc(100vh - 48px); overflow:auto; }
-    .panel h1 { margin:0; font-size:1.15rem; }
-    .hint { margin:0; color:var(--muted); font-size:.9rem; line-height:1.4; }
-    .group { border-top:1px solid var(--border); padding-top:12px; }
-    label { display:block; font-size:.9rem; margin-bottom:6px; color:#d1d5db; }
+    body { margin:0; font-family:system-ui,Arial,sans-serif; background:radial-gradient(circle at top,#1e293b,#020617 65%); color:var(--text); min-height:100vh; padding:20px; }
+    .wrap { max-width:1260px; margin:0 auto; display:grid; grid-template-columns:360px 1fr; gap:16px; }
+
+    /* Panel */
+    .panel,.canvas-box { background:rgba(17,24,39,.92); border:1px solid var(--border); border-radius:14px; box-shadow:0 12px 40px rgba(0,0,0,.3); backdrop-filter:blur(5px); }
+    .panel { padding:12px; display:flex; flex-direction:column; gap:2px; max-height:calc(100vh - 40px); overflow-y:auto; overflow-x:hidden; scrollbar-width:thin; scrollbar-color:#374151 transparent; }
+    .panel::-webkit-scrollbar { width:6px; }
+    .panel::-webkit-scrollbar-thumb { background:#374151; border-radius:3px; }
+    .panel-header { padding:8px 8px 10px; display:flex; align-items:center; gap:10px; }
+    .panel-header h1 { margin:0; font-size:1.05rem; font-weight:800; letter-spacing:-.3px; }
+    .panel-header .ver { font-size:.65rem; color:var(--muted); background:var(--surface); padding:2px 7px; border-radius:6px; }
+
+    /* Collapsible groups */
+    .group { border-radius:10px; padding-bottom:4px; }
+    .group-header { display:flex; align-items:center; gap:8px; padding:8px 10px; cursor:pointer; user-select:none; border-radius:10px; transition:background .15s; font-size:.85rem; font-weight:600; color:#cbd5e1; }
+    .group-header:hover { background:var(--hover); }
+    .group-header .icon { font-size:1rem; width:20px; text-align:center; flex-shrink:0; }
+    .group-header .arrow { margin-left:auto; font-size:.65rem; color:var(--muted); transition:transform .2s; }
+    .group.collapsed .group-header .arrow { transform:rotate(-90deg); }
+    .group-body { padding:2px 10px 8px; display:flex; flex-direction:column; gap:6px; }
+    .group.collapsed .group-body { height:0; padding:0 10px; overflow:hidden; opacity:0; }
+    .group.collapsed { padding-bottom:0; }
+
+    /* Labels & inputs */
+    label { display:block; font-size:.82rem; margin-bottom:4px; color:#94a3b8; font-weight:500; }
     input[type="range"], input[type="text"], input[type="number"], select, input[type="file"] { width:100%; }
-    input[type="range"] { accent-color:var(--accent); }
-    input[type="text"], input[type="number"], select { border:1px solid #374151; background:#0b1220; color:var(--text); border-radius:8px; padding:8px 10px; font-size:.92rem; }
-    .range-line { display:grid; grid-template-columns:1fr auto; align-items:center; gap:10px; margin-bottom:10px; }
-    .range-line output { color:#cbd5e1; font-size:.82rem; min-width:46px; text-align:right; }
+    input[type="range"] { accent-color:var(--accent); height:6px; }
+    input[type="text"], input[type="number"], select { border:1px solid #2d3748; background:#0b1220; color:var(--text); border-radius:8px; padding:7px 10px; font-size:.85rem; transition:border-color .15s; }
+    input[type="text"]:focus, input[type="number"]:focus, select:focus { border-color:var(--accent); outline:none; }
+    input[type="color"] { width:100%; height:32px; border:1px solid #2d3748; background:#0b1220; border-radius:8px; padding:2px; cursor:pointer; }
+    .range-line { display:grid; grid-template-columns:1fr 44px; align-items:center; gap:8px; margin-bottom:6px; }
+    .range-line output { color:#94a3b8; font-size:.75rem; text-align:right; font-variant-numeric:tabular-nums; }
     .inline-grid-2 { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
-    .btn-row { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
-    .btn-row-3 { display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; }
-    .btn-row-5 { display:grid; grid-template-columns:repeat(auto-fit,minmax(96px,1fr)); gap:6px; }
-    .btn-row-5 button { padding:8px 10px; font-size:.84rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-    button { border:none; border-radius:9px; padding:10px 12px; font-weight:700; cursor:pointer; color:#0b1220; background:linear-gradient(135deg,#93c5fd,#60a5fa); }
-    button.secondary { color:#dbeafe; border:1px solid #2563eb; background:transparent; }
-    button.warn { color:#fecaca; border:1px solid #ef4444; background:transparent; }
-    button.is-active { border-color:#60a5fa; color:#93c5fd; box-shadow:0 0 0 1px rgba(96,165,250,.35) inset; }
-    button:disabled { opacity:.4; cursor:not-allowed; }
-    .small { font-size:.82rem; color:#94a3b8; margin:0; }
-    .status { font-size:.8rem; color:#93c5fd; margin:4px 0 0 0; min-height:18px; }
+
+    /* Buttons */
+    .btn-row { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+    .btn-row-3 { display:grid; grid-template-columns:1fr 1fr 1fr; gap:6px; }
+    .btn-row-5 { display:grid; grid-template-columns:repeat(5,1fr); gap:4px; }
+    .btn-row-5 button { padding:7px 4px; font-size:.75rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; border-radius:8px; }
+    button { border:none; border-radius:9px; padding:9px 12px; font-weight:700; font-size:.82rem; cursor:pointer; color:#0b1220; background:linear-gradient(135deg,#93c5fd,#60a5fa); transition:opacity .15s,transform .1s; }
+    button:hover { opacity:.9; }
+    button:active { transform:scale(.97); }
+    button.secondary { color:#dbeafe; border:1px solid #2563eb; background:rgba(37,99,235,.12); }
+    button.warn { color:#fecaca; border:1px solid #ef4444; background:rgba(239,68,68,.08); }
+    button.is-active { border-color:#60a5fa; color:#93c5fd; background:rgba(96,165,250,.15); box-shadow:0 0 0 1px rgba(96,165,250,.3) inset; }
+    button:disabled { opacity:.35; cursor:not-allowed; pointer-events:none; }
+
+    .small { font-size:.75rem; color:#64748b; margin:0; line-height:1.4; }
+    .status { font-size:.75rem; color:#38bdf8; margin:2px 0 0; min-height:16px; }
     .status.error { color:#fca5a5; }
-      .canvas-box { position:relative; padding:12px; display:flex; align-items:center; justify-content:center; min-height:60vh; overflow:auto; transition:border-color .18s ease, box-shadow .18s ease, background-color .18s ease; }
-      .canvas-box.drag-over { border-color:#60a5fa; box-shadow:0 0 0 2px rgba(96,165,250,.35), 0 16px 45px rgba(0,0,0,.35); background:rgba(15,23,42,.97); }
-    canvas { max-width:100%; border-radius:10px; background:#0b1220; border:1px solid #374151; touch-action:none; }
-      .drop-hint { position:absolute; left:50%; bottom:22px; transform:translateX(-50%); padding:8px 12px; border:1px dashed rgba(148,163,184,.45); border-radius:999px; background:rgba(2,6,23,.82); color:#cbd5e1; font-size:.82rem; pointer-events:none; opacity:.92; transition:opacity .18s ease, border-color .18s ease, color .18s ease; }
-      .canvas-box.drag-over .drop-hint { color:#dbeafe; border-color:rgba(96,165,250,.9); }
-    @media (max-width:900px) { .wrap { grid-template-columns:1fr; } }
+
+    /* Canvas */
+    .canvas-box { position:relative; padding:12px; display:flex; align-items:center; justify-content:center; min-height:calc(100vh - 40px); overflow:auto; transition:border-color .18s, box-shadow .18s, background-color .18s; }
+    .canvas-box.drag-over { border-color:#60a5fa; box-shadow:0 0 0 2px rgba(96,165,250,.35), 0 12px 40px rgba(0,0,0,.3); background:rgba(15,23,42,.97); }
+    canvas { max-width:100%; max-height:calc(100vh - 64px); border-radius:10px; background:#0b1220; border:1px solid #2d3748; touch-action:none; }
+    canvas.zoomed { max-width:none; max-height:none; }
+    .drop-hint { position:absolute; left:50%; bottom:20px; transform:translateX(-50%); padding:7px 14px; border:1px dashed rgba(148,163,184,.35); border-radius:999px; background:rgba(2,6,23,.85); color:#94a3b8; font-size:.78rem; pointer-events:none; opacity:.9; transition:opacity .18s, border-color .18s, color .18s; }
+    .canvas-box.drag-over .drop-hint { color:#dbeafe; border-color:rgba(96,165,250,.9); }
+
+    /* Utility */
+    .color-swatch { display:inline-block; width:18px; height:18px; border:2px solid #374151; border-radius:4px; vertical-align:middle; margin-right:6px; }
+    .eyedropper-row { display:flex; align-items:center; gap:8px; margin-bottom:4px; }
+    .inline-text-input { position:absolute; z-index:10; min-width:120px; max-width:400px; min-height:32px; padding:6px 10px; font-size:20px; font-family:Arial,sans-serif; font-weight:700; color:#fff; background:rgba(0,0,0,.7); border:2px solid #60a5fa; border-radius:8px; outline:none; resize:none; overflow:hidden; line-height:1.3; backdrop-filter:blur(4px); }
+
+    /* Modal */
+    .modal-overlay { position:fixed; inset:0; background:rgba(0,0,0,.7); z-index:9999; display:flex; align-items:center; justify-content:center; backdrop-filter:blur(4px); }
+    .modal-overlay[hidden] { display:none; }
+    .modal-content { background:#1e293b; border:1px solid #334155; border-radius:16px; padding:24px; max-width:420px; width:90%; color:var(--text); }
+    .modal-content h2 { margin:0 0 14px; font-size:1.05rem; }
+    .modal-content ul { margin:0 0 16px; padding-left:20px; line-height:2.1; font-size:.85rem; }
+    .modal-content kbd { background:#0f172a; border:1px solid #334155; border-radius:5px; padding:2px 7px; font-size:.78rem; font-family:inherit; color:#93c5fd; }
+
+    @media (max-width:960px) { .wrap { grid-template-columns:1fr; } .canvas-box { min-height:50vh; } }
   </style>
 </head>
 <body>
   <div class="wrap">
     <aside class="panel">
-      <h1>Basic Photo Editor Pro</h1>
-      <p class="hint">Filtre, text/logo watermark, crop, undo/redo, preview, export PNG/JPG/WebP.</p>
+      <div class="panel-header"><h1>Photo Editor Pro</h1><span class="ver">v2.0</span></div>
 
       <div id="modeSwitchGroup" class="group">
-        <label>Editor mode</label>
-        <div class="btn-row">
-          <button id="basicModeBtn" class="secondary is-active">Basic</button>
-          <button id="advancedModeBtn" class="secondary">Advanced</button>
+        <div class="group-header" onclick="this.parentElement.classList.toggle('collapsed')"><span class="icon">⚙️</span> Mode & Section <span class="arrow">▼</span></div>
+        <div class="group-body">
+          <div class="btn-row">
+            <button id="basicModeBtn" class="secondary is-active">Basic</button>
+            <button id="advancedModeBtn" class="secondary">Advanced</button>
+          </div>
+          <div class="btn-row-5" style="margin-top:8px;">
+            <button id="editAllBtn" class="secondary is-active">All</button>
+            <button id="editImageBtn" class="secondary">Image</button>
+            <button id="editWatermarkBtn" class="secondary">Text</button>
+            <button id="editGuidesBtn" class="secondary">Guides</button>
+            <button id="editExportBtn" class="secondary">Export</button>
+          </div>
         </div>
       </div>
 
-      <div id="sectionSwitchGroup" class="group">
-        <label>Edit section</label>
-        <div class="btn-row-5">
-          <button id="editAllBtn" class="secondary is-active">All</button>
-          <button id="editImageBtn" class="secondary">Image</button>
-          <button id="editWatermarkBtn" class="secondary">Watermark</button>
-          <button id="editGuidesBtn" class="secondary">Guides</button>
-          <button id="editExportBtn" class="secondary">Export</button>
-        </div>
-      </div>
+      <div class="group"><div class="group-header" onclick="this.parentElement.classList.toggle('collapsed')"><span class="icon">📁</span> Image <span class="arrow">▼</span></div><div class="group-body">
+        <label for="upload">Vyber obrázok</label><input id="upload" type="file" accept="image/*" />
+        <div id="addMoreGroup" style="display:none;margin-top:8px;"><label for="addMoreImages">+ Pridať ďalšie obrázky</label><input id="addMoreImages" type="file" accept="image/*" multiple /><p class="small" style="margin-top:4px;">Pridajú sa ako vrstvy na canvas.</p></div>
+        <div class="btn-row" style="margin-top:8px;"><button id="undoBtn" class="secondary" disabled>↩ Undo</button><button id="redoBtn" class="secondary" disabled>↪ Redo</button></div>
+      </div></div>
 
-      <div class="group"><label for="upload">Vyber obrázok</label><input id="upload" type="file" accept="image/*" /></div>
-      <div class="group"><div class="btn-row"><button id="undoBtn" class="secondary" disabled>Undo</button><button id="redoBtn" class="secondary" disabled>Redo</button></div></div>
-
-      <div class="group">
-        <label>Auto-save project</label>
-        <p id="autosaveStatus" class="status">Auto-save pripravené</p>
-        <div class="btn-row" style="margin-top:8px;"><button id="restoreAutosaveBtn" class="secondary" disabled>Restore</button><button id="clearAutosaveBtn" class="warn" disabled>Clear save</button></div>
-      </div>
-
-      <div class="group">
-        <label for="presetName">Preset name</label>
-        <input id="presetName" type="text" placeholder="napr. Dark watermark" />
-        <div class="btn-row" style="margin-top:10px;"><button id="savePresetBtn" class="secondary">Save/Update</button><button id="loadPresetBtn" class="secondary">Load</button></div>
-        <label for="presetSelect" style="margin-top:10px;">Saved presets</label>
-        <select id="presetSelect"><option value="">-- žiadny preset --</option></select>
-        <button id="deletePresetBtn" class="warn" style="margin-top:10px;">Delete preset</button>
-      </div>
-
-      <div class="group">
-        <label for="previewMode">Preview</label>
-        <select id="previewMode"><option value="edited">Edited</option><option value="original">Original</option><option value="split">Split Before/After</option></select>
-        <label style="margin-top:10px;">Split pozícia</label>
-        <div class="range-line"><input id="splitPos" type="range" min="0" max="100" value="50" /><output id="splitPosOut">50%</output></div>
-      </div>
-
-      <div class="group">
+      <div class="group"><div class="group-header" onclick="this.parentElement.classList.toggle('collapsed')"><span class="icon">🎨</span> Filters <span class="arrow">▼</span></div><div class="group-body">
         <label>Brightness</label><div class="range-line"><input id="brightness" type="range" min="0" max="200" value="100" /><output id="brightnessOut">100%</output></div>
         <label>Contrast</label><div class="range-line"><input id="contrast" type="range" min="0" max="200" value="100" /><output id="contrastOut">100%</output></div>
         <label>Saturate</label><div class="range-line"><input id="saturate" type="range" min="0" max="200" value="100" /><output id="saturateOut">100%</output></div>
-      </div>
+        <label>Hue rotation</label><div class="range-line"><input id="hueRotate" type="range" min="0" max="360" value="0" /><output id="hueRotateOut">0°</output></div>
+        <label>Sepia</label><div class="range-line"><input id="sepia" type="range" min="0" max="100" value="0" /><output id="sepiaOut">0%</output></div>
+        <label>Grayscale</label><div class="range-line"><input id="grayscale" type="range" min="0" max="100" value="0" /><output id="grayscaleOut">0%</output></div>
+        <label style="display:flex;align-items:center;gap:8px;margin-bottom:8px;"><input id="invertColors" type="checkbox" /> Invert colors</label>
+        <label>Blur</label><div class="range-line"><input id="imgBlur" type="range" min="0" max="20" value="0" step="0.5" /><output id="imgBlurOut">0px</output></div>
+        <label>Vignette</label><div class="range-line"><input id="vignette" type="range" min="0" max="100" value="0" /><output id="vignetteOut">0%</output></div>
+      </div></div>
 
-      <div class="group">
-        <label for="watermarkText">Watermark text</label>
+      <div class="group"><div class="group-header" onclick="this.parentElement.classList.toggle('collapsed')"><span class="icon">🔄</span> Transform <span class="arrow">▼</span></div><div class="group-body">
+        <div class="btn-row"><button id="rotateCwBtn" class="secondary">↻ CW 90°</button><button id="rotateCcwBtn" class="secondary">↺ CCW 90°</button></div>
+        <div class="btn-row" style="margin-top:6px;"><button id="flipHBtn" class="secondary">⇔ Flip H</button><button id="flipVBtn" class="secondary">⇕ Flip V</button></div>
+        <label style="margin-top:10px;">Resize canvas</label>
+        <div class="inline-grid-2"><div><label for="resizeWidth">W</label><input id="resizeWidth" type="number" min="1" placeholder="px" /></div><div><label for="resizeHeight">H</label><input id="resizeHeight" type="number" min="1" placeholder="px" /></div></div>
+        <label style="display:flex;align-items:center;gap:8px;margin:6px 0;"><input id="resizeLockAspect" type="checkbox" checked /> Lock ratio</label>
+        <button id="applyResizeBtn" class="secondary">Apply resize</button>
+      </div></div>
+
+      <div class="group"><div class="group-header" onclick="this.parentElement.classList.toggle('collapsed')"><span class="icon">✏️</span> Text Watermarks <span class="arrow">▼</span></div><div class="group-body">
+        <div class="btn-row" style="margin-bottom:6px;"><button id="addTextLayerBtn" class="secondary">+ Add text</button><button id="removeTextLayerBtn" class="warn" disabled>Remove</button></div>
+        <select id="textLayerSelect" size="3"></select>
+        <label for="watermarkText" style="margin-top:8px;">Text</label>
         <input id="watermarkText" type="text" placeholder="napr. © BlackAngel" value="© BlackAngel" />
-        <label for="textPos" style="margin-top:10px;">Text pozícia</label>
-        <select id="textPos"><option value="bottom-right">Dole vpravo</option><option value="bottom-left">Dole vľavo</option><option value="top-right">Hore vpravo</option><option value="top-left">Hore vľavo</option><option value="center">Stred</option><option value="custom">Vlastná (ťahaním)</option></select>
-        <label for="fontFamily" style="margin-top:10px;">Font</label>
+        <label for="textPos" style="margin-top:8px;">Pozícia</label>
+        <select id="textPos"><option value="bottom-right">Dole vpravo</option><option value="bottom-left">Dole vľavo</option><option value="top-right">Hore vpravo</option><option value="top-left">Hore vľavo</option><option value="center">Stred</option><option value="custom">Vlastná</option></select>
+        <label for="fontFamily" style="margin-top:8px;">Font</label>
         <select id="fontFamily"><option value="Arial, sans-serif">Arial</option><option value="Verdana, sans-serif">Verdana</option><option value="Tahoma, sans-serif">Tahoma</option><option value="Georgia, serif">Georgia</option><option value="Times New Roman, serif">Times New Roman</option><option value="Courier New, monospace">Courier New</option></select>
-        <div class="inline-grid-2" style="margin-top:10px;"><button id="toggleBold" class="secondary">Bold</button><button id="toggleItalic" class="secondary">Italic</button></div>
-        <label style="margin-top:10px;">Opacity</label><div class="range-line"><input id="textOpacity" type="range" min="0" max="100" value="45" /><output id="textOpacityOut">45%</output></div>
-        <label>Veľkosť textu</label><div class="range-line"><input id="textSize" type="range" min="12" max="120" value="30" /><output id="textSizeOut">30px</output></div>
-        <label>Rotácia textu</label><div class="range-line"><input id="textRotate" type="range" min="-180" max="180" value="0" /><output id="textRotateOut">0°</output></div>
+        <div class="inline-grid-2" style="margin-top:8px;"><button id="toggleBold" class="secondary">Bold</button><button id="toggleItalic" class="secondary">Italic</button></div>
+        <label for="textColor" style="margin-top:8px;">Farba</label><input id="textColor" type="color" value="#ffffff" />
+        <label style="margin-top:8px;">Opacity</label><div class="range-line"><input id="textOpacity" type="range" min="0" max="100" value="45" /><output id="textOpacityOut">45%</output></div>
+        <label>Size</label><div class="range-line"><input id="textSize" type="range" min="12" max="120" value="30" /><output id="textSizeOut">30px</output></div>
+        <label>Rotation</label><div class="range-line"><input id="textRotate" type="range" min="-180" max="180" value="0" /><output id="textRotateOut">0°</output></div>
         <label for="textStrokeColor">Stroke farba</label><input id="textStrokeColor" type="color" value="#000000" />
-        <label style="margin-top:10px;">Stroke hrúbka</label><div class="range-line"><input id="textStrokeWidth" type="range" min="0" max="20" value="3" /><output id="textStrokeWidthOut">3px</output></div>
+        <label style="margin-top:8px;">Stroke hrúbka</label><div class="range-line"><input id="textStrokeWidth" type="range" min="0" max="20" value="3" /><output id="textStrokeWidthOut">3px</output></div>
         <label for="textShadowColor">Shadow farba</label><input id="textShadowColor" type="color" value="#000000" />
-        <label style="margin-top:10px;">Shadow blur</label><div class="range-line"><input id="textShadowBlur" type="range" min="0" max="50" value="8" /><output id="textShadowBlurOut">8</output></div>
+        <label style="margin-top:8px;">Shadow blur</label><div class="range-line"><input id="textShadowBlur" type="range" min="0" max="50" value="8" /><output id="textShadowBlurOut">8</output></div>
         <div class="inline-grid-2"><div><label for="textShadowX">Shadow X</label><input id="textShadowX" type="number" value="2" /></div><div><label for="textShadowY">Shadow Y</label><input id="textShadowY" type="number" value="2" /></div></div>
-      </div>
+        <label style="margin-top:10px;">Text BG box</label>
+        <label style="display:flex;align-items:center;gap:8px;margin-bottom:6px;"><input id="textBgEnabled" type="checkbox" /> Enable</label>
+        <label for="textBgColor">BG farba</label><input id="textBgColor" type="color" value="#000000" />
+        <label style="margin-top:8px;">BG opacity</label><div class="range-line"><input id="textBgOpacity" type="range" min="0" max="100" value="50" /><output id="textBgOpacityOut">50%</output></div>
+        <label>BG padding</label><div class="range-line"><input id="textBgPadding" type="range" min="0" max="50" value="8" /><output id="textBgPaddingOut">8px</output></div>
+      </div></div>
 
-      <div class="group">
-        <label for="logoUpload">Logo watermark (obrázok)</label><input id="logoUpload" type="file" accept="image/*" />
-        <div class="btn-row" style="margin-top:10px;"><button id="removeLogoBtn" class="warn" disabled>Odstrániť logo</button><button id="centerLogoBtn" class="secondary" disabled>Logo do stredu</button></div>
-        <label style="margin-top:10px;">Logo opacity</label><div class="range-line"><input id="logoOpacity" type="range" min="0" max="100" value="60" /><output id="logoOpacityOut">60%</output></div>
-        <label>Logo scale</label><div class="range-line"><input id="logoScale" type="range" min="10" max="300" value="100" /><output id="logoScaleOut">100%</output></div>
-        <label>Logo rotácia</label><div class="range-line"><input id="logoRotate" type="range" min="-180" max="180" value="0" /><output id="logoRotateOut">0°</output></div>
-      </div>
+      <div class="group"><div class="group-header" onclick="this.parentElement.classList.toggle('collapsed')"><span class="icon">🖼️</span> Logo Watermark <span class="arrow">▼</span></div><div class="group-body">
+        <label for="logoUpload">Logo obrázok</label><input id="logoUpload" type="file" accept="image/*" />
+        <div class="btn-row" style="margin-top:8px;"><button id="removeLogoBtn" class="warn" disabled>Remove</button><button id="centerLogoBtn" class="secondary" disabled>Center</button></div>
+        <label style="margin-top:8px;">Opacity</label><div class="range-line"><input id="logoOpacity" type="range" min="0" max="100" value="60" /><output id="logoOpacityOut">60%</output></div>
+        <label>Scale</label><div class="range-line"><input id="logoScale" type="range" min="10" max="300" value="100" /><output id="logoScaleOut">100%</output></div>
+        <label>Rotation</label><div class="range-line"><input id="logoRotate" type="range" min="-180" max="180" value="0" /><output id="logoRotateOut">0°</output></div>
+      </div></div>
 
-      <div class="group" id="layersGroup">
-        <label>Thumbnail + image layers</label>
-        <div class="btn-row" style="margin-bottom:8px;"><button id="newThumbBtn" class="secondary">New YouTube 1280×720</button><button id="centerLayerBtn" class="secondary" disabled>Center layer</button></div>
-        <label for="layerUpload">Add image layer(s)</label><input id="layerUpload" type="file" accept="image/*" multiple />
-        <label for="layerSelect" style="margin-top:10px;">Layers</label><select id="layerSelect" size="5"></select>
-        <div class="btn-row-3" style="margin-top:8px;"><button id="layerUpBtn" class="secondary" disabled>Up</button><button id="layerDownBtn" class="secondary" disabled>Down</button><button id="removeLayerBtn" class="warn" disabled>Remove</button></div>
-        <label style="margin-top:10px;">Layer opacity</label><div class="range-line"><input id="layerOpacity" type="range" min="0" max="100" value="100" /><output id="layerOpacityOut">100%</output></div>
-        <label>Layer scale</label><div class="range-line"><input id="layerScale" type="range" min="10" max="300" value="100" /><output id="layerScaleOut">100%</output></div>
-        <label for="layerBlend">Blend mode</label><select id="layerBlend"><option value="source-over">Normal</option><option value="multiply">Multiply</option><option value="screen">Screen</option><option value="overlay">Overlay</option><option value="darken">Darken</option><option value="lighten">Lighten</option></select>
-        <label style="margin-top:10px;">BG remove tolerance</label><div class="range-line"><input id="bgTolerance" type="range" min="0" max="180" value="45" /><output id="bgToleranceOut">45</output></div>
-        <div class="btn-row"><button id="pickBgBtn" class="secondary" disabled>Pick BG color</button><button id="removeBgBtn" class="warn" disabled>Remove BG</button></div>
-        <p id="layerHint" class="small" style="margin-top:8px;">Select layer → Pick BG color → click on layer → Remove BG.</p>
-      </div>
+      <div class="group" id="layersGroup"><div class="group-header" onclick="this.parentElement.classList.toggle('collapsed')"><span class="icon">📚</span> Layers <span class="arrow">▼</span></div><div class="group-body">
+        <div class="btn-row" style="margin-bottom:6px;"><button id="newThumbBtn" class="secondary">YouTube 1280×720</button><button id="centerLayerBtn" class="secondary" disabled>Center</button></div>
+        <label for="layerUpload">Add image(s)</label><input id="layerUpload" type="file" accept="image/*" multiple />
+        <label for="layerSelect" style="margin-top:8px;">Layers</label><select id="layerSelect" size="5"></select>
+        <div class="btn-row-3" style="margin-top:6px;"><button id="layerUpBtn" class="secondary" disabled>↑ Up</button><button id="layerDownBtn" class="secondary" disabled>↓ Down</button><button id="removeLayerBtn" class="warn" disabled>✕</button></div>
+        <label style="margin-top:8px;">Opacity</label><div class="range-line"><input id="layerOpacity" type="range" min="0" max="100" value="100" /><output id="layerOpacityOut">100%</output></div>
+        <label>Scale</label><div class="range-line"><input id="layerScale" type="range" min="10" max="300" value="100" /><output id="layerScaleOut">100%</output></div>
+        <label for="layerBlend">Blend</label><select id="layerBlend"><option value="source-over">Normal</option><option value="multiply">Multiply</option><option value="screen">Screen</option><option value="overlay">Overlay</option><option value="darken">Darken</option><option value="lighten">Lighten</option></select>
+        <label style="margin-top:8px;">BG tolerance</label><div class="range-line"><input id="bgTolerance" type="range" min="0" max="180" value="45" /><output id="bgToleranceOut">45</output></div>
+        <div class="btn-row"><button id="pickBgBtn" class="secondary" disabled>Pick BG</button><button id="removeBgBtn" class="warn" disabled>Remove BG</button></div>
+        <p id="layerHint" class="small" style="margin-top:6px;">Pick BG → click layer → Remove BG</p>
+      </div></div>
 
-      <div class="group"><label>Nudge target (šípky na klávesnici)</label><select id="nudgeTarget"><option value="text">Text watermark</option><option value="logo">Logo watermark</option></select><p class="small">Šípky = posun o 1px, Shift + šípky = 10px.</p><button id="watermarkEditBtn" class="secondary" style="margin-top:10px;" disabled>Watermark edit: OFF</button><p class="small" style="margin-top:8px;">Photoshop-like: vyber target a na canvase použi box + handles (move/scale/rotate).</p></div>
+      <div class="group"><div class="group-header" onclick="this.parentElement.classList.toggle('collapsed')"><span class="icon">🧭</span> Guides & Snap <span class="arrow">▼</span></div><div class="group-body">
+        <label style="display:flex;align-items:center;gap:8px;margin-bottom:6px;"><input id="showCenterGuides" type="checkbox" checked />Center lines</label>
+        <label style="display:flex;align-items:center;gap:8px;margin-bottom:6px;"><input id="showThirdsGuides" type="checkbox" />Thirds grid</label>
+        <label style="display:flex;align-items:center;gap:8px;margin-bottom:8px;"><input id="enableSnap" type="checkbox" checked />Snap to edges/center</label>
+        <label>Snap distance</label><div class="range-line"><input id="snapDistance" type="range" min="2" max="60" value="12" /><output id="snapDistanceOut">12px</output></div>
+        <label>Nudge target</label><select id="nudgeTarget"><option value="text">Text watermark</option><option value="logo">Logo watermark</option></select>
+        <p class="small">Arrows=1px, Shift+Arrows=10px</p>
+        <button id="watermarkEditBtn" class="secondary" style="margin-top:6px;" disabled>Watermark edit: OFF</button>
+        <p class="small" style="margin-top:4px;">Transform handles for move/scale/rotate</p>
+      </div></div>
 
-      <div class="group">
-        <label>Guides + snap</label>
-        <label style="display:flex; align-items:center; gap:8px; margin-bottom:8px;"><input id="showCenterGuides" type="checkbox" checked />Center lines</label>
-        <label style="display:flex; align-items:center; gap:8px; margin-bottom:8px;"><input id="showThirdsGuides" type="checkbox" />Thirds grid</label>
-        <label style="display:flex; align-items:center; gap:8px; margin-bottom:10px;"><input id="enableSnap" type="checkbox" checked />Snap to edges / center while dragging</label>
-        <label>Snap distance</label>
-        <div class="range-line"><input id="snapDistance" type="range" min="2" max="60" value="12" /><output id="snapDistanceOut">12px</output></div>
-      </div>
+      <div class="group"><div class="group-header" onclick="this.parentElement.classList.toggle('collapsed')"><span class="icon">🖌️</span> Drawing <span class="arrow">▼</span></div><div class="group-body">
+        <select id="drawToolMode"><option value="none">No draw tool</option><option value="brush">Freehand brush</option><option value="blurBrush">Blur brush</option><option value="pixelateBrush">Pixelate brush</option></select>
+        <label for="drawColor" style="margin-top:8px;">Color</label><input id="drawColor" type="color" value="#ff0000" />
+        <label style="margin-top:8px;">Size</label><div class="range-line"><input id="drawBrushSize" type="range" min="2" max="100" value="20" /><output id="drawBrushSizeOut">20px</output></div>
+        <label>Opacity</label><div class="range-line"><input id="drawBrushOpacity" type="range" min="1" max="100" value="100" /><output id="drawBrushOpacityOut">100%</output></div>
+        <div class="btn-row" style="margin-top:8px;"><button id="applyDrawBtn" class="secondary" disabled>Apply</button><button id="clearDrawBtn" class="warn" disabled>Clear</button></div>
+      </div></div>
 
-      <div class="group"><label>Crop tool</label><div class="btn-row-3"><button id="cropModeBtn" class="secondary" disabled>Crop mode</button><button id="applyCropBtn" disabled>Apply crop</button><button id="cancelCropBtn" class="secondary" disabled>Cancel</button></div><p class="small">V crop mode potiahni myšou po obrázku.</p></div>
-      <div class="group"><label for="exportFormat">Export formát</label><select id="exportFormat"><option value="png">PNG</option><option value="jpeg">JPG</option><option value="webp">WebP</option></select><label style="margin-top:10px;">Kvalita (JPG/WEBP)</label><div class="range-line"><input id="exportQuality" type="range" min="1" max="100" value="92" /><output id="exportQualityOut">92%</output></div></div>
-      <div class="group btn-row"><button id="downloadBtn" disabled>Stiahnuť</button><button id="resetBtn" class="secondary" disabled>Reset</button></div>
+      <div class="group"><div class="group-header" onclick="this.parentElement.classList.toggle('collapsed')"><span class="icon">🔧</span> Tools <span class="arrow">▼</span></div><div class="group-body">
+        <div class="btn-row" style="margin-bottom:6px;"><button id="eyedropperBtn" class="secondary">💧 Eyedropper</button><button id="clipboardBtn" class="secondary" disabled>📋 Copy</button></div>
+        <div class="eyedropper-row"><span id="eyedropperSwatch" class="color-swatch" style="background:#000000;"></span><span id="eyedropperHex" class="small">#000000</span></div>
+        <label>Zoom</label><div class="range-line"><input id="zoomLevel" type="range" min="10" max="500" value="100" /><output id="zoomLevelOut">100%</output></div>
+        <button id="zoomResetBtn" class="secondary" style="margin-top:4px;">Reset zoom</button>
+        <button id="shortcutsBtn" class="secondary" style="margin-top:6px;">⌨ Shortcuts (?)</button>
+      </div></div>
+
+      <div class="group"><div class="group-header" onclick="this.parentElement.classList.toggle('collapsed')"><span class="icon">✂️</span> Crop <span class="arrow">▼</span></div><div class="group-body">
+        <div class="btn-row-3"><button id="cropModeBtn" class="secondary" disabled>Crop mode</button><button id="applyCropBtn" disabled>Apply</button><button id="cancelCropBtn" class="secondary" disabled>Cancel</button></div>
+        <p class="small">Drag on canvas to select crop area</p>
+      </div></div>
+
+      <div class="group"><div class="group-header" onclick="this.parentElement.classList.toggle('collapsed')"><span class="icon">💾</span> Export <span class="arrow">▼</span></div><div class="group-body">
+        <select id="exportFormat"><option value="png">PNG</option><option value="jpeg">JPG</option><option value="webp">WebP</option></select>
+        <label style="margin-top:8px;">Quality</label><div class="range-line"><input id="exportQuality" type="range" min="1" max="100" value="92" /><output id="exportQualityOut">92%</output></div>
+      </div></div>
+
+      <div class="group"><div class="group-header" onclick="this.parentElement.classList.toggle('collapsed')"><span class="icon">💾</span> Project <span class="arrow">▼</span></div><div class="group-body">
+        <label>Auto-save</label>
+        <p id="autosaveStatus" class="status">Auto-save pripravené</p>
+        <div class="btn-row" style="margin-top:6px;"><button id="restoreAutosaveBtn" class="secondary" disabled>Restore</button><button id="clearAutosaveBtn" class="warn" disabled>Clear</button></div>
+        <label style="margin-top:10px;">Presets</label>
+        <input id="presetName" type="text" placeholder="Preset name" />
+        <div class="btn-row" style="margin-top:6px;"><button id="savePresetBtn" class="secondary">Save</button><button id="loadPresetBtn" class="secondary">Load</button></div>
+        <select id="presetSelect" style="margin-top:6px;"><option value="">-- no preset --</option></select>
+        <button id="deletePresetBtn" class="warn" style="margin-top:6px;">Delete preset</button>
+        <label style="margin-top:10px;">Preview</label>
+        <select id="previewMode"><option value="edited">Edited</option><option value="original">Original</option><option value="split">Split</option></select>
+        <label style="margin-top:8px;">Split pozícia</label>
+        <div class="range-line"><input id="splitPos" type="range" min="0" max="100" value="50" /><output id="splitPosOut">50%</output></div>
+      </div></div>
+
+      <div class="group"><div class="btn-row"><button id="downloadBtn" disabled>⬇ Download</button><button id="resetBtn" class="secondary" disabled>↺ Reset</button></div></div>
     </aside>
-    <section id="canvasBox" class="canvas-box"><canvas id="canvas"></canvas><div id="dropHint" class="drop-hint">Pretiahni obrázok sem alebo použi Vyber obrázok</div></section>
+    <section id="canvasBox" class="canvas-box"><canvas id="canvas"></canvas><textarea id="inlineTextInput" class="inline-text-input" placeholder="Type text..." hidden></textarea><div id="dropHint" class="drop-hint">Pretiahni obrázok sem alebo použi Vyber obrázok</div></section>
+  </div>
+
+  <div id="shortcutsModal" class="modal-overlay" hidden>
+    <div class="modal-content">
+      <h2>Keyboard Shortcuts</h2>
+      <ul>
+        <li><kbd>Ctrl+Z</kbd> — Undo</li>
+        <li><kbd>Ctrl+Y</kbd> / <kbd>Ctrl+Shift+Z</kbd> — Redo</li>
+        <li><kbd>Arrow keys</kbd> — Nudge watermark 1px</li>
+        <li><kbd>Shift+Arrow</kbd> — Nudge 10px</li>
+        <li><kbd>Scroll wheel</kbd> — Zoom in/out</li>
+        <li><kbd>?</kbd> — Toggle shortcuts</li>
+        <li><kbd>Delete</kbd> / <kbd>Backspace</kbd> — Remove selected layer</li>
+        <li><kbd>Double-click</kbd> — Type text on canvas</li>
+        <li><kbd>Escape</kbd> — Cancel current mode</li>
+      </ul>
+      <button id="closeShortcutsBtn">Close</button>
+    </div>
   </div>
 
   <script>
     const byId = id => document.getElementById(id);
     const uploadInput = byId('upload');
+    const addMoreImages = byId('addMoreImages');
+    const addMoreGroup = byId('addMoreGroup');
     const logoUpload = byId('logoUpload');
     const canvas = byId('canvas');
     const canvasBox = byId('canvasBox');
@@ -188,11 +288,29 @@
     const brightness = byId('brightness');
     const contrast = byId('contrast');
     const saturate = byId('saturate');
+    const hueRotate = byId('hueRotate');
+    const sepiaEl = byId('sepia');
+    const grayscaleEl = byId('grayscale');
+    const invertColors = byId('invertColors');
+    const imgBlurEl = byId('imgBlur');
+    const vignetteEl = byId('vignette');
+    const rotateCwBtn = byId('rotateCwBtn');
+    const rotateCcwBtn = byId('rotateCcwBtn');
+    const flipHBtn = byId('flipHBtn');
+    const flipVBtn = byId('flipVBtn');
+    const resizeWidth = byId('resizeWidth');
+    const resizeHeight = byId('resizeHeight');
+    const resizeLockAspect = byId('resizeLockAspect');
+    const applyResizeBtn = byId('applyResizeBtn');
+    const addTextLayerBtn = byId('addTextLayerBtn');
+    const removeTextLayerBtn = byId('removeTextLayerBtn');
+    const textLayerSelect = byId('textLayerSelect');
     const watermarkText = byId('watermarkText');
     const textPos = byId('textPos');
     const fontFamily = byId('fontFamily');
     const toggleBold = byId('toggleBold');
     const toggleItalic = byId('toggleItalic');
+    const textColor = byId('textColor');
     const textOpacity = byId('textOpacity');
     const textSize = byId('textSize');
     const textRotate = byId('textRotate');
@@ -202,6 +320,10 @@
     const textShadowBlur = byId('textShadowBlur');
     const textShadowX = byId('textShadowX');
     const textShadowY = byId('textShadowY');
+    const textBgEnabled = byId('textBgEnabled');
+    const textBgColor = byId('textBgColor');
+    const textBgOpacity = byId('textBgOpacity');
+    const textBgPadding = byId('textBgPadding');
     const removeLogoBtn = byId('removeLogoBtn');
     const centerLogoBtn = byId('centerLogoBtn');
     const logoOpacity = byId('logoOpacity');
@@ -228,6 +350,21 @@
     const showThirdsGuides = byId('showThirdsGuides');
     const enableSnap = byId('enableSnap');
     const snapDistance = byId('snapDistance');
+    const drawToolMode = byId('drawToolMode');
+    const drawColor = byId('drawColor');
+    const drawBrushSize = byId('drawBrushSize');
+    const drawBrushOpacity = byId('drawBrushOpacity');
+    const applyDrawBtn = byId('applyDrawBtn');
+    const clearDrawBtn = byId('clearDrawBtn');
+    const eyedropperBtn = byId('eyedropperBtn');
+    const clipboardBtn = byId('clipboardBtn');
+    const eyedropperSwatch = byId('eyedropperSwatch');
+    const eyedropperHex = byId('eyedropperHex');
+    const zoomLevelSlider = byId('zoomLevel');
+    const zoomResetBtn = byId('zoomResetBtn');
+    const shortcutsBtn = byId('shortcutsBtn');
+    const shortcutsModal = byId('shortcutsModal');
+    const closeShortcutsBtn = byId('closeShortcutsBtn');
     const cropModeBtn = byId('cropModeBtn');
     const applyCropBtn = byId('applyCropBtn');
     const cancelCropBtn = byId('cancelCropBtn');
@@ -238,9 +375,13 @@
 
     const outputs = {
       splitPos: byId('splitPosOut'), brightness: byId('brightnessOut'), contrast: byId('contrastOut'), saturate: byId('saturateOut'),
+      hueRotate: byId('hueRotateOut'), sepia: byId('sepiaOut'), grayscale: byId('grayscaleOut'), imgBlur: byId('imgBlurOut'), vignette: byId('vignetteOut'),
       textOpacity: byId('textOpacityOut'), textSize: byId('textSizeOut'), textRotate: byId('textRotateOut'), textStrokeWidth: byId('textStrokeWidthOut'), textShadowBlur: byId('textShadowBlurOut'),
+      textBgOpacity: byId('textBgOpacityOut'), textBgPadding: byId('textBgPaddingOut'),
       logoOpacity: byId('logoOpacityOut'), logoScale: byId('logoScaleOut'), logoRotate: byId('logoRotateOut'), snapDistance: byId('snapDistanceOut'), exportQuality: byId('exportQualityOut'),
-      layerOpacity: byId('layerOpacityOut'), layerScale: byId('layerScaleOut'), bgTolerance: byId('bgToleranceOut')
+      layerOpacity: byId('layerOpacityOut'), layerScale: byId('layerScaleOut'), bgTolerance: byId('bgToleranceOut'),
+      drawBrushSize: byId('drawBrushSizeOut'), drawBrushOpacity: byId('drawBrushOpacityOut'),
+      zoomLevel: byId('zoomLevelOut')
     };
 
     const img = new Image();
@@ -255,6 +396,7 @@
     let isDraggingText = false;
     let isDraggingLogo = false;
     let isDraggingLayer = false;
+    let layerResizeDrag = null;
     let dragOffset = { x: 0, y: 0 };
     let layerDragOffset = { x: 0, y: 0 };
     let imageLayers = [];
@@ -272,25 +414,125 @@
     let currentEditorMode = 'basic';
     let currentEditSection = 'all';
     const MAX_HISTORY = 20;
-    const AUTO_SAVE_KEY = 'photoEditorProject.v1';
+    const AUTO_SAVE_KEY = 'photoEditorProject.v2';
     const AUTO_SAVE_DB_NAME = 'photoEditorProAutosave';
     const AUTO_SAVE_STORE = 'projects';
     const AUTO_SAVE_RECORD_ID = 'latest';
-    const PRESETS_KEY = 'photoEditorPresets.v1';
+    const PRESETS_KEY = 'photoEditorPresets.v2';
     let autoSaveTimer = null;
     let presets = {};
     let autoSaveDbPromise = null;
+
+    // --- Text layers ---
+    let textLayers = [];
+    let selectedTextLayerId = null;
+
+    function createDefaultTextLayer(id) {
+      return {
+        id: id || `txt_${Date.now()}_${Math.random().toString(36).slice(2,7)}`,
+        text: '© BlackAngel', pos: 'bottom-right', fontFamily: 'Arial, sans-serif',
+        isBold: true, isItalic: false, color: '#ffffff', opacity: 45, size: 30, rotation: 0,
+        strokeColor: '#000000', strokeWidth: 3, shadowColor: '#000000', shadowBlur: 8, shadowX: 2, shadowY: 2,
+        customPos: null, bgEnabled: false, bgColor: '#000000', bgOpacity: 50, bgPadding: 8
+      };
+    }
+
+    function getSelectedTextLayer() { return textLayers.find(l => l.id === selectedTextLayerId) || null; }
+
+    function refreshTextLayerSelect() {
+      textLayerSelect.innerHTML = '';
+      textLayers.forEach(l => {
+        const opt = document.createElement('option');
+        opt.value = l.id;
+        opt.textContent = l.text || '(empty)';
+        opt.selected = l.id === selectedTextLayerId;
+        textLayerSelect.appendChild(opt);
+      });
+      removeTextLayerBtn.disabled = !getSelectedTextLayer() || textLayers.length <= 1;
+    }
+
+    function syncControlsFromTextLayer() {
+      const tl = getSelectedTextLayer();
+      if (!tl) return;
+      watermarkText.value = tl.text;
+      textPos.value = tl.pos;
+      fontFamily.value = tl.fontFamily;
+      textIsBold = tl.isBold; textIsItalic = tl.isItalic;
+      textColor.value = tl.color;
+      textOpacity.value = tl.opacity;
+      textSize.value = tl.size;
+      textRotate.value = tl.rotation;
+      textStrokeColor.value = tl.strokeColor;
+      textStrokeWidth.value = tl.strokeWidth;
+      textShadowColor.value = tl.shadowColor;
+      textShadowBlur.value = tl.shadowBlur;
+      textShadowX.value = tl.shadowX;
+      textShadowY.value = tl.shadowY;
+      customTextPos = tl.customPos ? { ...tl.customPos } : null;
+      textBgEnabled.checked = tl.bgEnabled;
+      textBgColor.value = tl.bgColor;
+      textBgOpacity.value = tl.bgOpacity;
+      textBgPadding.value = tl.bgPadding;
+      refreshToggleButtons(); updateOutputValues();
+    }
+
+    function syncTextLayerFromControls() {
+      const tl = getSelectedTextLayer();
+      if (!tl) return;
+      tl.text = watermarkText.value;
+      tl.pos = textPos.value;
+      tl.fontFamily = fontFamily.value;
+      tl.isBold = textIsBold; tl.isItalic = textIsItalic;
+      tl.color = textColor.value;
+      tl.opacity = Number(textOpacity.value);
+      tl.size = Number(textSize.value);
+      tl.rotation = Number(textRotate.value);
+      tl.strokeColor = textStrokeColor.value;
+      tl.strokeWidth = Number(textStrokeWidth.value);
+      tl.shadowColor = textShadowColor.value;
+      tl.shadowBlur = Number(textShadowBlur.value);
+      tl.shadowX = Number(textShadowX.value);
+      tl.shadowY = Number(textShadowY.value);
+      tl.bgEnabled = textBgEnabled.checked;
+      tl.bgColor = textBgColor.value;
+      tl.bgOpacity = Number(textBgOpacity.value);
+      tl.bgPadding = Number(textBgPadding.value);
+      if (textPos.value === 'custom' && customTextPos) tl.customPos = { ...customTextPos };
+      else if (textPos.value !== 'custom') tl.customPos = null;
+      refreshTextLayerSelect();
+    }
+
+    // --- Drawing overlay ---
+    let drawOverlayCanvas = null;
+    let drawOverlayCtx = null;
+    let isDrawing = false;
+    let lastDrawPoint = null;
+    let blurredBaseCanvas = null;
+
+    // --- Eyedropper ---
+    let eyedropperMode = false;
+    let lastSampledColor = [0, 0, 0];
+
+    // --- Zoom ---
+    let zoomValue = 100;
 
     function updateOutputValues() {
       outputs.splitPos.textContent = `${splitPos.value}%`;
       outputs.brightness.textContent = `${brightness.value}%`;
       outputs.contrast.textContent = `${contrast.value}%`;
       outputs.saturate.textContent = `${saturate.value}%`;
+      outputs.hueRotate.textContent = `${hueRotate.value}°`;
+      outputs.sepia.textContent = `${sepiaEl.value}%`;
+      outputs.grayscale.textContent = `${grayscaleEl.value}%`;
+      outputs.imgBlur.textContent = `${imgBlurEl.value}px`;
+      outputs.vignette.textContent = `${vignetteEl.value}%`;
       outputs.textOpacity.textContent = `${textOpacity.value}%`;
       outputs.textSize.textContent = `${textSize.value}px`;
       outputs.textRotate.textContent = `${textRotate.value}°`;
       outputs.textStrokeWidth.textContent = `${textStrokeWidth.value}px`;
       outputs.textShadowBlur.textContent = `${textShadowBlur.value}`;
+      outputs.textBgOpacity.textContent = `${textBgOpacity.value}%`;
+      outputs.textBgPadding.textContent = `${textBgPadding.value}px`;
       outputs.logoOpacity.textContent = `${logoOpacity.value}%`;
       outputs.logoScale.textContent = `${logoScale.value}%`;
       outputs.logoRotate.textContent = `${logoRotate.value}°`;
@@ -299,6 +541,9 @@
       outputs.bgTolerance.textContent = `${bgTolerance.value}`;
       outputs.snapDistance.textContent = `${snapDistance.value}px`;
       outputs.exportQuality.textContent = `${exportQuality.value}%`;
+      outputs.drawBrushSize.textContent = `${drawBrushSize.value}px`;
+      outputs.drawBrushOpacity.textContent = `${drawBrushOpacity.value}%`;
+      outputs.zoomLevel.textContent = `${zoomValue}%`;
       exportQuality.disabled = exportFormat.value === 'png';
     }
 
@@ -309,13 +554,118 @@
     }
     function isImageFile(file) { return Boolean(file && typeof file.type === 'string' && file.type.startsWith('image/')); }
 
+    function initDrawOverlay() {
+      drawOverlayCanvas = document.createElement('canvas');
+      drawOverlayCanvas.width = canvas.width;
+      drawOverlayCanvas.height = canvas.height;
+      drawOverlayCtx = drawOverlayCanvas.getContext('2d');
+      blurredBaseCanvas = document.createElement('canvas');
+      blurredBaseCanvas.width = canvas.width;
+      blurredBaseCanvas.height = canvas.height;
+      const bctx = blurredBaseCanvas.getContext('2d');
+      bctx.filter = 'blur(10px)';
+      bctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      bctx.filter = 'none';
+      applyDrawBtn.disabled = true;
+      clearDrawBtn.disabled = true;
+    }
+
+    function clearDrawOverlay() {
+      if (!drawOverlayCanvas) return;
+      drawOverlayCtx.clearRect(0, 0, drawOverlayCanvas.width, drawOverlayCanvas.height);
+      applyDrawBtn.disabled = true;
+      clearDrawBtn.disabled = true;
+      redraw();
+    }
+
+    function applyDrawOverlay() {
+      if (!drawOverlayCanvas || !hasImage) return;
+      const temp = document.createElement('canvas');
+      temp.width = canvas.width;
+      temp.height = canvas.height;
+      const tctx = temp.getContext('2d');
+      tctx.drawImage(img, 0, 0);
+      tctx.drawImage(drawOverlayCanvas, 0, 0);
+      img.onload = () => {
+        canvas.width = img.naturalWidth;
+        canvas.height = img.naturalHeight;
+        initDrawOverlay();
+        redraw(); pushHistory(); scheduleAutoSave();
+      };
+      img.src = temp.toDataURL('image/png');
+    }
+
+    function drawBrushStroke(x, y) {
+      if (!drawOverlayCtx) return;
+      const mode = drawToolMode.value;
+      const radius = Number(drawBrushSize.value);
+      if (mode === 'brush') {
+        drawOverlayCtx.save();
+        drawOverlayCtx.globalAlpha = Number(drawBrushOpacity.value) / 100;
+        drawOverlayCtx.fillStyle = drawColor.value;
+        drawOverlayCtx.beginPath();
+        drawOverlayCtx.arc(x, y, radius / 2, 0, Math.PI * 2);
+        drawOverlayCtx.fill();
+        if (lastDrawPoint) {
+          drawOverlayCtx.strokeStyle = drawColor.value;
+          drawOverlayCtx.lineWidth = radius;
+          drawOverlayCtx.lineCap = 'round';
+          drawOverlayCtx.lineJoin = 'round';
+          drawOverlayCtx.beginPath();
+          drawOverlayCtx.moveTo(lastDrawPoint.x, lastDrawPoint.y);
+          drawOverlayCtx.lineTo(x, y);
+          drawOverlayCtx.stroke();
+        }
+        drawOverlayCtx.restore();
+      } else if (mode === 'blurBrush' && blurredBaseCanvas) {
+        drawOverlayCtx.save();
+        drawOverlayCtx.globalAlpha = Number(drawBrushOpacity.value) / 100;
+        drawOverlayCtx.beginPath();
+        drawOverlayCtx.arc(x, y, radius, 0, Math.PI * 2);
+        drawOverlayCtx.clip();
+        drawOverlayCtx.drawImage(blurredBaseCanvas, 0, 0);
+        drawOverlayCtx.restore();
+      } else if (mode === 'pixelateBrush') {
+        const pixelSize = Math.max(4, Math.floor(radius / 3));
+        const srcX = Math.max(0, Math.floor(x - radius));
+        const srcY = Math.max(0, Math.floor(y - radius));
+        const srcW = Math.min(canvas.width - srcX, Math.ceil(radius * 2));
+        const srcH = Math.min(canvas.height - srcY, Math.ceil(radius * 2));
+        if (srcW < 1 || srcH < 1) return;
+        const small = document.createElement('canvas');
+        const sw = Math.max(1, Math.ceil(srcW / pixelSize));
+        const sh = Math.max(1, Math.ceil(srcH / pixelSize));
+        small.width = sw; small.height = sh;
+        const sctx = small.getContext('2d');
+        sctx.drawImage(canvas, srcX, srcY, srcW, srcH, 0, 0, sw, sh);
+        drawOverlayCtx.save();
+        drawOverlayCtx.globalAlpha = Number(drawBrushOpacity.value) / 100;
+        drawOverlayCtx.beginPath();
+        drawOverlayCtx.arc(x, y, radius, 0, Math.PI * 2);
+        drawOverlayCtx.clip();
+        drawOverlayCtx.imageSmoothingEnabled = false;
+        drawOverlayCtx.drawImage(small, 0, 0, sw, sh, srcX, srcY, srcW, srcH);
+        drawOverlayCtx.imageSmoothingEnabled = true;
+        drawOverlayCtx.restore();
+      }
+      applyDrawBtn.disabled = false;
+      clearDrawBtn.disabled = false;
+    }
+
     function loadMainImageFromDataUrl(dataUrl) {
       img.onload = () => {
         canvas.width = img.naturalWidth; canvas.height = img.naturalHeight; hasImage = true;
-        downloadBtn.disabled = false; resetBtn.disabled = false;
+        addMoreGroup.style.display = '';
+        downloadBtn.disabled = false; resetBtn.disabled = false; clipboardBtn.disabled = false;
         cropMode = false; isCropping = false; cropRect = null; activeSnapGuides = [];
         imageLayers = []; selectedLayerId = null; pickBgColorMode = false; refreshLayerControls();
+        textLayers = [createDefaultTextLayer('txt_default')];
+        selectedTextLayerId = textLayers[0].id;
+        syncControlsFromTextLayer(); refreshTextLayerSelect();
+        initDrawOverlay();
         history = []; historyIndex = -1; setDropActive(false); refreshHistoryButtons(); refreshCropButtons(); refreshDropHint(); refreshWatermarkEditButton();
+        eyedropperMode = false; eyedropperBtn.textContent = 'Eyedropper'; eyedropperBtn.style.borderColor = ''; canvas.style.cursor = 'default';
+        updateResizeInputs(); updateCanvasZoom();
         redraw(); pushHistory(); scheduleAutoSave();
       };
       img.src = dataUrl;
@@ -328,18 +678,14 @@
       reader.readAsDataURL(file);
     }
 
-    function getSelectedLayer() {
-      return imageLayers.find(l => l.id === selectedLayerId) || null;
-    }
+    function getSelectedLayer() { return imageLayers.find(l => l.id === selectedLayerId) || null; }
 
     function refreshLayerControls() {
       const selected = getSelectedLayer();
       layerSelect.innerHTML = '';
       imageLayers.forEach(layer => {
         const option = document.createElement('option');
-        option.value = layer.id;
-        option.textContent = layer.name;
-        option.selected = layer.id === selectedLayerId;
+        option.value = layer.id; option.textContent = layer.name; option.selected = layer.id === selectedLayerId;
         layerSelect.appendChild(option);
       });
       const hasLayer = Boolean(selected);
@@ -349,11 +695,8 @@
       layerUpBtn.disabled = !hasLayer || imageLayers.indexOf(selected) === imageLayers.length - 1;
       layerDownBtn.disabled = !hasLayer || imageLayers.indexOf(selected) <= 0;
       centerLayerBtn.disabled = !hasLayer;
-      layerOpacity.disabled = !hasLayer;
-      layerScale.disabled = !hasLayer;
-      layerBlend.disabled = !hasLayer;
-      pickBgBtn.disabled = !hasLayer;
-      removeBgBtn.disabled = !hasLayer;
+      layerOpacity.disabled = !hasLayer; layerScale.disabled = !hasLayer; layerBlend.disabled = !hasLayer;
+      pickBgBtn.disabled = !hasLayer; removeBgBtn.disabled = !hasLayer;
       if (hasLayer) {
         layerOpacity.value = String(Math.round((selected.opacity ?? 1) * 100));
         layerScale.value = String(Math.round(selected.scale ?? 100));
@@ -371,24 +714,13 @@
       if (!loaded) return;
       const fit = Math.min(1, Math.min((canvas.width * 0.55) / Math.max(1, layerImg.naturalWidth), (canvas.height * 0.55) / Math.max(1, layerImg.naturalHeight)));
       const layer = {
-        id: `layer_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
-        name,
-        src: dataUrl,
-        img: layerImg,
-        x: canvas.width / 2,
-        y: canvas.height / 2,
-        scale: Math.round(100 * fit),
-        opacity: 1,
-        blendMode: 'source-over',
-        bgColor: null
+        id: `layer_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`, name, src: dataUrl, img: layerImg,
+        x: canvas.width / 2, y: canvas.height / 2, scale: Math.round(100 * fit), opacity: 1, blendMode: 'source-over', bgColor: null
       };
       imageLayers.push(layer);
       selectedLayerId = layer.id;
       pickBgColorMode = false;
-      refreshLayerControls();
-      redraw();
-      pushHistory();
-      scheduleAutoSave();
+      refreshLayerControls(); redraw(); pushHistory(); scheduleAutoSave();
     }
 
     function drawImageLayers() {
@@ -397,8 +729,7 @@
         if (!layer.img?.src) return;
         const w = Math.max(1, layer.img.naturalWidth * ((layer.scale ?? 100) / 100));
         const h = Math.max(1, layer.img.naturalHeight * ((layer.scale ?? 100) / 100));
-        const left = layer.x - w / 2;
-        const top = layer.y - h / 2;
+        const left = layer.x - w / 2; const top = layer.y - h / 2;
         ctx.save();
         ctx.globalAlpha = Math.max(0, Math.min(1, layer.opacity ?? 1));
         ctx.globalCompositeOperation = layer.blendMode || 'source-over';
@@ -406,26 +737,18 @@
         ctx.restore();
         layerBoundsMap.set(layer.id, { left, top, width: w, height: h, right: left + w, bottom: top + h, cx: layer.x, cy: layer.y });
       });
-
       const selected = getSelectedLayer();
       const b = selected ? layerBoundsMap.get(selected.id) : null;
       if (b && previewMode.value !== 'original') {
-        ctx.save();
-        ctx.strokeStyle = 'rgba(56,189,248,.95)';
-        ctx.lineWidth = 1.5;
-        ctx.setLineDash([8, 6]);
-        ctx.strokeRect(b.left, b.top, b.width, b.height);
-        ctx.setLineDash([]);
-        ctx.fillStyle = 'rgba(34,211,238,.95)';
-        ctx.fillRect(b.right - 6, b.bottom - 6, 12, 12);
-        ctx.restore();
+        ctx.save(); ctx.strokeStyle = 'rgba(56,189,248,.95)'; ctx.lineWidth = 1.5; ctx.setLineDash([8, 6]);
+        ctx.strokeRect(b.left, b.top, b.width, b.height); ctx.setLineDash([]);
+        ctx.fillStyle = 'rgba(34,211,238,.95)'; ctx.fillRect(b.right - 6, b.bottom - 6, 12, 12); ctx.restore();
       }
     }
 
     function getTopLayerAtPoint(p) {
       for (let i = imageLayers.length - 1; i >= 0; i--) {
-        const l = imageLayers[i];
-        const b = layerBoundsMap.get(l.id);
+        const l = imageLayers[i]; const b = layerBoundsMap.get(l.id);
         if (!b) continue;
         if (p.x >= b.left && p.x <= b.right && p.y >= b.top && p.y <= b.bottom) return l;
       }
@@ -434,12 +757,10 @@
 
     function sampleLayerColorAtPoint(layer, p) {
       const b = layerBoundsMap.get(layer.id);
-      if (!b) return null;
-      if (p.x < b.left || p.x > b.right || p.y < b.top || p.y > b.bottom) return null;
+      if (!b || p.x < b.left || p.x > b.right || p.y < b.top || p.y > b.bottom) return null;
       const sx = Math.floor(((p.x - b.left) / Math.max(1, b.width)) * layer.img.naturalWidth);
       const sy = Math.floor(((p.y - b.top) / Math.max(1, b.height)) * layer.img.naturalHeight);
-      const probe = document.createElement('canvas');
-      probe.width = 1; probe.height = 1;
+      const probe = document.createElement('canvas'); probe.width = 1; probe.height = 1;
       const pctx = probe.getContext('2d', { willReadFrequently: true });
       pctx.drawImage(layer.img, sx, sy, 1, 1, 0, 0, 1, 1);
       const px = pctx.getImageData(0, 0, 1, 1).data;
@@ -451,64 +772,47 @@
       if (!Array.isArray(layer.bgColor)) { setAutosaveStatus('Pick BG color first', true); return; }
       const tol = Number(bgTolerance.value) || 0;
       const srcCanvas = document.createElement('canvas');
-      srcCanvas.width = layer.img.naturalWidth;
-      srcCanvas.height = layer.img.naturalHeight;
+      srcCanvas.width = layer.img.naturalWidth; srcCanvas.height = layer.img.naturalHeight;
       const sctx = srcCanvas.getContext('2d', { willReadFrequently: true });
       sctx.drawImage(layer.img, 0, 0);
       const imageData = sctx.getImageData(0, 0, srcCanvas.width, srcCanvas.height);
-      const d = imageData.data;
-      const [tr, tg, tb] = layer.bgColor;
+      const d = imageData.data; const [tr, tg, tb] = layer.bgColor;
       for (let i = 0; i < d.length; i += 4) {
         const dr = d[i] - tr, dg = d[i + 1] - tg, db = d[i + 2] - tb;
-        const dist = Math.sqrt(dr * dr + dg * dg + db * db);
-        if (dist <= tol) d[i + 3] = 0;
+        if (Math.sqrt(dr * dr + dg * dg + db * db) <= tol) d[i + 3] = 0;
       }
       sctx.putImageData(imageData, 0, 0);
       layer.src = srcCanvas.toDataURL('image/png');
       await loadImageTo(layer.img, layer.src);
-      redraw();
-      pushHistory();
-      scheduleAutoSave();
-      setAutosaveStatus('Background removed');
+      redraw(); pushHistory(); scheduleAutoSave(); setAutosaveStatus('Background removed');
     }
 
     function createThumbnailCanvas() {
-      const thumb = document.createElement('canvas');
-      thumb.width = 1280;
-      thumb.height = 720;
+      const thumb = document.createElement('canvas'); thumb.width = 1280; thumb.height = 720;
       const tctx = thumb.getContext('2d');
       const grad = tctx.createLinearGradient(0, 0, 1280, 720);
-      grad.addColorStop(0, '#111827');
-      grad.addColorStop(1, '#0f172a');
-      tctx.fillStyle = grad;
-      tctx.fillRect(0, 0, 1280, 720);
+      grad.addColorStop(0, '#111827'); grad.addColorStop(1, '#0f172a');
+      tctx.fillStyle = grad; tctx.fillRect(0, 0, 1280, 720);
       loadMainImageFromDataUrl(thumb.toDataURL('image/png'));
       setAutosaveStatus('New YouTube canvas created');
     }
 
     function setAutosaveStatus(message, isError = false) {
-      autosaveStatus.textContent = message;
-      autosaveStatus.classList.toggle('error', isError);
+      autosaveStatus.textContent = message; autosaveStatus.classList.toggle('error', isError);
     }
 
     function getSectionGroups() {
       const groupOf = el => el?.closest('.group');
       return {
-        image: [groupOf(previewMode), groupOf(brightness)],
-        watermark: [groupOf(watermarkText), groupOf(logoUpload), layersGroup, groupOf(nudgeTarget)],
+        image: [groupOf(previewMode), groupOf(brightness), groupOf(rotateCwBtn), groupOf(resizeWidth), groupOf(drawToolMode), groupOf(eyedropperBtn)],
+        watermark: [groupOf(textLayerSelect), groupOf(watermarkText), groupOf(textBgEnabled), groupOf(logoUpload), layersGroup, groupOf(nudgeTarget)],
         guides: [groupOf(showCenterGuides)],
         export: [groupOf(cropModeBtn), groupOf(exportFormat), groupOf(downloadBtn)]
       };
     }
 
     function updateSectionButtons() {
-      const map = {
-        all: editAllBtn,
-        image: editImageBtn,
-        watermark: editWatermarkBtn,
-        guides: editGuidesBtn,
-        export: editExportBtn
-      };
+      const map = { all: editAllBtn, image: editImageBtn, watermark: editWatermarkBtn, guides: editGuidesBtn, export: editExportBtn };
       Object.entries(map).forEach(([key, btn]) => btn.classList.toggle('is-active', key === currentEditSection));
     }
 
@@ -520,13 +824,9 @@
     function getAdvancedOnlyGroups() {
       const groupOf = el => el?.closest('.group');
       return new Set([
-        groupOf(autosaveStatus),
-        groupOf(presetName),
-        groupOf(previewMode),
-        layersGroup,
-        groupOf(nudgeTarget),
-        groupOf(showCenterGuides),
-        groupOf(cropModeBtn)
+        groupOf(autosaveStatus), groupOf(presetName), groupOf(previewMode),
+        layersGroup, groupOf(nudgeTarget), groupOf(showCenterGuides), groupOf(cropModeBtn),
+        groupOf(resizeWidth), groupOf(drawToolMode), groupOf(eyedropperBtn)
       ].filter(Boolean));
     }
 
@@ -535,12 +835,8 @@
       const sectionGroups = getSectionGroups();
       const sectionVisible = new Set(currentEditSection === 'all' ? allGroups : (sectionGroups[currentEditSection] || []));
       const advancedOnlyGroups = getAdvancedOnlyGroups();
-
       allGroups.forEach(group => {
-        if (group === sectionSwitchGroup || group === modeSwitchGroup) {
-          group.style.display = '';
-          return;
-        }
+        if (group === sectionSwitchGroup || group === modeSwitchGroup) { group.style.display = ''; return; }
         const sectionAllowed = currentEditSection === 'all' || sectionVisible.has(group);
         const modeAllowed = currentEditorMode === 'advanced' || !advancedOnlyGroups.has(group);
         group.style.display = sectionAllowed && modeAllowed ? '' : 'none';
@@ -549,23 +845,19 @@
 
     function applyEditorMode(mode) {
       currentEditorMode = ['basic', 'advanced'].includes(mode) ? mode : 'basic';
-      refreshPanelVisibility();
-      updateModeButtons();
+      refreshPanelVisibility(); updateModeButtons();
     }
 
     function applySectionFilter(section) {
-      const mode = ['all', 'image', 'watermark', 'guides', 'export'].includes(section) ? section : 'all';
-      currentEditSection = mode;
-      refreshPanelVisibility();
-      updateSectionButtons();
+      currentEditSection = ['all', 'image', 'watermark', 'guides', 'export'].includes(section) ? section : 'all';
+      refreshPanelVisibility(); updateSectionButtons();
     }
 
     function setWatermarkEditMode(enabled) {
       watermarkEditMode = Boolean(enabled) && hasImage;
-      transformDrag = null;
-      activeSnapGuides = [];
+      transformDrag = null; activeSnapGuides = [];
       refreshWatermarkEditButton();
-      canvas.style.cursor = watermarkEditMode ? 'crosshair' : 'default';
+      canvas.style.cursor = watermarkEditMode ? 'crosshair' : (eyedropperMode ? 'crosshair' : (drawToolMode.value !== 'none' ? 'crosshair' : 'default'));
       redraw();
     }
 
@@ -579,15 +871,13 @@
 
     function formatTime(ts) { try { return new Date(ts).toLocaleTimeString(); } catch { return ''; } }
     function refreshAutoSaveButtons() { const has = Boolean(localStorage.getItem(AUTO_SAVE_KEY)); restoreAutosaveBtn.disabled = !has; clearAutosaveBtn.disabled = !has; }
+
     function openAutoSaveDb() {
       if (!('indexedDB' in window)) return Promise.reject(new Error('IndexedDB unavailable'));
       if (autoSaveDbPromise) return autoSaveDbPromise;
       autoSaveDbPromise = new Promise((resolve, reject) => {
         const request = indexedDB.open(AUTO_SAVE_DB_NAME, 1);
-        request.onupgradeneeded = () => {
-          const db = request.result;
-          if (!db.objectStoreNames.contains(AUTO_SAVE_STORE)) db.createObjectStore(AUTO_SAVE_STORE);
-        };
+        request.onupgradeneeded = () => { const db = request.result; if (!db.objectStoreNames.contains(AUTO_SAVE_STORE)) db.createObjectStore(AUTO_SAVE_STORE); };
         request.onsuccess = () => resolve(request.result);
         request.onerror = () => reject(request.error || new Error('IndexedDB open failed'));
       });
@@ -599,9 +889,7 @@
       await new Promise((resolve, reject) => {
         const tx = db.transaction(AUTO_SAVE_STORE, 'readwrite');
         tx.objectStore(AUTO_SAVE_STORE).put(payload, AUTO_SAVE_RECORD_ID);
-        tx.oncomplete = () => resolve();
-        tx.onerror = () => reject(tx.error || new Error('IndexedDB write failed'));
-        tx.onabort = () => reject(tx.error || new Error('IndexedDB write aborted'));
+        tx.oncomplete = () => resolve(); tx.onerror = () => reject(tx.error); tx.onabort = () => reject(tx.error);
       });
     }
 
@@ -611,7 +899,7 @@
         const tx = db.transaction(AUTO_SAVE_STORE, 'readonly');
         const request = tx.objectStore(AUTO_SAVE_STORE).get(AUTO_SAVE_RECORD_ID);
         request.onsuccess = () => resolve(request.result || null);
-        request.onerror = () => reject(request.error || new Error('IndexedDB read failed'));
+        request.onerror = () => reject(request.error);
       });
     }
 
@@ -620,47 +908,41 @@
       await new Promise((resolve, reject) => {
         const tx = db.transaction(AUTO_SAVE_STORE, 'readwrite');
         tx.objectStore(AUTO_SAVE_STORE).delete(AUTO_SAVE_RECORD_ID);
-        tx.oncomplete = () => resolve();
-        tx.onerror = () => reject(tx.error || new Error('IndexedDB delete failed'));
-        tx.onabort = () => reject(tx.error || new Error('IndexedDB delete aborted'));
+        tx.oncomplete = () => resolve(); tx.onerror = () => reject(tx.error); tx.onabort = () => reject(tx.error);
       });
     }
 
     function scheduleAutoSave() { clearTimeout(autoSaveTimer); autoSaveTimer = setTimeout(() => { saveProjectToStorage(); }, 350); }
+
     async function saveProjectToStorage() {
       if (!hasImage) return;
       try {
-        const payload = { version: 2, savedAt: Date.now(), storage: 'indexeddb', data: getStateSnapshot() };
+        const payload = { version: 3, savedAt: Date.now(), storage: 'indexeddb', data: getStateSnapshot() };
         await writeAutoSavePayload(payload);
         localStorage.setItem(AUTO_SAVE_KEY, JSON.stringify({ version: payload.version, savedAt: payload.savedAt, storage: payload.storage }));
-        refreshAutoSaveButtons();
-        setAutosaveStatus(`Auto-saved ${formatTime(payload.savedAt)}`);
-      } catch {
-        setAutosaveStatus('Auto-save failed (browser storage unavailable)', true);
-      }
+        refreshAutoSaveButtons(); setAutosaveStatus(`Auto-saved ${formatTime(payload.savedAt)}`);
+      } catch { setAutosaveStatus('Auto-save failed (browser storage unavailable)', true); }
     }
 
     async function restoreAutoSave() {
       const raw = localStorage.getItem(AUTO_SAVE_KEY);
       if (!raw) { setAutosaveStatus('No auto-save found'); refreshAutoSaveButtons(); return; }
       try {
-        const parsed = JSON.parse(raw);
-        let payload = parsed;
+        const parsed = JSON.parse(raw); let payload = parsed;
         if (parsed?.storage === 'indexeddb') payload = await readAutoSavePayload();
         if (!payload && parsed?.data) payload = parsed;
         if (!payload) throw new Error('Autosave payload missing');
         await applySnapshot(payload?.data || payload);
-        pushHistory();
-        setAutosaveStatus(`Restored ${formatTime(payload?.savedAt || parsed?.savedAt || Date.now())}`);
+        pushHistory(); setAutosaveStatus(`Restored ${formatTime(payload?.savedAt || parsed?.savedAt || Date.now())}`);
       } catch { setAutosaveStatus('Restore failed', true); }
     }
 
     async function clearAutoSave() {
       localStorage.removeItem(AUTO_SAVE_KEY);
       try { await deleteAutoSavePayload(); } catch (_) {}
-      refreshAutoSaveButtons();
-      setAutosaveStatus('Auto-save cleared');
+      refreshAutoSaveButtons(); setAutosaveStatus('Auto-save cleared');
     }
+
     function loadPresets() { try { presets = JSON.parse(localStorage.getItem(PRESETS_KEY) || '{}') || {}; } catch { presets = {}; } }
     function savePresets() { localStorage.setItem(PRESETS_KEY, JSON.stringify(presets)); }
     function renderPresetOptions() {
@@ -673,12 +955,18 @@
     }
 
     function getPresetData() {
+      const tl = getSelectedTextLayer();
       return {
         controls: {
-          brightness: brightness.value, contrast: contrast.value, saturate: saturate.value, watermarkText: watermarkText.value,
-          textPos: textPos.value, fontFamily: fontFamily.value, textOpacity: textOpacity.value, textSize: textSize.value, textRotate: textRotate.value,
-          textStrokeColor: textStrokeColor.value, textStrokeWidth: textStrokeWidth.value, textShadowColor: textShadowColor.value, textShadowBlur: textShadowBlur.value,
-          textShadowX: textShadowX.value, textShadowY: textShadowY.value, logoOpacity: logoOpacity.value, logoScale: logoScale.value, logoRotate: logoRotate.value,
+          brightness: brightness.value, contrast: contrast.value, saturate: saturate.value,
+          hueRotate: hueRotate.value, sepia: sepiaEl.value, grayscale: grayscaleEl.value,
+          invertColors: invertColors.checked, imgBlur: imgBlurEl.value, vignette: vignetteEl.value,
+          watermarkText: watermarkText.value, textPos: textPos.value, fontFamily: fontFamily.value,
+          textColor: textColor.value, textOpacity: textOpacity.value, textSize: textSize.value, textRotate: textRotate.value,
+          textStrokeColor: textStrokeColor.value, textStrokeWidth: textStrokeWidth.value, textShadowColor: textShadowColor.value,
+          textShadowBlur: textShadowBlur.value, textShadowX: textShadowX.value, textShadowY: textShadowY.value,
+          textBgEnabled: textBgEnabled.checked, textBgColor: textBgColor.value, textBgOpacity: textBgOpacity.value, textBgPadding: textBgPadding.value,
+          logoOpacity: logoOpacity.value, logoScale: logoScale.value, logoRotate: logoRotate.value,
           showCenterGuides: showCenterGuides.checked, showThirdsGuides: showThirdsGuides.checked, enableSnap: enableSnap.checked, snapDistance: snapDistance.value
         },
         textIsBold, textIsItalic,
@@ -693,9 +981,16 @@
       brightness.value = c.brightness ?? brightness.value;
       contrast.value = c.contrast ?? contrast.value;
       saturate.value = c.saturate ?? saturate.value;
+      hueRotate.value = c.hueRotate ?? hueRotate.value;
+      sepiaEl.value = c.sepia ?? sepiaEl.value;
+      grayscaleEl.value = c.grayscale ?? grayscaleEl.value;
+      invertColors.checked = c.invertColors ?? invertColors.checked;
+      imgBlurEl.value = c.imgBlur ?? imgBlurEl.value;
+      vignetteEl.value = c.vignette ?? vignetteEl.value;
       watermarkText.value = c.watermarkText ?? watermarkText.value;
       textPos.value = c.textPos ?? textPos.value;
       fontFamily.value = c.fontFamily ?? fontFamily.value;
+      textColor.value = c.textColor ?? textColor.value;
       textOpacity.value = c.textOpacity ?? textOpacity.value;
       textSize.value = c.textSize ?? textSize.value;
       textRotate.value = c.textRotate ?? textRotate.value;
@@ -705,6 +1000,10 @@
       textShadowBlur.value = c.textShadowBlur ?? textShadowBlur.value;
       textShadowX.value = c.textShadowX ?? textShadowX.value;
       textShadowY.value = c.textShadowY ?? textShadowY.value;
+      textBgEnabled.checked = c.textBgEnabled ?? textBgEnabled.checked;
+      textBgColor.value = c.textBgColor ?? textBgColor.value;
+      textBgOpacity.value = c.textBgOpacity ?? textBgOpacity.value;
+      textBgPadding.value = c.textBgPadding ?? textBgPadding.value;
       logoOpacity.value = c.logoOpacity ?? logoOpacity.value;
       logoScale.value = c.logoScale ?? logoScale.value;
       logoRotate.value = c.logoRotate ?? logoRotate.value;
@@ -716,6 +1015,7 @@
       textIsItalic = Boolean(data.textIsItalic);
       customTextPos = data.customTextPos ? { ...data.customTextPos } : null;
       customLogoPos = data.customLogoPos ? { ...data.customLogoPos } : null;
+      syncTextLayerFromControls();
       refreshToggleButtons(); updateOutputValues(); redraw(); pushHistory(); scheduleAutoSave();
     }
 
@@ -735,28 +1035,24 @@
     function deleteSelectedPreset() {
       const name = presetSelect.value || presetName.value.trim();
       if (!name || !presets[name]) { setAutosaveStatus('Preset not found'); return; }
-      delete presets[name]; savePresets(); renderPresetOptions(); if (presetName.value.trim() === name) presetName.value = ''; setAutosaveStatus(`Preset deleted: ${name}`);
+      delete presets[name]; savePresets(); renderPresetOptions();
+      if (presetName.value.trim() === name) presetName.value = '';
+      setAutosaveStatus(`Preset deleted: ${name}`);
     }
 
     function isPointInRotatedText(px, py, bounds) {
       if (!bounds) return false;
-      const dx = px - bounds.x;
-      const dy = py - bounds.y;
-      const cos = Math.cos(-bounds.angle);
-      const sin = Math.sin(-bounds.angle);
-      const lx = dx * cos - dy * sin;
-      const ly = dx * sin + dy * cos;
+      const dx = px - bounds.x, dy = py - bounds.y;
+      const cos = Math.cos(-bounds.angle), sin = Math.sin(-bounds.angle);
+      const lx = dx * cos - dy * sin, ly = dx * sin + dy * cos;
       return lx >= 0 && lx <= bounds.width && ly >= -bounds.ascent && ly <= bounds.descent;
     }
 
     function isPointInRotatedLogo(px, py, bounds) {
       if (!bounds) return false;
-      const dx = px - bounds.cx;
-      const dy = py - bounds.cy;
-      const cos = Math.cos(-bounds.angle);
-      const sin = Math.sin(-bounds.angle);
-      const lx = dx * cos - dy * sin;
-      const ly = dx * sin + dy * cos;
+      const dx = px - bounds.cx, dy = py - bounds.cy;
+      const cos = Math.cos(-bounds.angle), sin = Math.sin(-bounds.angle);
+      const lx = dx * cos - dy * sin, ly = dx * sin + dy * cos;
       return lx >= -bounds.width / 2 && lx <= bounds.width / 2 && ly >= -bounds.height / 2 && ly <= bounds.height / 2;
     }
 
@@ -776,9 +1072,7 @@
         rotateLocalToWorld(textBounds.x, textBounds.y, textBounds.angle, left, bottom)
       ];
       return {
-        type: 'text',
-        center: rotateLocalToWorld(textBounds.x, textBounds.y, textBounds.angle, cx, cy),
-        corners,
+        type: 'text', center: rotateLocalToWorld(textBounds.x, textBounds.y, textBounds.angle, cx, cy), corners,
         rotateHandle: rotateLocalToWorld(textBounds.x, textBounds.y, textBounds.angle, cx, top - 26),
         scaleHandle: rotateLocalToWorld(textBounds.x, textBounds.y, textBounds.angle, right, bottom)
       };
@@ -794,9 +1088,7 @@
         rotateLocalToWorld(logoBounds.cx, logoBounds.cy, logoBounds.angle, -halfW, halfH)
       ];
       return {
-        type: 'logo',
-        center: { x: logoBounds.cx, y: logoBounds.cy },
-        corners,
+        type: 'logo', center: { x: logoBounds.cx, y: logoBounds.cy }, corners,
         rotateHandle: rotateLocalToWorld(logoBounds.cx, logoBounds.cy, logoBounds.angle, 0, -halfH - 30),
         scaleHandle: rotateLocalToWorld(logoBounds.cx, logoBounds.cy, logoBounds.angle, halfW, halfH)
       };
@@ -811,10 +1103,8 @@
     function isPointInPolygon(point, polygon) {
       let inside = false;
       for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
-        const xi = polygon[i].x, yi = polygon[i].y;
-        const xj = polygon[j].x, yj = polygon[j].y;
-        const intersects = ((yi > point.y) !== (yj > point.y)) && (point.x < (xj - xi) * (point.y - yi) / ((yj - yi) || 1e-9) + xi);
-        if (intersects) inside = !inside;
+        const xi = polygon[i].x, yi = polygon[i].y, xj = polygon[j].x, yj = polygon[j].y;
+        if (((yi > point.y) !== (yj > point.y)) && (point.x < (xj - xi) * (point.y - yi) / ((yj - yi) || 1e-9) + xi)) inside = !inside;
       }
       return inside;
     }
@@ -831,15 +1121,10 @@
       const tf = getActiveWatermarkTransformData();
       if (!tf) return;
       ctx.save();
-      ctx.strokeStyle = 'rgba(56, 189, 248, 0.95)';
-      ctx.lineWidth = 1.6;
-      ctx.setLineDash([8, 6]);
-      ctx.beginPath();
-      ctx.moveTo(tf.corners[0].x, tf.corners[0].y);
+      ctx.strokeStyle = 'rgba(56, 189, 248, 0.95)'; ctx.lineWidth = 1.6; ctx.setLineDash([8, 6]);
+      ctx.beginPath(); ctx.moveTo(tf.corners[0].x, tf.corners[0].y);
       for (let i = 1; i < tf.corners.length; i++) ctx.lineTo(tf.corners[i].x, tf.corners[i].y);
-      ctx.closePath();
-      ctx.stroke();
-      ctx.setLineDash([]);
+      ctx.closePath(); ctx.stroke(); ctx.setLineDash([]);
       ctx.strokeStyle = 'rgba(56, 189, 248, 0.9)';
       ctx.beginPath(); ctx.moveTo(tf.center.x, tf.center.y); ctx.lineTo(tf.rotateHandle.x, tf.rotateHandle.y); ctx.stroke();
       ctx.fillStyle = 'rgba(34, 211, 238, 0.95)';
@@ -876,10 +1161,7 @@
 
     function getTextPosition(textWidth, fontSize) {
       if (textPos.value === 'custom' && customTextPos) {
-        return {
-          x: Math.min(Math.max(customTextPos.x, 0), Math.max(0, canvas.width - textWidth)),
-          y: Math.min(Math.max(customTextPos.y, fontSize), canvas.height)
-        };
+        return { x: Math.min(Math.max(customTextPos.x, 0), Math.max(0, canvas.width - textWidth)), y: Math.min(Math.max(customTextPos.y, fontSize), canvas.height) };
       }
       return getDefaultTextPosition(textWidth, fontSize);
     }
@@ -900,10 +1182,7 @@
       if (!logoImg.src) return { x: 0, y: 0 };
       const { width, height } = getLogoSize();
       if (!customLogoPos) customLogoPos = getDefaultLogoPosition();
-      return {
-        x: Math.min(Math.max(customLogoPos.x, width / 2), canvas.width - width / 2),
-        y: Math.min(Math.max(customLogoPos.y, height / 2), canvas.height - height / 2)
-      };
+      return { x: Math.min(Math.max(customLogoPos.x, width / 2), canvas.width - width / 2), y: Math.min(Math.max(customLogoPos.y, height / 2), canvas.height - height / 2) };
     }
 
     function getCanvasPoint(evt) {
@@ -912,35 +1191,109 @@
     }
 
     function drawOriginalBase() { ctx.filter = 'none'; ctx.drawImage(img, 0, 0, canvas.width, canvas.height); }
-    function drawEditedBase() { ctx.filter = `brightness(${brightness.value}%) contrast(${contrast.value}%) saturate(${saturate.value}%)`; ctx.drawImage(img, 0, 0, canvas.width, canvas.height); ctx.filter = 'none'; }
-    function getTextFont(size) { return `${textIsItalic ? 'italic ' : ''}${textIsBold ? '700 ' : '400 '}${size}px ${fontFamily.value}`; }
 
-    function drawTextWatermark() {
-      const text = watermarkText.value.trim();
-      if (!text) { textBounds = null; return; }
-      const fontSize = Number(textSize.value);
-      const angle = Number(textRotate.value) * Math.PI / 180;
-      ctx.font = getTextFont(fontSize);
+    function drawEditedBase() {
+      const filters = [];
+      filters.push(`brightness(${brightness.value}%)`);
+      filters.push(`contrast(${contrast.value}%)`);
+      filters.push(`saturate(${saturate.value}%)`);
+      if (Number(hueRotate.value) !== 0) filters.push(`hue-rotate(${hueRotate.value}deg)`);
+      if (Number(sepiaEl.value) > 0) filters.push(`sepia(${sepiaEl.value}%)`);
+      if (Number(grayscaleEl.value) > 0) filters.push(`grayscale(${grayscaleEl.value}%)`);
+      if (invertColors.checked) filters.push('invert(100%)');
+      if (Number(imgBlurEl.value) > 0) filters.push(`blur(${imgBlurEl.value}px)`);
+      ctx.filter = filters.join(' ');
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      ctx.filter = 'none';
+    }
+
+    function drawVignette() {
+      const vig = Number(vignetteEl.value);
+      if (vig <= 0) return;
+      const cx = canvas.width / 2, cy = canvas.height / 2;
+      const radius = Math.max(cx, cy);
+      const gradient = ctx.createRadialGradient(cx, cy, radius * 0.25, cx, cy, radius);
+      gradient.addColorStop(0, 'rgba(0,0,0,0)');
+      gradient.addColorStop(1, `rgba(0,0,0,${vig / 100})`);
+      ctx.fillStyle = gradient;
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+    }
+
+    function getTextFont(tl) {
+      const size = tl ? tl.size : Number(textSize.value);
+      const bold = tl ? tl.isBold : textIsBold;
+      const italic = tl ? tl.isItalic : textIsItalic;
+      const family = tl ? tl.fontFamily : fontFamily.value;
+      return `${italic ? 'italic ' : ''}${bold ? '700 ' : '400 '}${size}px ${family}`;
+    }
+
+    function drawSingleTextWatermark(tl) {
+      const text = tl.text.trim();
+      if (!text) return;
+      const fontSize = Number(tl.size);
+      const angle = Number(tl.rotation) * Math.PI / 180;
+      ctx.font = getTextFont(tl);
       const metrics = ctx.measureText(text);
       const textWidth = metrics.width;
       const ascent = metrics.actualBoundingBoxAscent || fontSize * 0.8;
       const descent = metrics.actualBoundingBoxDescent || fontSize * 0.2;
-      const { x, y } = getTextPosition(textWidth, fontSize);
-      if (textPos.value === 'custom') customTextPos = { x, y };
+
+      // Position
+      const pad = Math.max(12, Math.round(canvas.width * 0.02));
+      const xRight = canvas.width - textWidth - pad;
+      const yBottom = canvas.height - pad;
+      let x, y;
+      if (tl.pos === 'custom' && tl.customPos) {
+        x = Math.min(Math.max(tl.customPos.x, 0), Math.max(0, canvas.width - textWidth));
+        y = Math.min(Math.max(tl.customPos.y, fontSize), canvas.height);
+      } else {
+        switch (tl.pos) {
+          case 'bottom-left': x = pad; y = yBottom; break;
+          case 'top-right': x = xRight; y = pad + fontSize; break;
+          case 'top-left': x = pad; y = pad + fontSize; break;
+          case 'center': x = (canvas.width - textWidth) / 2; y = canvas.height / 2; break;
+          default: x = xRight; y = yBottom;
+        }
+      }
+
+      // Update the selected text layer's bounds for interaction
+      if (tl.id === selectedTextLayerId) {
+        textBounds = { x, y, width: textWidth, ascent, descent, angle };
+        if (tl.pos === 'custom' && tl.customPos) { /* keep */ }
+      }
+
       ctx.save();
-      ctx.globalAlpha = Number(textOpacity.value) / 100;
+      ctx.globalAlpha = Number(tl.opacity) / 100;
       ctx.translate(x, y);
       ctx.rotate(angle);
-      ctx.shadowColor = textShadowColor.value;
-      ctx.shadowBlur = Number(textShadowBlur.value);
-      ctx.shadowOffsetX = Number(textShadowX.value) || 0;
-      ctx.shadowOffsetY = Number(textShadowY.value) || 0;
-      ctx.fillStyle = '#fff';
-      const strokeW = Number(textStrokeWidth.value);
-      if (strokeW > 0) { ctx.strokeStyle = textStrokeColor.value; ctx.lineWidth = strokeW; ctx.strokeText(text, 0, 0); }
+
+      // BG box
+      if (tl.bgEnabled) {
+        const bgPad = Number(tl.bgPadding);
+        ctx.save();
+        ctx.fillStyle = tl.bgColor;
+        ctx.globalAlpha = Number(tl.bgOpacity) / 100;
+        ctx.fillRect(-bgPad, -ascent - bgPad, textWidth + bgPad * 2, ascent + descent + bgPad * 2);
+        ctx.restore();
+      }
+
+      // Text shadow
+      ctx.shadowColor = tl.shadowColor;
+      ctx.shadowBlur = Number(tl.shadowBlur);
+      ctx.shadowOffsetX = Number(tl.shadowX) || 0;
+      ctx.shadowOffsetY = Number(tl.shadowY) || 0;
+      ctx.fillStyle = tl.color || '#ffffff';
+      const strokeW = Number(tl.strokeWidth);
+      if (strokeW > 0) { ctx.strokeStyle = tl.strokeColor; ctx.lineWidth = strokeW; ctx.strokeText(text, 0, 0); }
       ctx.fillText(text, 0, 0);
       ctx.restore();
-      textBounds = { x, y, width: textWidth, ascent, descent, angle };
+    }
+
+    function drawTextWatermarks() {
+      textBounds = null;
+      // Draw non-selected layers first, selected last (on top)
+      const sorted = [...textLayers.filter(l => l.id !== selectedTextLayerId), ...textLayers.filter(l => l.id === selectedTextLayerId)];
+      sorted.forEach(drawSingleTextWatermark);
     }
 
     function drawLogoWatermark() {
@@ -950,21 +1303,23 @@
       const pos = getLogoPosition();
       customLogoPos = { x: pos.x, y: pos.y };
       const angle = Number(logoRotate.value) * Math.PI / 180;
-      ctx.save();
-      ctx.globalAlpha = Number(logoOpacity.value) / 100;
-      ctx.translate(pos.x, pos.y);
-      ctx.rotate(angle);
+      ctx.save(); ctx.globalAlpha = Number(logoOpacity.value) / 100;
+      ctx.translate(pos.x, pos.y); ctx.rotate(angle);
       ctx.drawImage(logoImg, -width / 2, -height / 2, width, height);
       ctx.restore();
       logoBounds = { cx: pos.x, cy: pos.y, width, height, angle };
     }
 
-    function drawEditedScene() { drawEditedBase(); drawImageLayers(); drawTextWatermark(); drawLogoWatermark(); }
+    function drawOverlay() {
+      if (!drawOverlayCanvas) return;
+      ctx.drawImage(drawOverlayCanvas, 0, 0);
+    }
+
+    function drawEditedScene() { drawEditedBase(); drawVignette(); drawImageLayers(); drawTextWatermarks(); drawLogoWatermark(); drawOverlay(); }
 
     function drawGuidesOverlay() {
       if (!hasImage) return;
-      const drawCenter = showCenterGuides.checked;
-      const drawThirds = showThirdsGuides.checked;
+      const drawCenter = showCenterGuides.checked, drawThirds = showThirdsGuides.checked;
       if (!drawCenter && !drawThirds && activeSnapGuides.length === 0) return;
       ctx.save();
       if (drawThirds) {
@@ -994,18 +1349,17 @@
       if (!cropRect) return;
       const x = Math.min(cropRect.x, cropRect.x + cropRect.width);
       const y = Math.min(cropRect.y, cropRect.y + cropRect.height);
-      const w = Math.abs(cropRect.width);
-      const h = Math.abs(cropRect.height);
+      const w = Math.abs(cropRect.width), h = Math.abs(cropRect.height);
       if (w < 1 || h < 1) return;
-      ctx.save(); ctx.fillStyle = 'rgba(0,0,0,0.45)'; ctx.fillRect(0,0,canvas.width,canvas.height); ctx.clearRect(x,y,w,h);
+      ctx.save(); ctx.fillStyle = 'rgba(0,0,0,0.45)'; ctx.fillRect(0,0,canvas.width,canvas.height);
+      ctx.clearRect(x,y,w,h);
       ctx.strokeStyle = '#60a5fa'; ctx.lineWidth = 2; ctx.setLineDash([8,6]); ctx.strokeRect(x,y,w,h); ctx.restore();
     }
 
     function redraw() {
       if (!hasImage) return;
       ctx.clearRect(0, 0, canvas.width, canvas.height);
-      textBounds = null;
-      logoBounds = null;
+      textBounds = null; logoBounds = null;
       if (previewMode.value === 'original') {
         drawOriginalBase();
       } else if (previewMode.value === 'split') {
@@ -1027,21 +1381,29 @@
       toggleItalic.style.borderColor = textIsItalic ? '#60a5fa' : '#2563eb';
       toggleItalic.style.color = textIsItalic ? '#93c5fd' : '#dbeafe';
     }
+
     function refreshHistoryButtons() { undoBtn.disabled = historyIndex <= 0; redoBtn.disabled = historyIndex < 0 || historyIndex >= history.length - 1; }
     function refreshCropButtons() { cropModeBtn.disabled = !hasImage; applyCropBtn.disabled = !cropMode || !cropRect; cancelCropBtn.disabled = !cropMode; cropModeBtn.textContent = cropMode ? 'Crop ON' : 'Crop mode'; refreshWatermarkEditButton(); }
     function refreshLogoButtons() { const hasLogo = Boolean(logoImg.src); removeLogoBtn.disabled = !hasLogo; centerLogoBtn.disabled = !hasLogo; }
 
     function resetControls() {
-      brightness.value = 100; contrast.value = 100; saturate.value = 100; previewMode.value = 'edited'; splitPos.value = 50;
-      watermarkText.value = '© BlackAngel'; textPos.value = 'bottom-right'; fontFamily.value = 'Arial, sans-serif'; textIsBold = true; textIsItalic = false;
-      textOpacity.value = 45; textSize.value = 30; textRotate.value = 0; textStrokeColor.value = '#000000'; textStrokeWidth.value = 3;
-      textShadowColor.value = '#000000'; textShadowBlur.value = 8; textShadowX.value = 2; textShadowY.value = 2;
+      brightness.value = 100; contrast.value = 100; saturate.value = 100;
+      hueRotate.value = 0; sepiaEl.value = 0; grayscaleEl.value = 0;
+      invertColors.checked = false; imgBlurEl.value = 0; vignetteEl.value = 0;
+      previewMode.value = 'edited'; splitPos.value = 50;
+      textLayers = [createDefaultTextLayer('txt_default')]; selectedTextLayerId = textLayers[0].id;
+      syncControlsFromTextLayer(); refreshTextLayerSelect();
       logoOpacity.value = 60; logoScale.value = 100; logoRotate.value = 0;
       layerOpacity.value = 100; layerScale.value = 100; layerBlend.value = 'source-over'; bgTolerance.value = 45;
       showCenterGuides.checked = true; showThirdsGuides.checked = false; enableSnap.checked = true; snapDistance.value = 12;
       exportFormat.value = 'png'; exportQuality.value = 92;
       customTextPos = null; customLogoPos = null; cropMode = false; isCropping = false; cropRect = null; activeSnapGuides = [];
-      pickBgColorMode = false;
+      pickBgColorMode = false; drawToolMode.value = 'none';
+      eyedropperMode = false; eyedropperBtn.textContent = 'Eyedropper';
+      zoomValue = 100; updateCanvasZoom();
+      addMoreGroup.style.display = 'none';
+      if (drawOverlayCanvas) { drawOverlayCtx.clearRect(0, 0, drawOverlayCanvas.width, drawOverlayCanvas.height); }
+      applyDrawBtn.disabled = true; clearDrawBtn.disabled = true;
       refreshToggleButtons(); refreshCropButtons(); refreshLayerControls(); updateOutputValues(); redraw();
     }
 
@@ -1050,10 +1412,16 @@
         imageSrc: img.src || '', logoSrc: logoImg.src || '',
         controls: {
           previewMode: previewMode.value, splitPos: splitPos.value, brightness: brightness.value, contrast: contrast.value, saturate: saturate.value,
-          watermarkText: watermarkText.value, textPos: textPos.value, fontFamily: fontFamily.value, textIsBold, textIsItalic,
-          textOpacity: textOpacity.value, textSize: textSize.value, textRotate: textRotate.value, textStrokeColor: textStrokeColor.value,
-          textStrokeWidth: textStrokeWidth.value, textShadowColor: textShadowColor.value, textShadowBlur: textShadowBlur.value,
-          textShadowX: textShadowX.value, textShadowY: textShadowY.value, logoOpacity: logoOpacity.value, logoScale: logoScale.value, logoRotate: logoRotate.value,
+          hueRotate: hueRotate.value, sepia: sepiaEl.value, grayscale: grayscaleEl.value,
+          invertColors: invertColors.checked, imgBlur: imgBlurEl.value, vignette: vignetteEl.value,
+          watermarkText: watermarkText.value, textPos: textPos.value, fontFamily: fontFamily.value,
+          textColor: textColor.value, textIsBold, textIsItalic,
+          textOpacity: textOpacity.value, textSize: textSize.value, textRotate: textRotate.value,
+          textStrokeColor: textStrokeColor.value, textStrokeWidth: textStrokeWidth.value,
+          textShadowColor: textShadowColor.value, textShadowBlur: textShadowBlur.value,
+          textShadowX: textShadowX.value, textShadowY: textShadowY.value,
+          textBgEnabled: textBgEnabled.checked, textBgColor: textBgColor.value, textBgOpacity: textBgOpacity.value, textBgPadding: textBgPadding.value,
+          logoOpacity: logoOpacity.value, logoScale: logoScale.value, logoRotate: logoRotate.value,
           showCenterGuides: showCenterGuides.checked, showThirdsGuides: showThirdsGuides.checked, enableSnap: enableSnap.checked, snapDistance: snapDistance.value,
           nudgeTarget: nudgeTarget.value, exportFormat: exportFormat.value, exportQuality: exportQuality.value, bgTolerance: bgTolerance.value
         },
@@ -1061,16 +1429,14 @@
         customLogoPos: customLogoPos ? { ...customLogoPos } : null,
         selectedLayerId,
         layers: imageLayers.map(layer => ({
-          id: layer.id,
-          name: layer.name,
-          src: layer.src,
-          x: layer.x,
-          y: layer.y,
-          scale: layer.scale,
-          opacity: layer.opacity,
-          blendMode: layer.blendMode,
-          bgColor: Array.isArray(layer.bgColor) ? [...layer.bgColor] : null
-        }))
+          id: layer.id, name: layer.name, src: layer.src,
+          x: layer.x, y: layer.y, scale: layer.scale, opacity: layer.opacity,
+          blendMode: layer.blendMode, bgColor: Array.isArray(layer.bgColor) ? [...layer.bgColor] : null
+        })),
+        textLayers: textLayers.map(tl => ({ ...tl, customPos: tl.customPos ? { ...tl.customPos } : null })),
+        selectedTextLayerId,
+        drawOverlayData: drawOverlayCanvas ? drawOverlayCanvas.toDataURL('image/png') : null,
+        zoomValue
       };
     }
 
@@ -1078,13 +1444,21 @@
       const c = snapshot.controls || {};
       previewMode.value = c.previewMode ?? 'edited'; splitPos.value = c.splitPos ?? 50;
       brightness.value = c.brightness ?? 100; contrast.value = c.contrast ?? 100; saturate.value = c.saturate ?? 100;
-      watermarkText.value = c.watermarkText ?? '© BlackAngel'; textPos.value = c.textPos ?? 'bottom-right'; fontFamily.value = c.fontFamily ?? 'Arial, sans-serif';
+      hueRotate.value = c.hueRotate ?? 0; sepiaEl.value = c.sepia ?? 0; grayscaleEl.value = c.grayscale ?? 0;
+      invertColors.checked = c.invertColors ?? false; imgBlurEl.value = c.imgBlur ?? 0; vignetteEl.value = c.vignette ?? 0;
+      watermarkText.value = c.watermarkText ?? '© BlackAngel'; textPos.value = c.textPos ?? 'bottom-right';
+      fontFamily.value = c.fontFamily ?? 'Arial, sans-serif';
+      textColor.value = c.textColor ?? '#ffffff';
       textIsBold = c.textIsBold ?? true; textIsItalic = c.textIsItalic ?? false;
       textOpacity.value = c.textOpacity ?? 45; textSize.value = c.textSize ?? 30; textRotate.value = c.textRotate ?? 0;
       textStrokeColor.value = c.textStrokeColor ?? '#000000'; textStrokeWidth.value = c.textStrokeWidth ?? 3;
-      textShadowColor.value = c.textShadowColor ?? '#000000'; textShadowBlur.value = c.textShadowBlur ?? 8; textShadowX.value = c.textShadowX ?? 2; textShadowY.value = c.textShadowY ?? 2;
+      textShadowColor.value = c.textShadowColor ?? '#000000'; textShadowBlur.value = c.textShadowBlur ?? 8;
+      textShadowX.value = c.textShadowX ?? 2; textShadowY.value = c.textShadowY ?? 2;
+      textBgEnabled.checked = c.textBgEnabled ?? false; textBgColor.value = c.textBgColor ?? '#000000';
+      textBgOpacity.value = c.textBgOpacity ?? 50; textBgPadding.value = c.textBgPadding ?? 8;
       logoOpacity.value = c.logoOpacity ?? 60; logoScale.value = c.logoScale ?? 100; logoRotate.value = c.logoRotate ?? 0;
-      showCenterGuides.checked = c.showCenterGuides ?? true; showThirdsGuides.checked = c.showThirdsGuides ?? false; enableSnap.checked = c.enableSnap ?? true; snapDistance.value = c.snapDistance ?? 12;
+      showCenterGuides.checked = c.showCenterGuides ?? true; showThirdsGuides.checked = c.showThirdsGuides ?? false;
+      enableSnap.checked = c.enableSnap ?? true; snapDistance.value = c.snapDistance ?? 12;
       nudgeTarget.value = c.nudgeTarget ?? 'text'; exportFormat.value = c.exportFormat ?? 'png'; exportQuality.value = c.exportQuality ?? 92;
       bgTolerance.value = c.bgTolerance ?? 45;
       customTextPos = snapshot.customTextPos ? { ...snapshot.customTextPos } : null;
@@ -1102,15 +1476,10 @@
         if (!ok) continue;
         imageLayers.push({
           id: raw.id || `layer_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
-          name: raw.name || 'Layer',
-          src: raw.src,
-          img: layerImg,
-          x: Number(raw.x ?? canvas.width / 2),
-          y: Number(raw.y ?? canvas.height / 2),
-          scale: Number(raw.scale ?? 100),
-          opacity: Math.max(0, Math.min(1, Number(raw.opacity ?? 1))),
-          blendMode: raw.blendMode || 'source-over',
-          bgColor: Array.isArray(raw.bgColor) ? [...raw.bgColor] : null
+          name: raw.name || 'Layer', src: raw.src, img: layerImg,
+          x: Number(raw.x ?? canvas.width / 2), y: Number(raw.y ?? canvas.height / 2),
+          scale: Number(raw.scale ?? 100), opacity: Math.max(0, Math.min(1, Number(raw.opacity ?? 1))),
+          blendMode: raw.blendMode || 'source-over', bgColor: Array.isArray(raw.bgColor) ? [...raw.bgColor] : null
         });
       }
       selectedLayerId = imageLayers.find(l => l.id === selectedLayerId)?.id || (imageLayers[imageLayers.length - 1]?.id || null);
@@ -1120,10 +1489,19 @@
     function loadImageTo(imageEl, src) {
       return new Promise(resolve => {
         if (!src) { imageEl.src = ''; resolve(false); return; }
-        imageEl.onload = () => resolve(true);
-        imageEl.onerror = () => resolve(false);
-        imageEl.src = src;
+        imageEl.onload = () => resolve(true); imageEl.onerror = () => resolve(false); imageEl.src = src;
       });
+    }
+
+    async function loadDrawOverlayFromSnapshot(dataUrl) {
+      if (!drawOverlayCanvas || !dataUrl) return;
+      const tmpImg = new Image();
+      const ok = await loadImageTo(tmpImg, dataUrl);
+      if (ok) {
+        drawOverlayCtx.clearRect(0, 0, drawOverlayCanvas.width, drawOverlayCanvas.height);
+        drawOverlayCtx.drawImage(tmpImg, 0, 0);
+        applyDrawBtn.disabled = false; clearDrawBtn.disabled = false;
+      }
     }
 
     async function applySnapshot(snapshot) {
@@ -1133,12 +1511,26 @@
       await loadImageTo(logoImg, snapshot.logoSrc);
       selectedLayerId = snapshot.selectedLayerId ?? null;
       await loadLayersFromSnapshot(snapshot.layers);
+
+      // Restore text layers
+      if (Array.isArray(snapshot.textLayers) && snapshot.textLayers.length > 0) {
+        textLayers = snapshot.textLayers.map(t => ({ ...createDefaultTextLayer(), ...t }));
+        selectedTextLayerId = snapshot.selectedTextLayerId || textLayers[0].id;
+      } else {
+        textLayers = [createDefaultTextLayer('txt_default')];
+        selectedTextLayerId = textLayers[0].id;
+      }
+      initDrawOverlay();
+      if (snapshot.drawOverlayData) await loadDrawOverlayFromSnapshot(snapshot.drawOverlayData);
+
       setStateControls(snapshot);
-      downloadBtn.disabled = !hasImage;
-      resetBtn.disabled = !hasImage;
+      syncControlsFromTextLayer(); refreshTextLayerSelect();
+      downloadBtn.disabled = !hasImage; resetBtn.disabled = !hasImage; clipboardBtn.disabled = !hasImage;
       cropMode = false; isCropping = false; cropRect = null; activeSnapGuides = [];
       if (!hasImage) watermarkEditMode = false;
-      setDropActive(false); refreshDropHint(); refreshCropButtons(); refreshLogoButtons(); redraw();
+      eyedropperMode = false; eyedropperBtn.textContent = 'Eyedropper';
+      zoomValue = snapshot.zoomValue ?? 100; updateCanvasZoom();
+      setDropActive(false); refreshDropHint(); refreshCropButtons(); refreshLogoButtons(); refreshWatermarkEditButton(); updateResizeInputs(); redraw();
     }
 
     function pushHistory() {
@@ -1166,8 +1558,7 @@
     function applyCrop() {
       if (!hasImage || !cropRect) return;
       const clamped = clampCropRect(cropRect);
-      const w = Math.floor(Math.abs(clamped.width));
-      const h = Math.floor(Math.abs(clamped.height));
+      const w = Math.floor(Math.abs(clamped.width)), h = Math.floor(Math.abs(clamped.height));
       if (w < 5 || h < 5) return;
       const sx = Math.floor(Math.min(clamped.x, clamped.x + clamped.width));
       const sy = Math.floor(Math.min(clamped.y, clamped.y + clamped.height));
@@ -1177,7 +1568,7 @@
         canvas.width = img.naturalWidth; canvas.height = img.naturalHeight; hasImage = true;
         customTextPos = null; customLogoPos = null; cropMode = false; isCropping = false; cropRect = null; activeSnapGuides = [];
         imageLayers = []; selectedLayerId = null; pickBgColorMode = false; refreshLayerControls();
-        refreshCropButtons(); redraw(); pushHistory(); scheduleAutoSave();
+        initDrawOverlay(); refreshCropButtons(); updateResizeInputs(); redraw(); pushHistory(); scheduleAutoSave();
       };
       img.src = temp.toDataURL('image/png');
     }
@@ -1185,18 +1576,121 @@
     function startCropMode() { if (!hasImage) return; cropMode = !cropMode; isCropping = false; cropRect = null; activeSnapGuides = []; refreshCropButtons(); redraw(); }
     function cancelCropMode() { cropMode = false; isCropping = false; cropRect = null; activeSnapGuides = []; refreshCropButtons(); redraw(); }
 
+    // --- Rotate / Flip / Resize ---
+    function rotateImage(degrees) {
+      if (!hasImage) return;
+      const temp = document.createElement('canvas');
+      const tctx = temp.getContext('2d');
+      if (degrees === 90 || degrees === -90) { temp.width = img.naturalHeight; temp.height = img.naturalWidth; }
+      else { temp.width = img.naturalWidth; temp.height = img.naturalHeight; }
+      tctx.translate(temp.width / 2, temp.height / 2);
+      tctx.rotate(degrees * Math.PI / 180);
+      tctx.drawImage(img, -img.naturalWidth / 2, -img.naturalHeight / 2);
+      img.onload = () => {
+        canvas.width = img.naturalWidth; canvas.height = img.naturalHeight;
+        customTextPos = null; customLogoPos = null;
+        initDrawOverlay(); updateResizeInputs(); redraw(); pushHistory(); scheduleAutoSave();
+      };
+      img.src = temp.toDataURL('image/png');
+    }
+
+    function flipImage(horizontal) {
+      if (!hasImage) return;
+      const temp = document.createElement('canvas');
+      const tctx = temp.getContext('2d');
+      temp.width = img.naturalWidth; temp.height = img.naturalHeight;
+      tctx.save();
+      if (horizontal) { tctx.translate(temp.width, 0); tctx.scale(-1, 1); }
+      else { tctx.translate(0, temp.height); tctx.scale(1, -1); }
+      tctx.drawImage(img, 0, 0); tctx.restore();
+      img.onload = () => {
+        canvas.width = img.naturalWidth; canvas.height = img.naturalHeight;
+        initDrawOverlay(); redraw(); pushHistory(); scheduleAutoSave();
+      };
+      img.src = temp.toDataURL('image/png');
+    }
+
+    function updateResizeInputs() {
+      if (!hasImage) return;
+      resizeWidth.value = canvas.width;
+      resizeHeight.value = canvas.height;
+    }
+
+    function applyResize() {
+      if (!hasImage) return;
+      const w = Math.max(1, Math.round(Number(resizeWidth.value)));
+      const h = Math.max(1, Math.round(Number(resizeHeight.value)));
+      if (w === canvas.width && h === canvas.height) return;
+      const temp = document.createElement('canvas'); temp.width = w; temp.height = h;
+      temp.getContext('2d').drawImage(img, 0, 0, w, h);
+      img.onload = () => {
+        canvas.width = w; canvas.height = h;
+        customTextPos = null; customLogoPos = null;
+        initDrawOverlay(); updateResizeInputs(); redraw(); pushHistory(); scheduleAutoSave();
+      };
+      img.src = temp.toDataURL('image/png');
+    }
+
+    // --- Zoom ---
+    function updateCanvasZoom() {
+      const z = zoomValue / 100;
+      if (z === 1) {
+        canvas.style.width = ''; canvas.style.height = '';
+        canvas.classList.remove('zoomed');
+      } else {
+        canvas.style.width = Math.round(canvas.width * z) + 'px';
+        canvas.style.height = Math.round(canvas.height * z) + 'px';
+        canvas.classList.add('zoomed');
+      }
+      zoomLevelSlider.value = zoomValue;
+      outputs.zoomLevel.textContent = zoomValue + '%';
+    }
+
+    // --- Eyedropper ---
+    function eyedropperSample(p) {
+      const probe = document.createElement('canvas'); probe.width = 1; probe.height = 1;
+      const pctx = probe.getContext('2d', { willReadFrequently: true });
+      pctx.drawImage(canvas, Math.floor(p.x), Math.floor(p.y), 1, 1, 0, 0, 1, 1);
+      const px = pctx.getImageData(0, 0, 1, 1).data;
+      lastSampledColor = [px[0], px[1], px[2]];
+      const hex = '#' + [px[0], px[1], px[2]].map(c => c.toString(16).padStart(2, '0')).join('');
+      eyedropperSwatch.style.background = hex;
+      eyedropperHex.textContent = hex;
+      setAutosaveStatus(`Sampled: ${hex}`);
+    }
+
+    // --- Clipboard ---
+    async function copyToClipboard() {
+      if (!hasImage) return;
+      try {
+        const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
+        await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
+        setAutosaveStatus('Copied to clipboard!');
+      } catch { setAutosaveStatus('Clipboard write failed', true); }
+    }
+
+    // --- Event Listeners ---
     uploadInput.addEventListener('change', event => {
       const file = event.target.files?.[0];
-      if (!file) return;
-      loadMainImageFile(file);
-      uploadInput.value = '';
+      if (file) { loadMainImageFile(file); uploadInput.value = ''; }
+    });
+
+    addMoreImages.addEventListener('change', async event => {
+      const files = Array.from(event.target.files || []).filter(isImageFile);
+      if (!hasImage) { setAutosaveStatus('Load base image first', true); addMoreImages.value = ''; return; }
+      for (const file of files) {
+        const reader = new FileReader();
+        const dataUrl = await new Promise(resolve => { reader.onload = () => resolve(reader.result); reader.readAsDataURL(file); });
+        await addLayerFromDataUrl(dataUrl, file.name || 'Layer');
+      }
+      addMoreImages.value = '';
+      if (files.length > 0) setAutosaveStatus(`Added ${files.length} image(s) as layers`);
     });
 
     ['dragenter', 'dragover'].forEach(type => {
       canvasBox.addEventListener(type, event => {
         if (!Array.from(event.dataTransfer?.items || []).some(item => item.kind === 'file')) return;
-        event.preventDefault();
-        setDropActive(true);
+        event.preventDefault(); setDropActive(true);
       });
     });
 
@@ -1206,11 +1700,37 @@
     });
 
     canvasBox.addEventListener('drop', event => {
-      const file = Array.from(event.dataTransfer?.files || []).find(isImageFile);
-      event.preventDefault();
-      setDropActive(false);
-      if (!file) { setAutosaveStatus('Nenašiel sa žiadny image súbor', true); return; }
-      loadMainImageFile(file);
+      const files = Array.from(event.dataTransfer?.files || []).filter(isImageFile);
+      event.preventDefault(); setDropActive(false);
+      if (files.length === 0) { setAutosaveStatus('Nenašiel sa žiadny image súbor', true); return; }
+      if (hasImage) {
+        // Already has base image — add remaining as layers
+        (async () => {
+          for (const file of files) {
+            const reader = new FileReader();
+            const dataUrl = await new Promise(resolve => { reader.onload = () => resolve(reader.result); reader.readAsDataURL(file); });
+            await addLayerFromDataUrl(dataUrl, file.name || 'Layer');
+          }
+          if (files.length > 0) setAutosaveStatus(`Added ${files.length} image(s) as layers`);
+        })();
+      } else {
+        // No base image — first file becomes base, rest become layers
+        loadMainImageFile(files[0]);
+        if (files.length > 1) {
+          const rest = files.slice(1);
+          const waitForBase = setInterval(() => {
+            if (hasImage) {
+              clearInterval(waitForBase);
+              rest.forEach(async file => {
+                const reader = new FileReader();
+                const dataUrl = await new Promise(resolve => { reader.onload = () => resolve(reader.result); reader.readAsDataURL(file); });
+                await addLayerFromDataUrl(dataUrl, file.name || 'Layer');
+              });
+              setAutosaveStatus(`Base + ${rest.length} layer(s) loaded`);
+            }
+          }, 50);
+        }
+      }
     });
 
     window.addEventListener('dragover', event => {
@@ -1221,8 +1741,7 @@
     window.addEventListener('drop', event => {
       if (!Array.from(event.dataTransfer?.items || []).some(item => item.kind === 'file')) return;
       if (canvasBox.contains(event.target)) return;
-      event.preventDefault();
-      setDropActive(false);
+      event.preventDefault(); setDropActive(false);
     });
 
     logoUpload.addEventListener('change', event => {
@@ -1238,19 +1757,127 @@
 
     removeLogoBtn.addEventListener('click', () => { logoImg.src = ''; customLogoPos = null; refreshLogoButtons(); redraw(); pushHistory(); scheduleAutoSave(); });
     centerLogoBtn.addEventListener('click', () => { if (!logoImg.src || !hasImage) return; customLogoPos = { x: canvas.width / 2, y: canvas.height / 2 }; redraw(); pushHistory(); scheduleAutoSave(); });
-    toggleBold.addEventListener('click', () => { textIsBold = !textIsBold; refreshToggleButtons(); redraw(); pushHistory(); scheduleAutoSave(); });
-    toggleItalic.addEventListener('click', () => { textIsItalic = !textIsItalic; refreshToggleButtons(); redraw(); pushHistory(); scheduleAutoSave(); });
 
-    [previewMode, splitPos, brightness, contrast, saturate, watermarkText, textPos, fontFamily, textOpacity, textSize, textRotate, textStrokeColor, textStrokeWidth, textShadowColor, textShadowBlur, textShadowX, textShadowY, logoOpacity, logoScale, logoRotate, showCenterGuides, showThirdsGuides, enableSnap, snapDistance, exportFormat, exportQuality, nudgeTarget, bgTolerance].forEach(el => {
-      el.addEventListener('input', () => {
+    toggleBold.addEventListener('click', () => { textIsBold = !textIsBold; syncTextLayerFromControls(); refreshToggleButtons(); redraw(); pushHistory(); scheduleAutoSave(); });
+    toggleItalic.addEventListener('click', () => { textIsItalic = !textIsItalic; syncTextLayerFromControls(); refreshToggleButtons(); redraw(); pushHistory(); scheduleAutoSave(); });
+
+    // Text layer controls event wiring
+    [watermarkText, textPos, fontFamily, textColor, textOpacity, textSize, textRotate, textStrokeColor, textStrokeWidth, textShadowColor, textShadowBlur, textShadowX, textShadowY, textBgEnabled, textBgColor, textBgOpacity, textBgPadding].forEach(el => {
+      const evt = el.type === 'checkbox' ? 'change' : 'input';
+      el.addEventListener(evt, () => {
         if (el === textPos && textPos.value !== 'custom') customTextPos = null;
-        updateOutputValues(); redraw(); scheduleAutoSave();
+        syncTextLayerFromControls(); updateOutputValues(); redraw(); scheduleAutoSave();
       });
-      el.addEventListener('change', () => {
-        if (el === textPos && textPos.value !== 'custom') customTextPos = null;
-        redraw(); pushHistory(); scheduleAutoSave();
-      });
+      if (evt === 'input') {
+        el.addEventListener('change', () => {
+          if (el === textPos && textPos.value !== 'custom') customTextPos = null;
+          syncTextLayerFromControls(); redraw(); pushHistory(); scheduleAutoSave();
+        });
+      }
     });
+
+    addTextLayerBtn.addEventListener('click', () => {
+      const newLayer = createDefaultTextLayer();
+      newLayer.text = `Text ${textLayers.length + 1}`;
+      textLayers.push(newLayer);
+      selectedTextLayerId = newLayer.id;
+      syncControlsFromTextLayer(); refreshTextLayerSelect(); redraw(); pushHistory(); scheduleAutoSave();
+    });
+
+    removeTextLayerBtn.addEventListener('click', () => {
+      if (textLayers.length <= 1) return;
+      textLayers = textLayers.filter(l => l.id !== selectedTextLayerId);
+      selectedTextLayerId = textLayers[0]?.id || null;
+      syncControlsFromTextLayer(); refreshTextLayerSelect(); redraw(); pushHistory(); scheduleAutoSave();
+    });
+
+    textLayerSelect.addEventListener('change', () => {
+      selectedTextLayerId = textLayerSelect.value || null;
+      syncControlsFromTextLayer(); redraw();
+    });
+
+    // Non-text controls
+    [previewMode, splitPos, brightness, contrast, saturate, hueRotate, sepiaEl, grayscaleEl, imgBlurEl, vignetteEl,
+     showCenterGuides, showThirdsGuides, enableSnap, snapDistance, exportFormat, exportQuality, nudgeTarget, bgTolerance,
+     logoOpacity, logoScale, logoRotate].forEach(el => {
+      el.addEventListener('input', () => { updateOutputValues(); redraw(); scheduleAutoSave(); });
+      el.addEventListener('change', () => { redraw(); pushHistory(); scheduleAutoSave(); });
+    });
+
+    invertColors.addEventListener('change', () => { redraw(); pushHistory(); scheduleAutoSave(); });
+
+    // Transform buttons
+    rotateCwBtn.addEventListener('click', () => rotateImage(90));
+    rotateCcwBtn.addEventListener('click', () => rotateImage(-90));
+    flipHBtn.addEventListener('click', () => flipImage(true));
+    flipVBtn.addEventListener('click', () => flipImage(false));
+    applyResizeBtn.addEventListener('click', applyResize);
+    resizeWidth.addEventListener('input', () => {
+      if (resizeLockAspect.checked && hasImage) {
+        const aspect = canvas.height / canvas.width;
+        resizeHeight.value = Math.round(Number(resizeWidth.value) * aspect);
+      }
+    });
+    resizeHeight.addEventListener('input', () => {
+      if (resizeLockAspect.checked && hasImage) {
+        const aspect = canvas.width / canvas.height;
+        resizeWidth.value = Math.round(Number(resizeHeight.value) * aspect);
+      }
+    });
+
+    // Drawing tools
+    drawToolMode.addEventListener('change', () => {
+      const mode = drawToolMode.value;
+      if (mode !== 'none') {
+        eyedropperMode = false; eyedropperBtn.textContent = 'Eyedropper';
+        if (watermarkEditMode) setWatermarkEditMode(false);
+        if (cropMode) { cropMode = false; refreshCropButtons(); }
+        canvas.style.cursor = 'crosshair';
+      } else {
+        canvas.style.cursor = 'default';
+      }
+    });
+    [drawColor, drawBrushSize, drawBrushOpacity].forEach(el => {
+      el.addEventListener('input', () => { updateOutputValues(); });
+    });
+    applyDrawBtn.addEventListener('click', applyDrawOverlay);
+    clearDrawBtn.addEventListener('click', clearDrawOverlay);
+
+    // Eyedropper
+    eyedropperBtn.addEventListener('click', () => {
+      if (!hasImage) return;
+      eyedropperMode = !eyedropperMode;
+      eyedropperBtn.textContent = eyedropperMode ? 'Eyedropper: ON' : 'Eyedropper';
+      eyedropperBtn.style.borderColor = eyedropperMode ? '#60a5fa' : '#2563eb';
+      eyedropperBtn.style.color = eyedropperMode ? '#93c5fd' : '#dbeafe';
+      if (eyedropperMode) {
+        drawToolMode.value = 'none';
+        if (watermarkEditMode) setWatermarkEditMode(false);
+        if (cropMode) { cropMode = false; refreshCropButtons(); }
+        canvas.style.cursor = 'crosshair';
+      } else {
+        canvas.style.cursor = 'default';
+      }
+    });
+
+    clipboardBtn.addEventListener('click', copyToClipboard);
+
+    // Zoom
+    zoomLevelSlider.addEventListener('input', () => { zoomValue = Number(zoomLevelSlider.value); updateCanvasZoom(); });
+    zoomResetBtn.addEventListener('click', () => { zoomValue = 100; updateCanvasZoom(); });
+
+    canvas.addEventListener('wheel', evt => {
+      if (!hasImage) return;
+      evt.preventDefault();
+      const delta = evt.deltaY > 0 ? -10 : 10;
+      zoomValue = Math.max(10, Math.min(500, zoomValue + delta));
+      updateCanvasZoom();
+    }, { passive: false });
+
+    // Shortcuts modal
+    shortcutsBtn.addEventListener('click', () => { shortcutsModal.hidden = false; });
+    closeShortcutsBtn.addEventListener('click', () => { shortcutsModal.hidden = true; });
+    shortcutsModal.addEventListener('click', evt => { if (evt.target === shortcutsModal) shortcutsModal.hidden = true; });
 
     newThumbBtn.addEventListener('click', createThumbnailCanvas);
 
@@ -1265,15 +1892,10 @@
       layerUpload.value = '';
     });
 
-    layerSelect.addEventListener('change', () => {
-      selectedLayerId = layerSelect.value || null;
-      refreshLayerControls();
-      redraw();
-    });
+    layerSelect.addEventListener('change', () => { selectedLayerId = layerSelect.value || null; refreshLayerControls(); redraw(); });
 
     layerUpBtn.addEventListener('click', () => {
-      const selected = getSelectedLayer();
-      if (!selected) return;
+      const selected = getSelectedLayer(); if (!selected) return;
       const idx = imageLayers.indexOf(selected);
       if (idx < 0 || idx >= imageLayers.length - 1) return;
       [imageLayers[idx], imageLayers[idx + 1]] = [imageLayers[idx + 1], imageLayers[idx]];
@@ -1281,8 +1903,7 @@
     });
 
     layerDownBtn.addEventListener('click', () => {
-      const selected = getSelectedLayer();
-      if (!selected) return;
+      const selected = getSelectedLayer(); if (!selected) return;
       const idx = imageLayers.indexOf(selected);
       if (idx <= 0) return;
       [imageLayers[idx], imageLayers[idx - 1]] = [imageLayers[idx - 1], imageLayers[idx]];
@@ -1290,8 +1911,7 @@
     });
 
     removeLayerBtn.addEventListener('click', () => {
-      const selected = getSelectedLayer();
-      if (!selected) return;
+      const selected = getSelectedLayer(); if (!selected) return;
       imageLayers = imageLayers.filter(l => l.id !== selected.id);
       selectedLayerId = imageLayers[imageLayers.length - 1]?.id || null;
       pickBgColorMode = false;
@@ -1299,57 +1919,86 @@
     });
 
     centerLayerBtn.addEventListener('click', () => {
-      const selected = getSelectedLayer();
-      if (!selected) return;
+      const selected = getSelectedLayer(); if (!selected) return;
       selected.x = canvas.width / 2; selected.y = canvas.height / 2;
       redraw(); pushHistory(); scheduleAutoSave();
     });
 
     layerOpacity.addEventListener('input', () => {
-      const selected = getSelectedLayer();
-      if (!selected) return;
+      const selected = getSelectedLayer(); if (!selected) return;
       selected.opacity = Number(layerOpacity.value) / 100;
       updateOutputValues(); redraw(); scheduleAutoSave();
     });
     layerOpacity.addEventListener('change', () => { if (!getSelectedLayer()) return; pushHistory(); scheduleAutoSave(); });
 
     layerScale.addEventListener('input', () => {
-      const selected = getSelectedLayer();
-      if (!selected) return;
+      const selected = getSelectedLayer(); if (!selected) return;
       selected.scale = Number(layerScale.value);
       updateOutputValues(); redraw(); scheduleAutoSave();
     });
     layerScale.addEventListener('change', () => { if (!getSelectedLayer()) return; pushHistory(); scheduleAutoSave(); });
 
     layerBlend.addEventListener('change', () => {
-      const selected = getSelectedLayer();
-      if (!selected) return;
+      const selected = getSelectedLayer(); if (!selected) return;
       selected.blendMode = layerBlend.value;
       redraw(); pushHistory(); scheduleAutoSave();
     });
 
     pickBgBtn.addEventListener('click', () => {
       if (!getSelectedLayer()) return;
-      pickBgColorMode = !pickBgColorMode;
-      refreshLayerControls();
+      pickBgColorMode = !pickBgColorMode; refreshLayerControls();
       canvas.style.cursor = pickBgColorMode ? 'crosshair' : 'default';
     });
 
     removeBgBtn.addEventListener('click', async () => {
-      const selected = getSelectedLayer();
-      if (!selected) return;
-      await removeBackgroundFromLayer(selected);
-      refreshLayerControls();
+      const selected = getSelectedLayer(); if (!selected) return;
+      await removeBackgroundFromLayer(selected); refreshLayerControls();
     });
 
+    // --- Canvas pointer events ---
     canvas.addEventListener('pointerdown', evt => {
       if (!hasImage) return;
       const p = getCanvasPoint(evt);
+
+      // Eyedropper mode
+      if (eyedropperMode) {
+        eyedropperSample(p); return;
+      }
+
+      // Drawing mode
+      if (drawToolMode.value !== 'none') {
+        isDrawing = true; lastDrawPoint = p;
+        drawBrushStroke(p.x, p.y);
+        canvas.setPointerCapture(evt.pointerId); redraw(); return;
+      }
+
       if (cropMode) {
         isCropping = true; cropRect = { x: p.x, y: p.y, width: 0, height: 0 };
         refreshCropButtons(); redraw(); canvas.setPointerCapture(evt.pointerId); return;
       }
       if (previewMode.value === 'original') return;
+
+      // Check resize handle on selected layer FIRST (handle extends outside bounds)
+      if (!watermarkEditMode && drawToolMode.value === 'none' && !pickBgColorMode) {
+        const selLayer = getSelectedLayer();
+        if (selLayer) {
+          const sb = layerBoundsMap.get(selLayer.id);
+          if (sb) {
+            const handleDist = Math.hypot(p.x - sb.right, p.y - sb.bottom);
+            if (handleDist < 22) {
+              layerResizeDrag = {
+                layerId: selLayer.id,
+                startScale: selLayer.scale ?? 100,
+                startDist: Math.max(1, Math.hypot(p.x - sb.cx, p.y - sb.cy)),
+                centerX: sb.cx, centerY: sb.cy
+              };
+              activeSnapGuides = [];
+              canvas.setPointerCapture(evt.pointerId);
+              redraw(); return;
+            }
+          }
+        }
+      }
 
       const layerHit = getTopLayerAtPoint(p);
       if (pickBgColorMode) {
@@ -1357,23 +2006,16 @@
         if (!layer) return;
         const sampled = sampleLayerColorAtPoint(layer, p);
         if (!sampled) { setAutosaveStatus('Click inside selected layer', true); return; }
-        layer.bgColor = sampled;
-        pickBgColorMode = false;
-        refreshLayerControls();
+        layer.bgColor = sampled; pickBgColorMode = false; refreshLayerControls();
         setAutosaveStatus(`BG color picked rgb(${sampled[0]}, ${sampled[1]}, ${sampled[2]})`);
-        redraw();
-        return;
+        redraw(); return;
       }
 
       if (!watermarkEditMode && layerHit) {
-        selectedLayerId = layerHit.id;
-        refreshLayerControls();
+        selectedLayerId = layerHit.id; refreshLayerControls();
         isDraggingLayer = true;
         layerDragOffset = { x: p.x - layerHit.x, y: p.y - layerHit.y };
-        activeSnapGuides = [];
-        canvas.setPointerCapture(evt.pointerId);
-        redraw();
-        return;
+        activeSnapGuides = []; canvas.setPointerCapture(evt.pointerId); redraw(); return;
       }
 
       if (watermarkEditMode) {
@@ -1387,8 +2029,7 @@
           transformDrag = {
             type: 'logo', mode: hit, center: { ...tf.center },
             dragOffset: { x: p.x - logoBounds.cx, y: p.y - logoBounds.cy },
-            startScale: Number(logoScale.value),
-            startRotate: Number(logoRotate.value),
+            startScale: Number(logoScale.value), startRotate: Number(logoRotate.value),
             startDist: Math.max(1, Math.hypot(p.x - tf.center.x, p.y - tf.center.y)),
             startAngle: Math.atan2(p.y - tf.center.y, p.x - tf.center.x)
           };
@@ -1396,17 +2037,16 @@
           nudgeTarget.value = 'text';
           textPos.value = 'custom';
           customTextPos = { x: textBounds.x, y: textBounds.y };
+          syncTextLayerFromControls();
           transformDrag = {
             type: 'text', mode: hit, center: { ...tf.center },
             dragOffset: { x: p.x - textBounds.x, y: p.y - textBounds.y },
-            startSize: Number(textSize.value),
-            startRotate: Number(textRotate.value),
+            startSize: Number(textSize.value), startRotate: Number(textRotate.value),
             startDist: Math.max(1, Math.hypot(p.x - tf.center.x, p.y - tf.center.y)),
             startAngle: Math.atan2(p.y - tf.center.y, p.x - tf.center.x)
           };
         }
-        canvas.setPointerCapture(evt.pointerId);
-        return;
+        canvas.setPointerCapture(evt.pointerId); return;
       }
 
       if (logoBounds && isPointInRotatedLogo(p.x, p.y, logoBounds)) {
@@ -1418,6 +2058,7 @@
       if (!textBounds || !isPointInRotatedText(p.x, p.y, textBounds)) return;
       isDraggingText = true; activeSnapGuides = []; textPos.value = 'custom'; nudgeTarget.value = 'text';
       customTextPos = { x: textBounds.x, y: textBounds.y };
+      syncTextLayerFromControls();
       dragOffset = { x: p.x - textBounds.x, y: p.y - textBounds.y };
       canvas.setPointerCapture(evt.pointerId);
     });
@@ -1426,28 +2067,39 @@
       if (!hasImage) return;
       const p = getCanvasPoint(evt);
 
+      // Drawing mode
+      if (isDrawing && drawToolMode.value !== 'none') {
+        drawBrushStroke(p.x, p.y);
+        lastDrawPoint = p; redraw(); return;
+      }
+
+      if (layerResizeDrag) {
+        const layer = imageLayers.find(l => l.id === layerResizeDrag.layerId);
+        if (layer) {
+          const dist = Math.max(1, Math.hypot(p.x - layerResizeDrag.centerX, p.y - layerResizeDrag.centerY));
+          const newScale = Math.round(Math.min(500, Math.max(5, layerResizeDrag.startScale * (dist / layerResizeDrag.startDist))));
+          layer.scale = newScale;
+          layerScale.value = String(newScale);
+          updateOutputValues(); redraw();
+        }
+        return;
+      }
+
       if (isDraggingLayer) {
-        const layer = getSelectedLayer();
-        const b = layer ? layerBoundsMap.get(layer.id) : null;
+        const layer = getSelectedLayer(); const b = layer ? layerBoundsMap.get(layer.id) : null;
         if (layer && b) {
-          let x = p.x - layerDragOffset.x;
-          let y = p.y - layerDragOffset.y;
-          const halfW = b.width / 2;
-          const halfH = b.height / 2;
+          let x = p.x - layerDragOffset.x, y = p.y - layerDragOffset.y;
+          const halfW = b.width / 2, halfH = b.height / 2;
           const snap = getSnapResult({ left: x - halfW, right: x + halfW, top: y - halfH, bottom: y + halfH, cx: x, cy: y });
           x += snap.dx; y += snap.dy;
-          layer.x = x; layer.y = y;
-          activeSnapGuides = snap.guides;
-          redraw();
-          return;
+          layer.x = x; layer.y = y; activeSnapGuides = snap.guides; redraw(); return;
         }
       }
 
       if (transformDrag) {
         if (transformDrag.type === 'logo') {
           if (transformDrag.mode === 'move' && logoBounds) {
-            let x = p.x - transformDrag.dragOffset.x;
-            let y = p.y - transformDrag.dragOffset.y;
+            let x = p.x - transformDrag.dragOffset.x, y = p.y - transformDrag.dragOffset.y;
             const halfW = logoBounds.width / 2, halfH = logoBounds.height / 2;
             const snap = getSnapResult({ left: x - halfW, right: x + halfW, top: y - halfH, bottom: y + halfH, cx: x, cy: y });
             x += snap.dx; y += snap.dy; activeSnapGuides = snap.guides;
@@ -1460,15 +2112,11 @@
             const angle = Math.atan2(p.y - transformDrag.center.y, p.x - transformDrag.center.x);
             const deltaDeg = (angle - transformDrag.startAngle) * 180 / Math.PI;
             let value = Math.round(transformDrag.startRotate + deltaDeg);
-            if (value > 180) value -= 360;
-            if (value < -180) value += 360;
-            logoRotate.value = value;
-            updateOutputValues();
+            if (value > 180) value -= 360; if (value < -180) value += 360;
+            logoRotate.value = value; updateOutputValues();
           }
-          redraw();
-          return;
+          redraw(); return;
         }
-
         if (transformDrag.type === 'text' && textBounds) {
           if (transformDrag.mode === 'move') {
             const ascent = textBounds.ascent || Number(textSize.value) * 0.8;
@@ -1480,8 +2128,7 @@
             x += snap.dx; y += snap.dy;
             x = Math.min(Math.max(x, 0), Math.max(0, canvas.width - width));
             y = Math.min(Math.max(y, ascent), canvas.height - descent);
-            activeSnapGuides = snap.guides;
-            customTextPos = { x, y };
+            activeSnapGuides = snap.guides; customTextPos = { x, y };
           } else if (transformDrag.mode === 'scale') {
             const dist = Math.max(1, Math.hypot(p.x - transformDrag.center.x, p.y - transformDrag.center.y));
             textSize.value = Math.round(Math.min(120, Math.max(12, transformDrag.startSize * (dist / transformDrag.startDist))));
@@ -1490,13 +2137,10 @@
             const angle = Math.atan2(p.y - transformDrag.center.y, p.x - transformDrag.center.x);
             const deltaDeg = (angle - transformDrag.startAngle) * 180 / Math.PI;
             let value = Math.round(transformDrag.startRotate + deltaDeg);
-            if (value > 180) value -= 360;
-            if (value < -180) value += 360;
-            textRotate.value = value;
-            updateOutputValues();
+            if (value > 180) value -= 360; if (value < -180) value += 360;
+            textRotate.value = value; updateOutputValues();
           }
-          redraw();
-          return;
+          syncTextLayerFromControls(); redraw(); return;
         }
       }
 
@@ -1513,26 +2157,37 @@
         x += snap.dx; y += snap.dy;
         x = Math.min(Math.max(x, 0), Math.max(0, canvas.width - width));
         y = Math.min(Math.max(y, ascent), canvas.height - descent);
-        activeSnapGuides = snap.guides;
-        customTextPos = { x, y };
-        redraw(); return;
+        activeSnapGuides = snap.guides; customTextPos = { x, y };
+        syncTextLayerFromControls(); redraw(); return;
       }
       if (isDraggingLogo && logoBounds) {
-        let x = p.x - dragOffset.x;
-        let y = p.y - dragOffset.y;
-        const halfW = logoBounds.width / 2;
-        const halfH = logoBounds.height / 2;
+        let x = p.x - dragOffset.x, y = p.y - dragOffset.y;
+        const halfW = logoBounds.width / 2, halfH = logoBounds.height / 2;
         const snap = getSnapResult({ left: x - halfW, right: x + halfW, top: y - halfH, bottom: y + halfH, cx: x, cy: y });
         x += snap.dx; y += snap.dy; activeSnapGuides = snap.guides;
-        customLogoPos = { x, y };
-        redraw(); return;
+        customLogoPos = { x, y }; redraw(); return;
       }
 
+      // Check layer resize handle cursor
+      if (!watermarkEditMode && !pickBgColorMode && !eyedropperMode && drawToolMode.value === 'none') {
+        const selected = getSelectedLayer();
+        if (selected) {
+          const sb = layerBoundsMap.get(selected.id);
+          if (sb) {
+            const handleDist = Math.hypot(p.x - sb.right, p.y - sb.bottom);
+            if (handleDist < 18) { canvas.style.cursor = 'nwse-resize'; activeSnapGuides = []; return; }
+          }
+        }
+      }
       if (watermarkEditMode) {
         const tf = getActiveWatermarkTransformData();
         const hit = tf ? detectTransformHit(p, tf) : null;
         canvas.style.cursor = hit === 'move' ? 'move' : (hit === 'scale' ? 'nwse-resize' : 'crosshair');
       } else if (pickBgColorMode) {
+        canvas.style.cursor = 'crosshair';
+      } else if (eyedropperMode) {
+        canvas.style.cursor = 'crosshair';
+      } else if (drawToolMode.value !== 'none') {
         canvas.style.cursor = 'crosshair';
       } else {
         canvas.style.cursor = getTopLayerAtPoint(p) ? 'move' : 'default';
@@ -1541,24 +2196,124 @@
     });
 
     const stopPointer = evt => {
-      if (isDraggingText || isDraggingLogo || isDraggingLayer || isCropping || transformDrag) {
-        if (evt?.pointerId !== undefined) {
-          try { canvas.releasePointerCapture(evt.pointerId); } catch (_) {}
-        }
+      if (isDrawing) {
+        isDrawing = false; lastDrawPoint = null;
+        if (evt?.pointerId !== undefined) try { canvas.releasePointerCapture(evt.pointerId); } catch (_) {}
+        redraw(); return;
       }
-      const hadAction = isDraggingText || isDraggingLogo || isDraggingLayer || isCropping || Boolean(transformDrag);
-      isDraggingText = false; isDraggingLogo = false; isDraggingLayer = false; isCropping = false; transformDrag = null; activeSnapGuides = [];
-      if (hadAction) { refreshCropButtons(); redraw(); pushHistory(); scheduleAutoSave(); }
+      if (isDraggingText || isDraggingLogo || isDraggingLayer || isCropping || transformDrag || layerResizeDrag) {
+        if (evt?.pointerId !== undefined) try { canvas.releasePointerCapture(evt.pointerId); } catch (_) {}
+      }
+      const hadAction = isDraggingText || isDraggingLogo || isDraggingLayer || isCropping || Boolean(transformDrag) || Boolean(layerResizeDrag);
+      isDraggingText = false; isDraggingLogo = false; isDraggingLayer = false; isCropping = false; transformDrag = null; layerResizeDrag = null; activeSnapGuides = [];
+      if (hadAction) { syncTextLayerFromControls(); refreshLayerControls(); refreshCropButtons(); redraw(); pushHistory(); scheduleAutoSave(); }
     };
 
     canvas.addEventListener('pointerup', stopPointer);
     canvas.addEventListener('pointercancel', stopPointer);
+
+    // --- Inline text typing on canvas (double-click) ---
+    const inlineTextInput = byId('inlineTextInput');
+    let inlineTextCanvasPos = null;
+
+    function showInlineTextInput(canvasP) {
+      if (!hasImage) return;
+      // Convert canvas coords to screen coords
+      const rect = canvas.getBoundingClientRect();
+      const screenX = (canvasP.x / canvas.width) * rect.width + rect.left - canvasBox.getBoundingClientRect().left;
+      const screenY = (canvasP.y / canvas.height) * rect.height + rect.top - canvasBox.getBoundingClientRect().top;
+      inlineTextInput.style.left = screenX + 'px';
+      inlineTextInput.style.top = screenY + 'px';
+      inlineTextInput.style.fontSize = Math.max(14, Math.min(36, Number(textSize.value) * (rect.width / canvas.width))) + 'px';
+      inlineTextInput.style.color = textColor.value || '#fff';
+      inlineTextInput.style.fontFamily = fontFamily.value;
+      inlineTextInput.style.fontWeight = textIsBold ? '700' : '400';
+      inlineTextInput.style.fontStyle = textIsItalic ? 'italic' : 'normal';
+      inlineTextInput.value = '';
+      inlineTextInput.hidden = false;
+      inlineTextInput.focus();
+      inlineTextCanvasPos = { x: canvasP.x, y: canvasP.y };
+    }
+
+    function commitInlineText() {
+      const text = inlineTextInput.value.trim();
+      inlineTextInput.hidden = true;
+      if (!text || !hasImage || !inlineTextCanvasPos) { inlineTextCanvasPos = null; return; }
+      // Create a new text layer at the clicked position
+      const newLayer = createDefaultTextLayer();
+      newLayer.text = text;
+      newLayer.pos = 'custom';
+      newLayer.customPos = { x: inlineTextCanvasPos.x, y: inlineTextCanvasPos.y };
+      newLayer.size = Number(textSize.value);
+      newLayer.color = textColor.value || '#ffffff';
+      newLayer.fontFamily = fontFamily.value;
+      newLayer.isBold = textIsBold;
+      newLayer.isItalic = textIsItalic;
+      textLayers.push(newLayer);
+      selectedTextLayerId = newLayer.id;
+      syncControlsFromTextLayer(); refreshTextLayerSelect(); redraw(); pushHistory(); scheduleAutoSave();
+      setAutosaveStatus('Text added on canvas');
+      inlineTextCanvasPos = null;
+    }
+
+    inlineTextInput.addEventListener('blur', () => { if (!inlineTextInput.hidden) commitInlineText(); });
+    inlineTextInput.addEventListener('keydown', evt => {
+      if (evt.key === 'Enter' && !evt.shiftKey) { evt.preventDefault(); commitInlineText(); }
+      if (evt.key === 'Escape') { inlineTextInput.hidden = true; inlineTextCanvasPos = null; }
+      evt.stopPropagation();
+    });
+
+    canvas.addEventListener('dblclick', evt => {
+      if (!hasImage) return;
+      // Don't trigger if in special modes
+      if (eyedropperMode || drawToolMode.value !== 'none' || cropMode || watermarkEditMode) return;
+      const p = getCanvasPoint(evt);
+      showInlineTextInput(p);
+    });
 
     window.addEventListener('keydown', evt => {
       if (!hasImage) return;
       const tag = (evt.target?.tagName || '').toLowerCase();
       if (tag === 'input' || tag === 'textarea' || tag === 'select') return;
       const key = evt.key;
+
+      // ? for shortcuts
+      if (key === '?' || (evt.shiftKey && key === '/')) {
+        evt.preventDefault(); shortcutsModal.hidden = !shortcutsModal.hidden; return;
+      }
+
+      // Escape to cancel modes
+      if (key === 'Escape') {
+        evt.preventDefault();
+        if (!shortcutsModal.hidden) { shortcutsModal.hidden = true; return; }
+        if (eyedropperMode) { eyedropperMode = false; eyedropperBtn.textContent = 'Eyedropper'; eyedropperBtn.style.borderColor = ''; canvas.style.cursor = 'default'; return; }
+        if (drawToolMode.value !== 'none') { drawToolMode.value = 'none'; canvas.style.cursor = 'default'; return; }
+        if (cropMode) { cancelCropMode(); return; }
+        if (watermarkEditMode) { setWatermarkEditMode(false); return; }
+        return;
+      }
+
+      // Ctrl+Z / Ctrl+Y
+      if (evt.ctrlKey || evt.metaKey) {
+        if (key === 'z' && !evt.shiftKey) { evt.preventDefault(); undo(); return; }
+        if (key === 'z' && evt.shiftKey) { evt.preventDefault(); redo(); return; }
+        if (key === 'y') { evt.preventDefault(); redo(); return; }
+      }
+
+      // Delete/Backspace to remove selected layer
+      if (key === 'Delete' || key === 'Backspace') {
+        evt.preventDefault();
+        const sel = getSelectedLayer();
+        if (sel) {
+          imageLayers = imageLayers.filter(l => l.id !== sel.id);
+          selectedLayerId = imageLayers[imageLayers.length - 1]?.id || null;
+          pickBgColorMode = false;
+          refreshLayerControls(); redraw(); pushHistory(); scheduleAutoSave();
+          setAutosaveStatus('Layer removed');
+        }
+        return;
+      }
+
       if (!['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(key)) return;
       evt.preventDefault();
       const step = evt.shiftKey ? 10 : 1;
@@ -1575,6 +2330,7 @@
         textPos.value = 'custom';
         const current = customTextPos || { x: textBounds.x, y: textBounds.y };
         customTextPos = { x: current.x + dx, y: current.y + dy };
+        syncTextLayerFromControls();
       }
       redraw(); pushHistory(); scheduleAutoSave();
     });
@@ -1589,6 +2345,8 @@
     watermarkEditBtn.addEventListener('click', () => {
       if (!hasImage) return;
       if (cropMode) { cropMode = false; isCropping = false; cropRect = null; refreshCropButtons(); }
+      if (eyedropperMode) { eyedropperMode = false; eyedropperBtn.textContent = 'Eyedropper'; eyedropperBtn.style.borderColor = ''; }
+      drawToolMode.value = 'none';
       setWatermarkEditMode(!watermarkEditMode);
     });
     editAllBtn.addEventListener('click', () => applySectionFilter('all'));
@@ -1617,19 +2375,12 @@
 
     resetBtn.addEventListener('click', () => { resetControls(); pushHistory(); scheduleAutoSave(); });
 
-    refreshToggleButtons();
-    refreshHistoryButtons();
-    refreshCropButtons();
-    refreshLogoButtons();
-    refreshWatermarkEditButton();
-    refreshLayerControls();
-    loadPresets();
-    renderPresetOptions();
-    refreshAutoSaveButtons();
-    updateOutputValues();
-    refreshDropHint();
-    applySectionFilter('all');
-    applyEditorMode('basic');
+    // --- Init ---
+    refreshToggleButtons(); refreshHistoryButtons(); refreshCropButtons(); refreshLogoButtons();
+    refreshWatermarkEditButton(); refreshLayerControls();
+    loadPresets(); renderPresetOptions(); refreshAutoSaveButtons();
+    updateOutputValues(); refreshDropHint();
+    applySectionFilter('all'); applyEditorMode('basic');
     if (localStorage.getItem(AUTO_SAVE_KEY)) restoreAutoSave();
   </script>
 </body>
