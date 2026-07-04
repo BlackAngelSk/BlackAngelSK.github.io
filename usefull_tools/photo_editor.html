@@ -33,6 +33,7 @@
     .group[data-section="crop"] { border-left-color:rgba(248,113,113,.25); }
     .group[data-section="export"] { border-left-color:rgba(52,211,153,.25); }
     .group[data-section="project"] { border-left-color:rgba(96,165,250,.25); }
+    .group[data-section="canvas"] { border-left-color:rgba(56,189,248,.25); }
     .group:hover { border-left-color:rgba(96,165,250,.5); }
     .group-header { display:flex; align-items:center; gap:8px; padding:8px 10px; cursor:pointer; user-select:none; border-radius:10px; transition:background .15s; font-size:.85rem; font-weight:600; color:#cbd5e1; }
     .group-header:hover { background:var(--hover); }
@@ -159,6 +160,20 @@
     .layer-item.locked-layer { border-left:2px solid rgba(251,191,36,.5); }
     .layer-name-input { font-size:.78rem; color:#cbd5e1; background:#0b1220; border:1px solid #60a5fa; border-radius:4px; padding:1px 4px; width:100%; outline:none; }
 
+    /* Context menu */
+    .ctx-menu { position:fixed; z-index:99999; min-width:220px; background:rgba(15,23,42,.97); border:1px solid #334155; border-radius:10px; padding:5px 0; box-shadow:0 12px 40px rgba(0,0,0,.5); backdrop-filter:blur(10px); font-size:.82rem; color:#e2e8f0; display:none; user-select:none; }
+    .ctx-menu.visible { display:block; }
+    .ctx-item { display:flex; align-items:center; gap:10px; padding:8px 16px; cursor:pointer; transition:background .12s; position:relative; }
+    .ctx-item:hover { background:rgba(96,165,250,.15); }
+    .ctx-item.disabled { opacity:.35; cursor:not-allowed; pointer-events:none; }
+    .ctx-item .ctx-icon { width:18px; text-align:center; flex-shrink:0; font-size:.9rem; }
+    .ctx-item .ctx-label { flex:1; }
+    .ctx-item .ctx-arrow { font-size:.6rem; color:#64748b; margin-left:auto; }
+    .ctx-item .ctx-shortcut { font-size:.7rem; color:#64748b; margin-left:12px; }
+    .ctx-sep { height:1px; background:#1e293b; margin:4px 8px; }
+    .ctx-submenu { position:absolute; left:100%; top:-5px; min-width:170px; background:rgba(15,23,42,.97); border:1px solid #334155; border-radius:10px; padding:5px 0; box-shadow:0 8px 30px rgba(0,0,0,.5); display:none; }
+    .ctx-item:hover > .ctx-submenu { display:block; }
+
     @media (max-width:1200px) { .wrap { grid-template-columns:360px 1fr; } .layers-panel { display:none; } }
     @media (max-width:960px) { .wrap { grid-template-columns:1fr; } .canvas-box { min-height:50vh; } }
   </style>
@@ -186,8 +201,9 @@
       </div>
 
       <div class="group" data-section="image"><div class="group-header" onclick="this.parentElement.classList.toggle('collapsed')"><span class="icon">📁</span> Image <span class="arrow">▼</span></div><div class="group-body">
-        <label for="upload">Vyber obrázok</label><input id="upload" type="file" accept="image/*" />
-        <div id="addMoreGroup" style="display:none;margin-top:8px;"><label for="addMoreImages">+ Pridať ďalšie obrázky</label><input id="addMoreImages" type="file" accept="image/*" multiple /><p class="small" style="margin-top:4px;">Pridajú sa ako vrstvy na canvas.</p></div>
+        <label for="upload">Choose image</label><input id="upload" type="file" accept="image/*" />
+        <div id="addMoreGroup" style="display:none;margin-top:8px;"><label for="addMoreImages">+ Add more images</label><input id="addMoreImages" type="file" accept="image/*" multiple /><p class="small" style="margin-top:4px;">They will be added as layers on the canvas.</p></div>
+        <button id="newThumbBtn" class="secondary" style="margin-top:8px;">YouTube 1280×720</button>
         <div class="btn-row" style="margin-top:8px;"><button id="undoBtn" class="secondary" disabled>↩ Undo</button><button id="redoBtn" class="secondary" disabled>↪ Redo</button></div>
       </div></div>
 
@@ -219,8 +235,10 @@
       <div class="group" data-section="transform"><div class="group-header" onclick="this.parentElement.classList.toggle('collapsed')"><span class="icon">🔄</span> Transform <span class="arrow">▼</span></div><div class="group-body">
         <div class="btn-row"><button id="rotateCwBtn" class="secondary">↻ CW 90°</button><button id="rotateCcwBtn" class="secondary">↺ CCW 90°</button></div>
         <div class="btn-row" style="margin-top:6px;"><button id="flipHBtn" class="secondary">⇔ Flip H</button><button id="flipVBtn" class="secondary">⇕ Flip V</button></div>
-        <label style="margin-top:10px;">Resize canvas</label>
-        <div class="inline-grid-2"><div><label for="resizeWidth">W</label><input id="resizeWidth" type="number" min="1" placeholder="px" /></div><div><label for="resizeHeight">H</label><input id="resizeHeight" type="number" min="1" placeholder="px" /></div></div>
+      </div></div>
+
+      <div class="group" data-section="canvas"><div class="group-header" onclick="this.parentElement.classList.toggle('collapsed')"><span class="icon">📐</span> Canvas Size <span class="arrow">▼</span></div><div class="group-body">
+        <div class="inline-grid-2"><div><label for="resizeWidth">Width</label><input id="resizeWidth" type="number" min="1" placeholder="px" /></div><div><label for="resizeHeight">Height</label><input id="resizeHeight" type="number" min="1" placeholder="px" /></div></div>
         <label style="display:flex;align-items:center;gap:8px;margin:6px 0;"><input id="resizeLockAspect" type="checkbox" checked /> Lock ratio</label>
         <button id="applyResizeBtn" class="secondary">Apply resize</button>
       </div></div>
@@ -259,18 +277,6 @@
         <label>Rotation</label><div class="range-line"><input id="logoRotate" type="range" min="-180" max="180" value="0" /><output id="logoRotateOut">0°</output></div>
       </div></div>
 
-      <div class="group" id="layersGroup"><div class="group-header" onclick="this.parentElement.classList.toggle('collapsed')"><span class="icon">📚</span> Layers <span class="arrow">▼</span></div><div class="group-body">
-        <div class="btn-row" style="margin-bottom:6px;"><button id="newThumbBtn" class="secondary">YouTube 1280×720</button><button id="centerLayerBtn" class="secondary" disabled>Center</button></div>
-        <label for="layerUpload">Add image(s)</label><input id="layerUpload" type="file" accept="image/*" multiple />
-        <label for="layerSelect" style="margin-top:8px;">Layers</label><select id="layerSelect" size="5"></select>
-        <div class="btn-row-3" style="margin-top:6px;"><button id="layerUpBtn" class="secondary" disabled>↑ Up</button><button id="layerDownBtn" class="secondary" disabled>↓ Down</button><button id="removeLayerBtn" class="warn" disabled>✕</button></div>
-        <label style="margin-top:8px;">Opacity</label><div class="range-line"><input id="layerOpacity" type="range" min="0" max="100" value="100" /><output id="layerOpacityOut">100%</output></div>
-        <label>Scale</label><div class="range-line"><input id="layerScale" type="range" min="10" max="300" value="100" /><output id="layerScaleOut">100%</output></div>
-        <label for="layerBlend">Blend</label><select id="layerBlend"><option value="source-over">Normal</option><option value="multiply">Multiply</option><option value="screen">Screen</option><option value="overlay">Overlay</option><option value="darken">Darken</option><option value="lighten">Lighten</option></select>
-        <label style="margin-top:8px;">BG tolerance</label><div class="range-line"><input id="bgTolerance" type="range" min="0" max="180" value="45" /><output id="bgToleranceOut">45</output></div>
-        <div class="btn-row"><button id="pickBgBtn" class="secondary" disabled>Pick BG</button><button id="removeBgBtn" class="warn" disabled>Remove BG</button></div>
-        <p id="layerHint" class="small" style="margin-top:6px;">Pick BG → click layer → Remove BG</p>
-      </div></div>
 
       <div class="group" data-section="guides"><div class="group-header" onclick="this.parentElement.classList.toggle('collapsed')"><span class="icon">🧭</span> Guides & Snap <span class="arrow">▼</span></div><div class="group-body">
         <label style="display:flex;align-items:center;gap:8px;margin-bottom:6px;"><input id="showCenterGuides" type="checkbox" checked />Center lines</label>
@@ -336,8 +342,16 @@
 
       <div class="group"><div class="btn-row"><button id="downloadBtn" disabled>⬇ Download</button><button id="resetBtn" class="secondary" disabled>↺ Reset</button></div></div>
     </aside>
-    <section id="canvasBox" class="canvas-box"><div id="canvasInfoBar" class="canvas-info-bar"><span id="infoDims">—</span><span class="sep"></span><span id="infoZoom">100%</span><span class="sep"></span><span id="infoMouse">—</span><span class="sep"></span><span id="infoFormat">—</span></div><canvas id="canvas"></canvas><textarea id="inlineTextInput" class="inline-text-input" placeholder="Type text..." hidden></textarea><div id="dropHint" class="drop-hint"><svg class="empty-state-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m21 15-5-5L5 21"/></svg>Pretiahni obrázok sem alebo použi Vyber obrázok</div></section>
-    <aside id="layersPanel" class="layers-panel"><div class="layers-panel-header"><span class="icon">&#x1f4da;</span> Layers <span id="layersPanelCount" class="count">0</span></div><div id="layersPanelList"></div></aside>
+    <section id="canvasBox" class="canvas-box"><div id="canvasInfoBar" class="canvas-info-bar"><span id="infoDims">—</span><span class="sep"></span><span id="infoZoom">100%</span><span class="sep"></span><span id="infoMouse">—</span><span class="sep"></span><span id="infoFormat">—</span></div><canvas id="canvas" oncontextmenu="return false;"></canvas><textarea id="inlineTextInput" class="inline-text-input" placeholder="Type text..." hidden></textarea><div id="contextMenu" class="ctx-menu"></div><div id="dropHint" class="drop-hint"><svg class="empty-state-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m21 15-5-5L5 21"/></svg>Pretiahni obrázok sem alebo použi Vyber obrázok</div></section>
+    <aside id="layersPanel" class="layers-panel"><div class="layers-panel-header"><span class="icon">&#x1f4da;</span> Layers <span id="layersPanelCount" class="count">0</span></div><div id="layersPanelList"></div><div id="layerControlsSection" style="border-top:1px solid var(--border);padding-top:8px;margin-top:4px;display:none;">
+      <label>Opacity</label><div class="range-line"><input id="layerOpacity" type="range" min="0" max="100" value="100" /><output id="layerOpacityOut">100%</output></div>
+      <label>Scale</label><div class="range-line"><input id="layerScale" type="range" min="10" max="300" value="100" /><output id="layerScaleOut">100%</output></div>
+      <label for="layerBlend">Blend</label><select id="layerBlend"><option value="source-over">Normal</option><option value="multiply">Multiply</option><option value="screen">Screen</option><option value="overlay">Overlay</option><option value="darken">Darken</option><option value="lighten">Lighten</option></select>
+      <div class="btn-row" style="margin-top:6px;"><button id="centerLayerBtn" class="secondary" disabled>Center</button><button id="pickBgBtn" class="secondary" disabled>Pick BG</button></div>
+      <label style="margin-top:6px;">BG tolerance</label><div class="range-line"><input id="bgTolerance" type="range" min="0" max="180" value="45" /><output id="bgToleranceOut">45</output></div>
+      <button id="removeBgBtn" class="warn" style="margin-top:4px;" disabled>Remove BG</button>
+      <p id="layerHint" class="small" style="margin-top:4px;">Select layer → Pick BG → Remove BG</p>
+    </div></aside>
   </div>
 
   <div id="shortcutsModal" class="modal-overlay" hidden>
@@ -438,11 +452,7 @@
     const logoRotate = byId('logoRotate');
     const newThumbBtn = byId('newThumbBtn');
     const centerLayerBtn = byId('centerLayerBtn');
-    const layerUpload = byId('layerUpload');
-    const layerSelect = byId('layerSelect');
-    const layerUpBtn = byId('layerUpBtn');
-    const layerDownBtn = byId('layerDownBtn');
-    const removeLayerBtn = byId('removeLayerBtn');
+    const layerControlsSection = byId('layerControlsSection');
     const layerOpacity = byId('layerOpacity');
     const layerScale = byId('layerScale');
     const layerBlend = byId('layerBlend');
@@ -450,7 +460,6 @@
     const pickBgBtn = byId('pickBgBtn');
     const removeBgBtn = byId('removeBgBtn');
     const layerHint = byId('layerHint');
-    const layersGroup = byId('layersGroup');
     const nudgeTarget = byId('nudgeTarget');
     const watermarkEditBtn = byId('watermarkEditBtn');
     const showCenterGuides = byId('showCenterGuides');
@@ -934,18 +943,9 @@
 
     function refreshLayerControls() {
       const selected = getSelectedLayer();
-      layerSelect.innerHTML = '';
-      imageLayers.forEach(layer => {
-        const option = document.createElement('option');
-        option.value = layer.id; option.textContent = layer.name; option.selected = layer.id === selectedLayerId;
-        layerSelect.appendChild(option);
-      });
       const hasLayer = Boolean(selected);
-      layerUpload.disabled = !hasImage;
-      layerSelect.disabled = imageLayers.length === 0;
-      removeLayerBtn.disabled = !hasLayer;
-      layerUpBtn.disabled = !hasLayer || imageLayers.indexOf(selected) === imageLayers.length - 1;
-      layerDownBtn.disabled = !hasLayer || imageLayers.indexOf(selected) <= 0;
+      // Show/hide layer controls section in right panel
+      if (layerControlsSection) layerControlsSection.style.display = hasLayer ? '' : 'none';
       centerLayerBtn.disabled = !hasLayer;
       layerOpacity.disabled = !hasLayer; layerScale.disabled = !hasLayer; layerBlend.disabled = !hasLayer;
       pickBgBtn.disabled = !hasLayer; removeBgBtn.disabled = !hasLayer;
@@ -956,7 +956,7 @@
       }
       pickBgBtn.textContent = pickBgColorMode ? 'Cancel pick' : 'Pick BG color';
       renderLayersPanel();
-      layerHint.textContent = pickBgColorMode ? 'Click on selected layer area in canvas to sample color.' : 'Select layer → Pick BG color → click on layer → Remove BG.';
+      if (layerHint) layerHint.textContent = pickBgColorMode ? 'Click on selected layer area in canvas to sample color.' : 'Select layer → Pick BG color → click on layer → Remove BG.';
       updateOutputValues();
     }
 
@@ -1083,7 +1083,7 @@
       const groupOf = el => el?.closest('.group');
       return {
         image: [groupOf(previewMode), groupOf(brightness), groupOf(rotateCwBtn), groupOf(resizeWidth), groupOf(drawToolMode), groupOf(eyedropperBtn)],
-        watermark: [groupOf(textLayerSelect), groupOf(watermarkText), groupOf(textBgEnabled), groupOf(logoUpload), layersGroup, groupOf(nudgeTarget)],
+        watermark: [groupOf(textLayerSelect), groupOf(watermarkText), groupOf(textBgEnabled), groupOf(logoUpload), groupOf(nudgeTarget)],
         guides: [groupOf(showCenterGuides)],
         export: [groupOf(cropModeBtn), groupOf(exportFormat), groupOf(downloadBtn)]
       };
@@ -1103,7 +1103,7 @@
       const groupOf = el => el?.closest('.group');
       return new Set([
         groupOf(autosaveStatus), groupOf(presetName), groupOf(previewMode),
-        layersGroup, groupOf(nudgeTarget), groupOf(showCenterGuides), groupOf(cropModeBtn),
+        groupOf(nudgeTarget), groupOf(showCenterGuides), groupOf(cropModeBtn),
         groupOf(resizeWidth), groupOf(drawToolMode), groupOf(eyedropperBtn)
       ].filter(Boolean));
     }
@@ -2260,43 +2260,6 @@
 
     newThumbBtn.addEventListener('click', createThumbnailCanvas);
 
-    layerUpload.addEventListener('change', async event => {
-      const files = Array.from(event.target.files || []).filter(isImageFile);
-      if (!hasImage) { setAutosaveStatus('Load base image first', true); layerUpload.value = ''; return; }
-      for (const file of files) {
-        const reader = new FileReader();
-        const dataUrl = await new Promise(resolve => { reader.onload = () => resolve(reader.result); reader.readAsDataURL(file); });
-        await addLayerFromDataUrl(dataUrl, file.name || 'Layer');
-      }
-      layerUpload.value = '';
-    });
-
-    layerSelect.addEventListener('change', () => { selectedLayerId = layerSelect.value || null; refreshLayerControls(); redraw(); });
-
-    layerUpBtn.addEventListener('click', () => {
-      const selected = getSelectedLayer(); if (!selected) return;
-      const idx = imageLayers.indexOf(selected);
-      if (idx < 0 || idx >= imageLayers.length - 1) return;
-      [imageLayers[idx], imageLayers[idx + 1]] = [imageLayers[idx + 1], imageLayers[idx]];
-      refreshLayerControls(); redraw(); pushHistory(); scheduleAutoSave();
-    });
-
-    layerDownBtn.addEventListener('click', () => {
-      const selected = getSelectedLayer(); if (!selected) return;
-      const idx = imageLayers.indexOf(selected);
-      if (idx <= 0) return;
-      [imageLayers[idx], imageLayers[idx - 1]] = [imageLayers[idx - 1], imageLayers[idx]];
-      refreshLayerControls(); redraw(); pushHistory(); scheduleAutoSave();
-    });
-
-    removeLayerBtn.addEventListener('click', () => {
-      const selected = getSelectedLayer(); if (!selected) return;
-      imageLayers = imageLayers.filter(l => l.id !== selected.id);
-      selectedLayerId = imageLayers[imageLayers.length - 1]?.id || null;
-      pickBgColorMode = false;
-      refreshLayerControls(); redraw(); pushHistory(); scheduleAutoSave();
-    });
-
     centerLayerBtn.addEventListener('click', () => {
       const selected = getSelectedLayer(); if (!selected) return;
       selected.x = canvas.width / 2; selected.y = canvas.height / 2;
@@ -2946,6 +2909,280 @@
       }
       redraw(); pushHistory(); scheduleAutoSave();
     }
+
+    // --- Fit Layer to Canvas ---
+    function fitLayerToCanvas() {
+      const selected = getSelectedLayer();
+      if (!selected || !hasImage || !selected.img?.src) return;
+      const scaleX = canvas.width / selected.img.naturalWidth;
+      const scaleY = canvas.height / selected.img.naturalHeight;
+      const fitScale = Math.min(scaleX, scaleY);
+      selected.scale = Math.round(fitScale * 100);
+      selected.x = canvas.width / 2;
+      selected.y = canvas.height / 2;
+      layerScale.value = String(selected.scale);
+      updateOutputValues(); refreshLayerControls(); redraw(); pushHistory(); scheduleAutoSave();
+      showToast('Layer fitted to canvas', 'success');
+    }
+
+    // --- Context Menu ---
+    const contextMenu = byId('contextMenu');
+    // Move context menu to body so position:fixed works correctly
+    // (backdrop-filter on canvasBox creates a containing block)
+    document.body.appendChild(contextMenu);
+    let ctxMenuCanvasPoint = null;
+
+    function hideContextMenu() {
+      contextMenu.classList.remove('visible');
+      contextMenu.innerHTML = '';
+      ctxMenuCanvasPoint = null;
+    }
+
+    function ctxItem(icon, label, action, opts = {}) {
+      const div = document.createElement('div');
+      div.className = 'ctx-item' + (opts.disabled ? ' disabled' : '');
+      div.innerHTML = '<span class="ctx-icon">' + icon + '</span><span class="ctx-label">' + label + '</span>' +
+        (opts.shortcut ? '<span class="ctx-shortcut">' + opts.shortcut + '</span>' : '') +
+        (opts.hasSubmenu ? '<span class="ctx-arrow">▶</span>' : '');
+      if (opts.disabled) return div;
+      if (action) div.addEventListener('click', (e) => { e.stopPropagation(); hideContextMenu(); action(); });
+      return div;
+    }
+
+    function ctxSeparator() {
+      const div = document.createElement('div');
+      div.className = 'ctx-sep';
+      return div;
+    }
+
+    function ctxSubmenu(icon, label, items) {
+      const wrapper = document.createElement('div');
+      wrapper.className = 'ctx-item';
+      wrapper.innerHTML = '<span class="ctx-icon">' + icon + '</span><span class="ctx-label">' + label + '</span><span class="ctx-arrow">▶</span>';
+      const sub = document.createElement('div');
+      sub.className = 'ctx-submenu';
+      items.forEach(item => {
+        if (item === '---') { sub.appendChild(ctxSeparator()); return; }
+        const si = document.createElement('div');
+        si.className = 'ctx-item' + (item.disabled ? ' disabled' : '');
+        si.innerHTML = '<span class="ctx-icon">' + (item.icon || '') + '</span><span class="ctx-label">' + item.label + '</span>';
+        if (!item.disabled && item.action) {
+          si.addEventListener('click', (e) => { e.stopPropagation(); hideContextMenu(); item.action(); });
+        }
+        sub.appendChild(si);
+      });
+      wrapper.appendChild(sub);
+      return wrapper;
+    }
+
+    function showContextMenu(screenX, screenY, canvasP) {
+      hideContextMenu();
+      ctxMenuCanvasPoint = canvasP;
+      const menu = contextMenu;
+      const selLayer = getSelectedLayer();
+      const hasSelLayer = Boolean(selLayer);
+      const hasSelText = Boolean(getSelectedTextLayer());
+
+      // 1. Copy to Clipboard
+      menu.appendChild(ctxItem('📋', 'Copy to Clipboard', () => copyToClipboard(), { disabled: !hasImage, shortcut: 'Ctrl+C' }));
+
+      // 2. Paste Image as Layer
+      menu.appendChild(ctxItem('📎', 'Paste Image as Layer', async () => {
+        try {
+          const items = await navigator.clipboard.read();
+          for (const item of items) {
+            const imgType = item.types.find(t => t.startsWith('image/'));
+            if (imgType) {
+              const blob = await item.getType(imgType);
+              const reader = new FileReader();
+              reader.onload = () => addLayerFromDataUrl(reader.result, 'Pasted Image');
+              reader.readAsDataURL(blob);
+            }
+          }
+        } catch { showToast('Clipboard read not available', 'error'); }
+      }, { disabled: !hasImage }));
+
+      // 3. Add Text Here
+      menu.appendChild(ctxItem('✏️', 'Add Text Here', () => {
+        if (!hasImage) return;
+        const newLayer = createDefaultTextLayer();
+        newLayer.text = 'Text';
+        newLayer.pos = 'custom';
+        newLayer.customPos = { x: canvasP.x, y: canvasP.y };
+        newLayer.size = Number(textSize.value) || 30;
+        newLayer.color = textColor.value || '#ffffff';
+        textLayers.push(newLayer);
+        selectedTextLayerId = newLayer.id;
+        syncControlsFromTextLayer(); refreshTextLayerSelect(); redraw(); pushHistory(); scheduleAutoSave();
+        showToast('Text layer added', 'success');
+      }, { disabled: !hasImage }));
+
+      // 4. Add Image Layer
+      menu.appendChild(ctxItem('🖼️', 'Add Image Layer', () => {
+        const fileInput = document.createElement('input');
+        fileInput.type = 'file';
+        fileInput.accept = 'image/*';
+        fileInput.addEventListener('change', async (e) => {
+          const file = e.target.files?.[0];
+          if (!file || !hasImage) return;
+          const reader = new FileReader();
+          reader.onload = () => addLayerFromDataUrl(reader.result, file.name || 'Layer');
+          reader.readAsDataURL(file);
+        });
+        fileInput.click();
+      }, { disabled: !hasImage }));
+
+      menu.appendChild(ctxSeparator());
+
+      // 5. Duplicate Layer
+      menu.appendChild(ctxItem('📄', 'Duplicate Layer', () => {
+        if (!selLayer) return;
+        const dup = { ...selLayer, id: 'layer_' + Date.now() + '_' + Math.random().toString(36).slice(2,7), name: (selLayer.name || 'Layer') + ' copy', x: selLayer.x + 20, y: selLayer.y + 20, locked: false };
+        dup.img = selLayer.img;
+        const idx = imageLayers.indexOf(selLayer);
+        imageLayers.splice(idx + 1, 0, dup);
+        selectedLayerId = dup.id;
+        refreshLayerControls(); redraw(); pushHistory(); scheduleAutoSave();
+        showToast('Layer duplicated', 'success');
+      }, { disabled: !hasSelLayer || !hasImage }));
+
+      // 6. Delete Layer
+      menu.appendChild(ctxItem('🗑️', 'Delete Layer', () => {
+        if (!selLayer || selLayer.locked) { if (selLayer?.locked) showToast('Unlock layer first', 'error'); return; }
+        imageLayers = imageLayers.filter(l => l.id !== selLayer.id);
+        selectedLayerId = imageLayers[imageLayers.length - 1]?.id || null;
+        pickBgColorMode = false;
+        refreshLayerControls(); redraw(); pushHistory(); scheduleAutoSave();
+        showToast('Layer deleted', 'info');
+      }, { disabled: !hasSelLayer || !hasImage, shortcut: 'Del' }));
+
+      // 7. Center Layer
+      menu.appendChild(ctxItem('⚖️', 'Center Layer', () => {
+        if (!selLayer) return;
+        selLayer.x = canvas.width / 2;
+        selLayer.y = canvas.height / 2;
+        redraw(); pushHistory(); scheduleAutoSave();
+        showToast('Layer centered', 'success');
+      }, { disabled: !hasSelLayer || !hasImage }));
+
+      // 8. Fit to Canvas
+      menu.appendChild(ctxItem('📐', 'Fit to Canvas', fitLayerToCanvas, { disabled: !hasSelLayer || !hasImage }));
+
+      menu.appendChild(ctxSeparator());
+
+      // 9. Layer Order submenu
+      menu.appendChild(ctxSubmenu('⬆️⬇️', 'Layer Order', [
+        { icon: '⏫', label: 'Bring to Front', disabled: !hasSelLayer || !hasImage, action: () => {
+          const idx = imageLayers.indexOf(selLayer);
+          if (idx < 0 || idx === imageLayers.length - 1) return;
+          imageLayers.splice(idx, 1); imageLayers.push(selLayer);
+          redraw(); pushHistory(); scheduleAutoSave(); showToast('Brought to front', 'info');
+        }},
+        { icon: '🔼', label: 'Move Up', disabled: !hasSelLayer || !hasImage, action: () => {
+          const idx = imageLayers.indexOf(selLayer);
+          if (idx < 0 || idx >= imageLayers.length - 1) return;
+          imageLayers.splice(idx, 1); imageLayers.splice(idx + 1, 0, selLayer);
+          redraw(); pushHistory(); scheduleAutoSave(); showToast('Moved up', 'info');
+        }},
+        { icon: '🔽', label: 'Move Down', disabled: !hasSelLayer || !hasImage, action: () => {
+          const idx = imageLayers.indexOf(selLayer);
+          if (idx <= 0) return;
+          imageLayers.splice(idx, 1); imageLayers.splice(idx - 1, 0, selLayer);
+          redraw(); pushHistory(); scheduleAutoSave(); showToast('Moved down', 'info');
+        }},
+        { icon: '⏬', label: 'Send to Back', disabled: !hasSelLayer || !hasImage, action: () => {
+          const idx = imageLayers.indexOf(selLayer);
+          if (idx <= 0) return;
+          imageLayers.splice(idx, 1); imageLayers.unshift(selLayer);
+          redraw(); pushHistory(); scheduleAutoSave(); showToast('Sent to back', 'info');
+        }}
+      ]));
+
+      // 10. Rotate submenu
+      menu.appendChild(ctxSubmenu('🔄', 'Rotate', [
+        { icon: '↻', label: 'CW 90°', disabled: !hasImage, action: () => rotateImage(90) },
+        { icon: '↺', label: 'CCW 90°', disabled: !hasImage, action: () => rotateImage(-90) }
+      ]));
+
+      // 11. Flip submenu
+      menu.appendChild(ctxSubmenu('⇔', 'Flip', [
+        { icon: '↔', label: 'Flip Horizontal', disabled: !hasImage, action: () => flipImage(true) },
+        { icon: '↕', label: 'Flip Vertical', disabled: !hasImage, action: () => flipImage(false) }
+      ]));
+
+      menu.appendChild(ctxSeparator());
+
+      // 12. Reset Zoom
+      menu.appendChild(ctxItem('🔍', 'Reset Zoom', () => {
+        zoomValue = 100; updateCanvasZoom();
+        showToast('Zoom reset to 100%', 'info');
+      }, { disabled: !hasImage, shortcut: '100%' }));
+
+      // 13. Quick Export
+      menu.appendChild(ctxItem('💾', 'Quick Export', () => {
+        if (!hasImage) return;
+        const format = exportFormat.value;
+        const mime = format === 'png' ? 'image/png' : (format === 'webp' ? 'image/webp' : 'image/jpeg');
+        const extension = format === 'jpeg' ? 'jpg' : format;
+        const quality = Number(exportQuality.value) / 100;
+        const filename = (exportFilename.value || 'edited-image').replace(/[^a-zA-Z0-9_\-]/g, '_');
+        const link = document.createElement('a');
+        link.download = `${filename}.${extension}`;
+        link.href = mime === 'image/png' ? canvas.toDataURL(mime) : canvas.toDataURL(mime, quality);
+        link.click();
+        showToast(`Exported as ${filename}.${extension}`, 'success');
+      }, { disabled: !hasImage, shortcut: 'Ctrl+S' }));
+
+      // 14. Toggle Guides
+      menu.appendChild(ctxItem('📏', 'Toggle Guides', () => {
+        showCenterGuides.checked = !showCenterGuides.checked;
+        showThirdsGuides.checked = showCenterGuides.checked ? showThirdsGuides.checked : false;
+        redraw(); pushHistory(); scheduleAutoSave();
+        showToast(showCenterGuides.checked ? 'Guides shown' : 'Guides hidden', 'info');
+      }, { disabled: !hasImage }));
+
+      // Position the menu
+      menu.style.left = '0px';
+      menu.style.top = '0px';
+      menu.classList.add('visible');
+
+      // Measure and adjust to stay in viewport
+      const menuRect = menu.getBoundingClientRect();
+      const vw = window.innerWidth;
+      const vh = window.innerHeight;
+      let finalX = screenX;
+      let finalY = screenY;
+      if (screenX + menuRect.width > vw - 8) finalX = vw - menuRect.width - 8;
+      if (screenY + menuRect.height > vh - 8) finalY = vh - menuRect.height - 8;
+      if (finalX < 8) finalX = 8;
+      if (finalY < 8) finalY = 8;
+      menu.style.left = finalX + 'px';
+      menu.style.top = finalY + 'px';
+    }
+
+    // Wire up contextmenu on document level - catch all right-clicks on canvas area
+    document.addEventListener('contextmenu', function(evt) {
+      // Only handle right-clicks inside the canvas area
+      if (!canvasBox.contains(evt.target) && evt.target !== canvas) return;
+      evt.preventDefault();
+      if (!hasImage) { hideContextMenu(); return; }
+      var rect = canvas.getBoundingClientRect();
+      var p = {
+        x: (evt.clientX - rect.left) * (canvas.width / rect.width),
+        y: (evt.clientY - rect.top) * (canvas.height / rect.height)
+      };
+      showContextMenu(evt.clientX, evt.clientY, p);
+    }, true); // use capture phase
+
+    // Close context menu on left click anywhere
+    document.addEventListener('click', function(evt) {
+      if (!contextMenu.contains(evt.target)) hideContextMenu();
+    });
+    document.addEventListener('keydown', function(evt) {
+      if (evt.key === 'Escape') hideContextMenu();
+    });
+    // Also close on scroll
+    canvasBox.addEventListener('scroll', hideContextMenu);
 
     // --- Init ---
     refreshToggleButtons(); refreshHistoryButtons(); refreshCropButtons(); refreshLogoButtons();
