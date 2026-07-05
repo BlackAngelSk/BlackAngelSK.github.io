@@ -361,8 +361,11 @@
     <aside id="layersPanel" class="layers-panel"><div class="layers-panel-header"><span class="icon">&#x1f4da;</span> Layers <span id="layersPanelCount" class="count">0</span></div><div id="layersPanelList"></div><div id="layerControlsSection" style="border-top:1px solid var(--border);padding-top:8px;margin-top:4px;display:none;">
       <label>Opacity</label><div class="range-line"><input id="layerOpacity" type="range" min="0" max="100" value="100" /><output id="layerOpacityOut">100%</output></div>
       <label>Scale</label><div class="range-line"><input id="layerScale" type="range" min="10" max="300" value="100" /><output id="layerScaleOut">100%</output></div>
+      <label>Rotation</label><div class="range-line"><input id="layerRotation" type="range" min="-180" max="180" value="0" /><output id="layerRotationOut">0°</output></div>
       <label for="layerBlend">Blend</label><select id="layerBlend"><option value="source-over">Normal</option><option value="multiply">Multiply</option><option value="screen">Screen</option><option value="overlay">Overlay</option><option value="darken">Darken</option><option value="lighten">Lighten</option></select>
       <div class="btn-row" style="margin-top:6px;"><button id="centerLayerBtn" class="secondary" disabled>Center</button><button id="pickBgBtn" class="secondary" disabled>Pick BG</button></div>
+      <div class="btn-row" style="margin-top:6px;"><button id="lockLayerBtn" class="secondary" disabled>🔓 Unlock</button><button id="previewFadeBtn" class="secondary" disabled>▶ Fade</button></div>
+      <div class="btn-row" style="margin-top:6px;"><button id="groupLayerBtn" class="secondary" disabled>Group</button><button id="ungroupLayerBtn" class="secondary" disabled>Ungroup</button></div>
       <label style="margin-top:6px;">BG tolerance</label><div class="range-line"><input id="bgTolerance" type="range" min="0" max="180" value="45" /><output id="bgToleranceOut">45</output></div>
       <button id="removeBgBtn" class="warn" style="margin-top:4px;" disabled>Remove BG</button>
       <p id="layerHint" class="small" style="margin-top:4px;">Select layer → Pick BG → Remove BG</p>
@@ -401,9 +404,8 @@
     const ctx = canvas.getContext('2d');
     // ============================
     // CONFIG: Change your default watermark text here
-    const DEFAULT_WATERMARK_TEXT = '© BlackAngel';
+    const DEFAULT_WATERMARK_TEXT = '@ BlackAngel';
     // ============================
-
     const undoBtn = byId('undoBtn');
     const redoBtn = byId('redoBtn');
     const autosaveStatus = byId('autosaveStatus');
@@ -474,6 +476,7 @@
     const layerControlsSection = byId('layerControlsSection');
     const layerOpacity = byId('layerOpacity');
     const layerScale = byId('layerScale');
+    const layerRotation = byId('layerRotation');
     const layerBlend = byId('layerBlend');
     const bgTolerance = byId('bgTolerance');
     const pickBgBtn = byId('pickBgBtn');
@@ -514,7 +517,24 @@
     const exportFilename = byId('exportFilename');
     const layersPanel = byId('layersPanel');
     const layersPanelList = byId('layersPanelList');
-    const layersPanelCount = byId('layersPanelCount');
+    const lockLayerBtn = byId('lockLayerBtn');
+    const previewFadeBtn = byId('previewFadeBtn');
+    const groupLayerBtn = byId('groupLayerBtn');
+    const ungroupLayerBtn = byId('ungroupLayerBtn');
+    let fadeAnimationId = null;
+
+    // --- Layer Groups ---
+    let layerGroups = {}; // groupId -> { name, color }
+
+    function getLayerGroupMembers(groupId) {
+      return imageLayers.filter(l => l.groupId === groupId);
+    }
+
+    function getSelectedLayerGroup() {
+      const sel = getSelectedLayer();
+      if (!sel || !sel.groupId) return null;
+      return sel.groupId;
+    }
 
     const outputs = {
       splitPos: byId('splitPosOut'), brightness: byId('brightnessOut'), contrast: byId('contrastOut'), saturate: byId('saturateOut'),
@@ -522,7 +542,7 @@
       textOpacity: byId('textOpacityOut'), textSize: byId('textSizeOut'), textRotate: byId('textRotateOut'), textStrokeWidth: byId('textStrokeWidthOut'), textShadowBlur: byId('textShadowBlurOut'),
       textBgOpacity: byId('textBgOpacityOut'), textBgPadding: byId('textBgPaddingOut'),
       logoOpacity: byId('logoOpacityOut'), logoScale: byId('logoScaleOut'), logoRotate: byId('logoRotateOut'), snapDistance: byId('snapDistanceOut'), exportQuality: byId('exportQualityOut'),
-      layerOpacity: byId('layerOpacityOut'), layerScale: byId('layerScaleOut'), bgTolerance: byId('bgToleranceOut'),
+      layerOpacity: byId('layerOpacityOut'), layerScale: byId('layerScaleOut'), layerRotation: byId('layerRotationOut'), bgTolerance: byId('bgToleranceOut'),
       drawBrushSize: byId('drawBrushSizeOut'), drawBrushOpacity: byId('drawBrushOpacityOut'),
       zoomLevel: byId('zoomLevelOut'),
       sharpen: byId('sharpenOut'), temperature: byId('temperatureOut'), tint: byId('tintOut')
@@ -542,6 +562,8 @@
     let isDraggingLogo = false;
     let isDraggingLayer = false;
     let layerResizeDrag = null;
+    let layerRotateDrag = null;
+    let textRotateDrag = null;
     let dragOffset = { x: 0, y: 0 };
     let layerDragOffset = { x: 0, y: 0 };
     let imageLayers = [];
@@ -685,6 +707,7 @@
       outputs.logoRotate.textContent = `${logoRotate.value}°`;
       outputs.layerOpacity.textContent = `${layerOpacity.value}%`;
       outputs.layerScale.textContent = `${layerScale.value}%`;
+      if (outputs.layerRotation) outputs.layerRotation.textContent = `${layerRotation.value}°`;
       outputs.bgTolerance.textContent = `${bgTolerance.value}`;
       outputs.snapDistance.textContent = `${snapDistance.value}px`;
       outputs.exportQuality.textContent = `${exportQuality.value}%`;
@@ -970,9 +993,25 @@
       centerLayerBtn.disabled = !hasLayer;
       layerOpacity.disabled = !hasLayer; layerScale.disabled = !hasLayer; layerBlend.disabled = !hasLayer;
       pickBgBtn.disabled = !hasLayer; removeBgBtn.disabled = !hasLayer;
+      // Lock button
+      lockLayerBtn.disabled = !hasLayer;
+      if (hasLayer) {
+        const locked = selected.locked;
+        lockLayerBtn.textContent = locked ? '🔓 Unlock' : '🔒 Lock';
+      } else {
+        lockLayerBtn.textContent = '🔒 Lock';
+      }
+      // Fade preview button
+      previewFadeBtn.disabled = !hasLayer;
+      // Group buttons
+      const groupId = hasLayer ? (selected.groupId || null) : null;
+      groupLayerBtn.disabled = imageLayers.length < 2;
+      ungroupLayerBtn.disabled = !groupId;
+      groupLayerBtn.textContent = groupId ? '🔗 Group' : '➕ New Group';
       if (hasLayer) {
         layerOpacity.value = String(Math.round((selected.opacity ?? 1) * 100));
         layerScale.value = String(Math.round(selected.scale ?? 100));
+        layerRotation.value = String(Math.round(selected.rotation ?? 0));
         layerBlend.value = selected.blendMode || 'source-over';
       }
       pickBgBtn.textContent = pickBgColorMode ? 'Cancel pick' : 'Pick BG color';
@@ -989,7 +1028,7 @@
       const fit = Math.min(1, Math.min((canvas.width * 0.55) / Math.max(1, layerImg.naturalWidth), (canvas.height * 0.55) / Math.max(1, layerImg.naturalHeight)));
       const layer = {
         id: `layer_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`, name, src: dataUrl, img: layerImg,
-        x: canvas.width / 2, y: canvas.height / 2, scale: Math.round(100 * fit), opacity: 1, blendMode: 'source-over', bgColor: null, visible: true, locked: false
+        x: canvas.width / 2, y: canvas.height / 2, scale: Math.round(100 * fit), opacity: 1, blendMode: 'source-over', bgColor: null, visible: true, locked: false, rotation: 0
       };
       imageLayers.push(layer);
       selectedLayerId = layer.id;
@@ -1022,13 +1061,18 @@
         if (!layer.img?.src || layer.visible === false) return;
         const w = Math.max(1, layer.img.naturalWidth * ((layer.scale ?? 100) / 100));
         const h = Math.max(1, layer.img.naturalHeight * ((layer.scale ?? 100) / 100));
-        const left = layer.x - w / 2; const top = layer.y - h / 2;
+        const cx = layer.x, cy = layer.y;
+        const angle = ((layer.rotation ?? 0) * Math.PI) / 180;
+        const left = cx - w / 2; const top = cy - h / 2;
         ctx.save();
         ctx.globalAlpha = Math.max(0, Math.min(1, layer.opacity ?? 1));
         ctx.globalCompositeOperation = layer.blendMode || 'source-over';
-        ctx.drawImage(layer.img, left, top, w, h);
+        ctx.translate(cx, cy);
+        ctx.rotate(angle);
+        ctx.drawImage(layer.img, -w / 2, -h / 2, w, h);
         ctx.restore();
-        layerBoundsMap.set(layer.id, { left, top, width: w, height: h, right: left + w, bottom: top + h, cx: layer.x, cy: layer.y });
+        // Store rotation-aware bounds for hit-testing
+        layerBoundsMap.set(layer.id, { left, top, width: w, height: h, right: left + w, bottom: top + h, cx, cy, angle, rotation: layer.rotation ?? 0 });
         // Draw letter badges on both sides (editor only, not in export)
         if (previewMode.value !== 'original' && !isExporting) {
           const letter = String.fromCharCode(65 + idx); // A, B, C...
@@ -1037,12 +1081,39 @@
           drawLayerBadge(left + w - 20, top, letter, isSel);
         }
       });
-      // Draw selection border and resize handle (editor only, not in export)
+      // Draw selection border, resize handle, and rotation handle (editor only, not in export)
       const b = selected ? layerBoundsMap.get(selected.id) : null;
       if (b && previewMode.value !== 'original' && !isExporting) {
-        ctx.save(); ctx.strokeStyle = 'rgba(56,189,248,.95)'; ctx.lineWidth = 1.5; ctx.setLineDash([8, 6]);
-        ctx.strokeRect(b.left, b.top, b.width, b.height); ctx.setLineDash([]);
-        ctx.fillStyle = 'rgba(34,211,238,.95)'; ctx.fillRect(b.right - 6, b.bottom - 6, 12, 12); ctx.restore();
+        const angle = b.angle || 0;
+        // Compute rotation handle position (above top-center)
+        const rotHandleDist = 36;
+        const rotHandleX = b.cx + (0) * Math.cos(angle) - (-b.height / 2 - rotHandleDist) * Math.sin(angle);
+        const rotHandleY = b.cy + (0) * Math.sin(angle) + (-b.height / 2 - rotHandleDist) * Math.cos(angle);
+        // Top center of border (in world coords)
+        const topCenterX = b.cx + (0) * Math.cos(angle) - (-b.height / 2) * Math.sin(angle);
+        const topCenterY = b.cy + (0) * Math.sin(angle) + (-b.height / 2) * Math.cos(angle);
+        ctx.save();
+        ctx.translate(b.cx, b.cy);
+        ctx.rotate(angle);
+        ctx.strokeStyle = 'rgba(56,189,248,.95)'; ctx.lineWidth = 1.5; ctx.setLineDash([8, 6]);
+        ctx.strokeRect(-b.width / 2, -b.height / 2, b.width, b.height); ctx.setLineDash([]);
+        // Resize handle (bottom-right)
+        ctx.fillStyle = 'rgba(34,211,238,.95)'; ctx.fillRect(b.width / 2 - 6, b.height / 2 - 6, 12, 12);
+        ctx.restore();
+        // Draw line from top-center to rotation handle
+        ctx.save();
+        ctx.strokeStyle = 'rgba(250,204,21,.9)'; ctx.lineWidth = 1.8;
+        ctx.beginPath(); ctx.moveTo(topCenterX, topCenterY); ctx.lineTo(rotHandleX, rotHandleY); ctx.stroke();
+        // Draw rotation handle circle
+        ctx.fillStyle = 'rgba(250,204,21,.95)';
+        ctx.beginPath(); ctx.arc(rotHandleX, rotHandleY, 8, 0, Math.PI * 2); ctx.fill();
+        // Curved arrow icon inside handle
+        ctx.strokeStyle = 'rgba(15,23,42,.85)'; ctx.lineWidth = 1.8; ctx.lineCap = 'round';
+        ctx.beginPath(); ctx.arc(rotHandleX, rotHandleY + 1, 5, -Math.PI * 0.8, Math.PI * 0.3); ctx.stroke();
+        // Arrow tip
+        ctx.fillStyle = 'rgba(15,23,42,.85)';
+        ctx.beginPath(); ctx.moveTo(rotHandleX + 4.2, rotHandleY - 2.2); ctx.lineTo(rotHandleX + 5.5, rotHandleY + 1); ctx.lineTo(rotHandleX + 2, rotHandleY - 0.8); ctx.fill();
+        ctx.restore();
       }
     }
 
@@ -1050,7 +1121,16 @@
       for (let i = imageLayers.length - 1; i >= 0; i--) {
         const l = imageLayers[i]; const b = layerBoundsMap.get(l.id);
         if (!b) continue;
-        if (p.x >= b.left && p.x <= b.right && p.y >= b.top && p.y <= b.bottom) return l;
+        if (b.angle && b.angle !== 0) {
+          // Rotation-aware hit test: transform point into layer-local space
+          const dx = p.x - b.cx, dy = p.y - b.cy;
+          const cos = Math.cos(-b.angle), sin = Math.sin(-b.angle);
+          const lx = dx * cos - dy * sin, ly = dx * sin + dy * cos;
+          const halfW = b.width / 2, halfH = b.height / 2;
+          if (lx >= -halfW && lx <= halfW && ly >= -halfH && ly <= halfH) return l;
+        } else {
+          if (p.x >= b.left && p.x <= b.right && p.y >= b.top && p.y <= b.bottom) return l;
+        }
       }
       return null;
     }
@@ -1701,6 +1781,37 @@
           drawLayerBadge(badgeX, badgeY, letter, isSelected);
         }
       });
+      // Draw rotation handle for selected text layer (editor only, not in export)
+      if (textBounds && previewMode.value !== 'original' && !isExporting && !watermarkEditMode) {
+        const b = textBounds;
+        const halfH = (b.ascent + b.descent) / 2;
+        const angle = b.angle || 0;
+        const rotHandleDist = 36;
+        const rotHX = b.cx + (0) * Math.cos(angle) - (-halfH - rotHandleDist) * Math.sin(angle);
+        const rotHY = b.cy + (0) * Math.sin(angle) + (-halfH - rotHandleDist) * Math.cos(angle);
+        const topCX = b.cx + (0) * Math.cos(angle) - (-halfH) * Math.sin(angle);
+        const topCY = b.cy + (0) * Math.sin(angle) + (-halfH) * Math.cos(angle);
+        // Selection border
+        ctx.save();
+        ctx.translate(b.cx, b.cy);
+        ctx.rotate(angle);
+        ctx.strokeStyle = 'rgba(56,189,248,.95)'; ctx.lineWidth = 1.5; ctx.setLineDash([8, 6]);
+        ctx.strokeRect(-b.width / 2, -halfH, b.width, b.ascent + b.descent); ctx.setLineDash([]);
+        ctx.restore();
+        // Line from top-center to rotation handle
+        ctx.save();
+        ctx.strokeStyle = 'rgba(250,204,21,.9)'; ctx.lineWidth = 1.8;
+        ctx.beginPath(); ctx.moveTo(topCX, topCY); ctx.lineTo(rotHX, rotHY); ctx.stroke();
+        // Rotation handle circle
+        ctx.fillStyle = 'rgba(250,204,21,.95)';
+        ctx.beginPath(); ctx.arc(rotHX, rotHY, 8, 0, Math.PI * 2); ctx.fill();
+        // Curved arrow icon
+        ctx.strokeStyle = 'rgba(15,23,42,.85)'; ctx.lineWidth = 1.8; ctx.lineCap = 'round';
+        ctx.beginPath(); ctx.arc(rotHX, rotHY + 1, 5, -Math.PI * 0.8, Math.PI * 0.3); ctx.stroke();
+        ctx.fillStyle = 'rgba(15,23,42,.85)';
+        ctx.beginPath(); ctx.moveTo(rotHX + 4.2, rotHY - 2.2); ctx.lineTo(rotHX + 5.5, rotHY + 1); ctx.lineTo(rotHX + 2, rotHY - 0.8); ctx.fill();
+        ctx.restore();
+      }
     }
 
     function drawLogoWatermark() {
@@ -1843,8 +1954,9 @@
         selectedLayerId,
         layers: imageLayers.map(layer => ({
           id: layer.id, name: layer.name, src: layer.src,
-          x: layer.x, y: layer.y, scale: layer.scale, opacity: layer.opacity,
-          blendMode: layer.blendMode, bgColor: Array.isArray(layer.bgColor) ? [...layer.bgColor] : null, visible: layer.visible !== false, locked: layer.locked === true
+          x: layer.x, y: layer.y, scale: layer.scale, opacity: layer.opacity, rotation: layer.rotation ?? 0,
+          blendMode: layer.blendMode, bgColor: Array.isArray(layer.bgColor) ? [...layer.bgColor] : null, visible: layer.visible !== false, locked: layer.locked === true,
+          groupId: layer.groupId || null
         })),
         textLayers: textLayers.map(tl => ({ ...tl, customPos: tl.customPos ? { ...tl.customPos } : null })),
         selectedTextLayerId,
@@ -1892,7 +2004,8 @@
           name: raw.name || 'Layer', src: raw.src, img: layerImg,
           x: Number(raw.x ?? canvas.width / 2), y: Number(raw.y ?? canvas.height / 2),
           scale: Number(raw.scale ?? 100), opacity: Math.max(0, Math.min(1, Number(raw.opacity ?? 1))),
-          blendMode: raw.blendMode || 'source-over', bgColor: Array.isArray(raw.bgColor) ? [...raw.bgColor] : null, visible: raw.visible !== false, locked: raw.locked === true
+          blendMode: raw.blendMode || 'source-over', bgColor: Array.isArray(raw.bgColor) ? [...raw.bgColor] : null, visible: raw.visible !== false, locked: raw.locked === true,
+          rotation: Number(raw.rotation ?? 0), groupId: raw.groupId || null
         });
       }
       selectedLayerId = imageLayers.find(l => l.id === selectedLayerId)?.id || (imageLayers[imageLayers.length - 1]?.id || null);
@@ -2314,6 +2427,12 @@
       updateOutputValues(); redraw(); scheduleAutoSave();
     });
     layerScale.addEventListener('change', () => { if (!getSelectedLayer()) return; pushHistory(); scheduleAutoSave(); });
+    layerRotation.addEventListener('input', () => {
+      const selected = getSelectedLayer(); if (!selected) return;
+      selected.rotation = Number(layerRotation.value);
+      updateOutputValues(); redraw(); scheduleAutoSave();
+    });
+    layerRotation.addEventListener('change', () => { if (!getSelectedLayer()) return; pushHistory(); scheduleAutoSave(); });
 
     layerBlend.addEventListener('change', () => {
       const selected = getSelectedLayer(); if (!selected) return;
@@ -2330,6 +2449,76 @@
     removeBgBtn.addEventListener('click', async () => {
       const selected = getSelectedLayer(); if (!selected) return;
       await removeBackgroundFromLayer(selected); refreshLayerControls();
+    });
+
+    // Lock button in right panel
+    lockLayerBtn.addEventListener('click', () => {
+      const selected = getSelectedLayer(); if (!selected) return;
+      selected.locked = !selected.locked;
+      refreshLayerControls(); redraw(); pushHistory(); scheduleAutoSave();
+      showToast(selected.locked ? 'Layer locked' : 'Layer unlocked', 'info');
+    });
+
+    // Fade preview button - animates opacity pulse
+    previewFadeBtn.addEventListener('click', () => {
+      const selected = getSelectedLayer(); if (!selected) return;
+      if (fadeAnimationId) { cancelAnimationFrame(fadeAnimationId); fadeAnimationId = null; }
+      const targetOpacity = selected.opacity ?? 1;
+      const duration = 1200; // ms for full pulse (0 -> target -> 0 -> target)
+      let startTime = null;
+      selected._fading = true;
+      function fadeStep(timestamp) {
+        if (!startTime) startTime = timestamp;
+        const elapsed = timestamp - startTime;
+        const t = Math.min(elapsed / duration, 1);
+        // Triangle wave: 0->1->0->1
+        const wave = t < 0.25 ? t * 4 : (t < 0.5 ? (0.5 - t) * 4 : (t < 0.75 ? (t - 0.5) * 4 : (1 - t) * 4));
+        selected.opacity = Math.max(0, wave * targetOpacity);
+        layerOpacity.value = String(Math.round(selected.opacity * 100));
+        updateOutputValues(); redraw();
+        if (t < 1) {
+          fadeAnimationId = requestAnimationFrame(fadeStep);
+        } else {
+          selected.opacity = targetOpacity;
+          layerOpacity.value = String(Math.round(targetOpacity * 100));
+          updateOutputValues(); redraw();
+          selected._fading = false;
+          fadeAnimationId = null;
+        }
+      }
+      fadeAnimationId = requestAnimationFrame(fadeStep);
+    });
+
+    // Group button - assigns groupId to selected layer + nearest ungrouped layers
+    groupLayerBtn.addEventListener('click', () => {
+      const selected = getSelectedLayer(); if (!selected || !hasImage) return;
+      if (selected.groupId) {
+        // Already grouped - add all ungrouped layers to this group
+        const gid = selected.groupId;
+        imageLayers.forEach(l => { if (!l.groupId) l.groupId = gid; });
+        showToast('Added all layers to group', 'success');
+      } else {
+        // Create new group with selected layer
+        const gid = `grp_${Date.now()}`;
+        selected.groupId = gid;
+        // Also group any adjacent ungrouped layers that overlap
+        imageLayers.forEach(l => {
+          if (!l.groupId && l.id !== selected.id) {
+            l.groupId = gid;
+          }
+        });
+        showToast('All layers grouped together', 'success');
+      }
+      refreshLayerControls(); pushHistory(); scheduleAutoSave();
+    });
+
+    // Ungroup button - removes groupId from selected layer's group
+    ungroupLayerBtn.addEventListener('click', () => {
+      const selected = getSelectedLayer(); if (!selected || !selected.groupId) return;
+      const gid = selected.groupId;
+      imageLayers.forEach(l => { if (l.groupId === gid) delete l.groupId; });
+      showToast('Group dissolved', 'info');
+      refreshLayerControls(); pushHistory(); scheduleAutoSave();
     });
 
     // --- Canvas pointer events ---
@@ -2355,13 +2544,34 @@
       }
       if (previewMode.value === 'original') return;
 
-      // Check resize handle on selected layer FIRST (handle extends outside bounds)
+      // Check resize handle and rotation handle on selected layer FIRST (handles extend outside bounds)
       if (!watermarkEditMode && drawToolMode.value === 'none' && !pickBgColorMode) {
         const selLayer = getSelectedLayer();
         if (selLayer) {
           const sb = layerBoundsMap.get(selLayer.id);
           if (sb) {
-            const handleDist = Math.hypot(p.x - sb.right, p.y - sb.bottom);
+            const angle = sb.angle || 0;
+            const cosA = Math.cos(angle), sinA = Math.sin(angle);
+            // Rotation handle position
+            const rotHandleDist = 36;
+            const rotHX = sb.cx + (0) * cosA - (-sb.height / 2 - rotHandleDist) * sinA;
+            const rotHY = sb.cy + (0) * sinA + (-sb.height / 2 - rotHandleDist) * cosA;
+            const rotDist = Math.hypot(p.x - rotHX, p.y - rotHY);
+            if (rotDist < 16) {
+              layerRotateDrag = {
+                layerId: selLayer.id,
+                startRotation: selLayer.rotation ?? 0,
+                centerX: sb.cx, centerY: sb.cy,
+                startAngle: Math.atan2(p.y - sb.cy, p.x - sb.cx)
+              };
+              activeSnapGuides = [];
+              canvas.setPointerCapture(evt.pointerId);
+              redraw(); return;
+            }
+            // Resize handle position (bottom-right corner)
+            const rhx = sb.cx + (sb.width / 2) * cosA - (sb.height / 2) * sinA;
+            const rhY = sb.cy + (sb.width / 2) * sinA + (sb.height / 2) * cosA;
+            const handleDist = Math.hypot(p.x - rhx, p.y - rhY);
             if (handleDist < 22) {
               layerResizeDrag = {
                 layerId: selLayer.id,
@@ -2377,7 +2587,26 @@
         }
       }
 
-      // Check text/logo FIRST - text should take priority over image layers
+      // Check text rotation handle FIRST (before text body hit)
+      if (textBounds && !watermarkEditMode) {
+        const tb = textBounds;
+        const halfH = (tb.ascent + tb.descent) / 2;
+        const angle = tb.angle || 0;
+        const rotHandleDist = 36;
+        const rotHX = tb.cx + (0) * Math.cos(angle) - (-halfH - rotHandleDist) * Math.sin(angle);
+        const rotHY = tb.cy + (0) * Math.sin(angle) + (-halfH - rotHandleDist) * Math.cos(angle);
+        if (Math.hypot(p.x - rotHX, p.y - rotHY) < 16) {
+          textRotateDrag = {
+            startRotation: Number(textRotate.value),
+            centerX: tb.cx, centerY: tb.cy,
+            startAngle: Math.atan2(p.y - tb.cy, p.x - tb.cx)
+          };
+          activeSnapGuides = [];
+          canvas.setPointerCapture(evt.pointerId);
+          redraw(); return;
+        }
+      }
+      // Check text/logo - text should take priority over image layers
       if (textBounds && isPointInRotatedText(p.x, p.y, textBounds)) {
         isDraggingText = true; activeSnapGuides = []; textPos.value = 'custom'; nudgeTarget.value = 'text';
         customTextPos = { x: textBounds.x, y: textBounds.y };
@@ -2466,6 +2695,35 @@
         }
         return;
       }
+      if (layerRotateDrag) {
+        const layer = imageLayers.find(l => l.id === layerRotateDrag.layerId);
+        if (layer) {
+          const currentAngle = Math.atan2(p.y - layerRotateDrag.centerY, p.x - layerRotateDrag.centerX);
+          const deltaDeg = (currentAngle - layerRotateDrag.startAngle) * 180 / Math.PI;
+          let newRotation = Math.round(layerRotateDrag.startRotation + deltaDeg);
+          if (newRotation > 180) newRotation -= 360;
+          if (newRotation < -180) newRotation += 360;
+          layer.rotation = newRotation;
+          layerRotation.value = String(newRotation);
+          updateOutputValues(); redraw();
+        }
+        return;
+      }
+      if (textRotateDrag) {
+        const tl = getSelectedTextLayer();
+        if (tl) {
+          const currentAngle = Math.atan2(p.y - textRotateDrag.centerY, p.x - textRotateDrag.centerX);
+          const deltaDeg = (currentAngle - textRotateDrag.startAngle) * 180 / Math.PI;
+          let newRotation = Math.round(textRotateDrag.startRotation + deltaDeg);
+          if (newRotation > 180) newRotation -= 360;
+          if (newRotation < -180) newRotation += 360;
+          tl.rotation = newRotation;
+          textRotate.value = String(newRotation);
+          syncTextLayerFromControls();
+          updateOutputValues(); redraw();
+        }
+        return;
+      }
 
       if (isDraggingLayer) {
         const layer = getSelectedLayer(); const b = layer ? layerBoundsMap.get(layer.id) : null;
@@ -2474,7 +2732,17 @@
           const halfW = b.width / 2, halfH = b.height / 2;
           const snap = getSnapResult({ left: x - halfW, right: x + halfW, top: y - halfH, bottom: y + halfH, cx: x, cy: y });
           x += snap.dx; y += snap.dy;
-          layer.x = x; layer.y = y; activeSnapGuides = snap.guides; redraw(); return;
+          const dx = x - layer.x, dy = y - layer.y;
+          layer.x = x; layer.y = y; activeSnapGuides = snap.guides;
+          // Move grouped layers together
+          if (layer.groupId) {
+            imageLayers.forEach(l => {
+              if (l.id !== layer.id && l.groupId === layer.groupId && !l.locked) {
+                l.x += dx; l.y += dy;
+              }
+            });
+          }
+          redraw(); return;
         }
       }
 
@@ -2550,14 +2818,33 @@
         customLogoPos = { x, y }; redraw(); return;
       }
 
-      // Check layer resize handle cursor
+      // Check layer handles cursor (rotation + resize)
       if (!watermarkEditMode && !pickBgColorMode && !eyedropperMode && drawToolMode.value === 'none') {
         const selected = getSelectedLayer();
         if (selected) {
           const sb = layerBoundsMap.get(selected.id);
           if (sb) {
-            const handleDist = Math.hypot(p.x - sb.right, p.y - sb.bottom);
-            if (handleDist < 18) { canvas.style.cursor = 'nwse-resize'; activeSnapGuides = []; return; }
+            const angle = sb.angle || 0;
+            const cosA = Math.cos(angle), sinA = Math.sin(angle);
+            // Rotation handle cursor (image layers)
+            const rotHandleDist = 36;
+            const rotHX = sb.cx + (0) * cosA - (-sb.height / 2 - rotHandleDist) * sinA;
+            const rotHY = sb.cy + (0) * sinA + (-sb.height / 2 - rotHandleDist) * cosA;
+            if (Math.hypot(p.x - rotHX, p.y - rotHY) < 16) { canvas.style.cursor = 'grab'; activeSnapGuides = []; return; }
+            // Text rotation handle cursor
+            if (textBounds) {
+              const tb = textBounds;
+              const tHalfH = (tb.ascent + tb.descent) / 2;
+              const tAngle = tb.angle || 0;
+              const tRH = 36;
+              const trHX = tb.cx + (0) * Math.cos(tAngle) - (-tHalfH - tRH) * Math.sin(tAngle);
+              const trHY = tb.cy + (0) * Math.sin(tAngle) + (-tHalfH - tRH) * Math.cos(tAngle);
+              if (Math.hypot(p.x - trHX, p.y - trHY) < 16) { canvas.style.cursor = 'grab'; activeSnapGuides = []; return; }
+            }
+            // Resize handle cursor
+            const rhx = sb.cx + (sb.width / 2) * cosA - (sb.height / 2) * sinA;
+            const rhY = sb.cy + (sb.width / 2) * sinA + (sb.height / 2) * cosA;
+            if (Math.hypot(p.x - rhx, p.y - rhY) < 18) { canvas.style.cursor = 'nwse-resize'; activeSnapGuides = []; return; }
           }
         }
       }
@@ -2583,11 +2870,11 @@
         if (evt?.pointerId !== undefined) try { canvas.releasePointerCapture(evt.pointerId); } catch (_) {}
         redraw(); return;
       }
-      if (isDraggingText || isDraggingLogo || isDraggingLayer || isCropping || transformDrag || layerResizeDrag) {
+      if (isDraggingText || isDraggingLogo || isDraggingLayer || isCropping || transformDrag || layerResizeDrag || layerRotateDrag || textRotateDrag) {
         if (evt?.pointerId !== undefined) try { canvas.releasePointerCapture(evt.pointerId); } catch (_) {}
       }
-      const hadAction = isDraggingText || isDraggingLogo || isDraggingLayer || isCropping || Boolean(transformDrag) || Boolean(layerResizeDrag);
-      isDraggingText = false; isDraggingLogo = false; isDraggingLayer = false; isCropping = false; transformDrag = null; layerResizeDrag = null; activeSnapGuides = [];
+      const hadAction = isDraggingText || isDraggingLogo || isDraggingLayer || isCropping || Boolean(transformDrag) || Boolean(layerResizeDrag) || Boolean(layerRotateDrag) || Boolean(textRotateDrag);
+      isDraggingText = false; isDraggingLogo = false; isDraggingLayer = false; isCropping = false; transformDrag = null; layerResizeDrag = null; layerRotateDrag = null; textRotateDrag = null; activeSnapGuides = [];
       if (hadAction) { syncTextLayerFromControls(); refreshLayerControls(); refreshCropButtons(); redraw(); pushHistory(); scheduleAutoSave(); }
     };
 
