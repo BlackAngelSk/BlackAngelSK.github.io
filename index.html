@@ -3,128 +3,74 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>BlackangelSK</title>
-    <script src='title.js'></script>
+    <title>BlackAngelSK — GitHub Pages</title>
+    <meta name="description" content="BlackAngelSK's personal site featuring TF2 MvM guides, Payday 2 builds, tools, and school projects.">
+    <meta name="robots" content="index, follow">
+
+    <!-- Open Graph -->
+    <meta property="og:title" content="BlackAngelSK — GitHub Pages">
+    <meta property="og:description" content="TF2 MvM guides, Payday 2 builds, tools, and school projects.">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://blackangelsk.github.io/">
+    <meta property="og:image" content="https://blackangelsk.github.io/unnamed.png">
+
     <link rel="icon" href="unnamed.png">
     <link rel="stylesheet" href="style.css">
-    <style>
-        body {
-            font-family: 'Courier New', monospace;
-            background-color: #000000;
-            color: #00ff00;
-            margin: 0;
-            padding: 0;
-            text-align: center;
-            position: relative;
-            overflow: hidden;
-            height: 100vh;
-            display: flex;
-            flex-direction: column;
-            justify-content: space-between;
-        }
-        header {
-            background-color: #111111;
-            padding: 20px;
-            font-size: 24px;
-            font-weight: bold;
-            text-transform: uppercase;
-            border-bottom: 2px solid #00ff00;
-        }
-        .container {
-            flex-grow: 1;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            position: relative;
-            z-index: 1;
-        }
-        .link-button {
-            display: inline-block;
-            margin: 10px;
-            padding: 10px 20px;
-            background: #222222;
-            color: #00ff00;
-            text-decoration: none;
-            border: 2px solid #00ff00;
-            font-family: 'Courier New', monospace;
-        }
-        .link-button:hover {
-            background: #00ff00;
-            color: #000000;
-        }
-        .binary-background {
-            position: absolute;
-            left: 0;
-            top: 0;
-            width: 100%;
-            height: 100%; /* fill the main container */
-            overflow: hidden;
-            pointer-events: none;
-            z-index: 0;
-            /* sized and populated by the setup script */
-        }
-        .binary-digit {
-            position: absolute;
-            color: #00ff00;
-            opacity: 0.6;
-            animation: float linear infinite;
-            will-change: transform, opacity;
-        }
-        .binary-digit.glitch {
-            animation: float linear infinite, glitch-flicker 140ms steps(2, end) 2;
-            color: #7cff7c;
-            text-shadow: -2px 0 #00ffaa, 2px 0 #66ff00;
-            filter: brightness(1.35) contrast(1.25);
-        }
-        @keyframes float {
-            0% { transform: translateY(0); opacity: 0.8; }
-            100% { transform: translateY(var(--binary-area-height, 100vh)); opacity: 0; }
-        }
-        @keyframes glitch-flicker {
-            0% { opacity: 1; filter: brightness(1.3); }
-            40% { opacity: 0.35; filter: brightness(2); }
-            70% { opacity: 0.9; filter: contrast(2); }
-            100% { opacity: 1; filter: brightness(1.35); }
-        }
-        footer {
-            background-color: #111111;
-            padding: 10px;
-            font-size: 16px;
-            border-top: 2px solid #00ff00;
-        }
-    </style>
+    <script src="title.js" defer></script>
 </head>
 <body>
+    <a href="#main-content" class="skip-link">Skip to main content</a>
+
     <header>
         BlackangelSK.github.io
     </header>
-    <main class="container">
+
+    <main id="main-content" class="container">
         <div class="binary-background" aria-hidden="true"></div>
-        <h1>MY GitHub Profile </h1>
-        <a href="https://github.com/BlackAngelSk/BlackAngelSK.github.io" class="link-button">GitHub</a>
-        <h1>Team Fortress 2 MAN vs MACHINE (guide) </h1>
-        <a href="ft2/tf2.html" class="link-button">TF2 MVM Buys(in progress)</a>
-        <br>
-        <h1>tools and scripts</h1>
-        <a href="usefull_tools/tools.html" class="link-button">usefull tools</a>
-        <br>
-        <h1>payday 2 (Bulds)</h1>
-        <a href="payday-2/index.html" class="link-button">payday 2</a>
-        <br>
-        <h1>school projects</h1>
-        <a href="hviezodlavov/index.html" class="link-button">hviezodlavov</a>
-        <a href="index221.html" class="link-button">old version of the site</a>
-        <br>
+
+        <h1>Welcome</h1>
+
+        <section>
+            <h2>My GitHub Profile</h2>
+            <a href="https://github.com/BlackAngelSk/BlackAngelSK.github.io" class="link-button">View Source on GitHub</a>
+        </section>
+
+        <section>
+            <h2>Team Fortress 2 — Mann vs Machine (Guide)</h2>
+            <a href="ft2/tf2.html" class="link-button">TF2 MvM Buys (in progress)</a>
+        </section>
+
+        <section>
+            <h2>Tools & Scripts</h2>
+            <a href="usefull_tools/tools.html" class="link-button">Useful Tools</a>
+        </section>
+
+        <section>
+            <h2>Payday 2 Builds</h2>
+            <a href="payday-2/index.html" class="link-button">Payday 2</a>
+        </section>
+
+        <section>
+            <h2>School Projects</h2>
+            <a href="hviezodlavov/index.html" class="link-button">Hviezdoslavov</a>
+            <a href="index221.html" class="link-button">Old Version of the Site</a>
+        </section>
+
+        <noscript>
+            <p>JavaScript is disabled — the binary background animation will not play.</p>
+        </noscript>
     </main>
+
     <footer>
-        © 2026 BlackAngelSK. All Rights Reserved.
+        &copy; 2026 BlackAngelSK. All Rights Reserved.
     </footer>
+
     <script>
-        (function() {
+        (function () {
             const container = document.querySelector('main.container');
             const bg = container.querySelector('.binary-background');
             let glitchStarted = false;
+            let resizeTimer = null;
 
             function setup() {
                 const height = container.clientHeight;
@@ -135,12 +81,17 @@
 
                 // populate digits
                 bg.innerHTML = '';
-                const count = Math.max(200, Math.floor(width / 12));
+                // Reduce particle count on small screens
+                const isMobile = window.matchMedia('(max-width: 600px)').matches;
+                const count = isMobile
+                    ? Math.max(60, Math.floor(width / 18))
+                    : Math.max(200, Math.floor(width / 12));
+
                 for (let i = 0; i < count; i++) {
                     const digit = document.createElement('div');
                     digit.className = 'binary-digit';
                     digit.setAttribute('aria-hidden', 'true');
-                    digit.innerText = Math.random() > 0.5 ? '1' : '0';
+                    digit.textContent = Math.random() > 0.5 ? '1' : '0';
                     digit.style.left = (Math.random() * 100) + '%';
                     digit.style.top = (Math.random() * height) + 'px';
                     digit.style.fontSize = (Math.random() * 20 + 10) + 'px';
@@ -178,9 +129,13 @@
                 setTimeout(loop, 1200);
             }
 
-            window.addEventListener('resize', setup);
+            // Debounced resize handler — avoids full DOM rebuild on every resize tick
+            window.addEventListener('resize', function () {
+                clearTimeout(resizeTimer);
+                resizeTimer = setTimeout(setup, 200);
+            });
+
             document.addEventListener('DOMContentLoaded', setup);
-            // initial call in case script runs after DOMContentLoaded
             if (document.readyState === 'complete' || document.readyState === 'interactive') setup();
             startGlitchLoop();
         })();
