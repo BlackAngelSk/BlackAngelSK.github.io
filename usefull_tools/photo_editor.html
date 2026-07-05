@@ -63,9 +63,9 @@
     /* Labels & inputs */
     label { display:block; font-size:.82rem; margin-bottom:4px; color:#94a3b8; font-weight:500; }
     input[type="range"], input[type="text"], input[type="number"], select, input[type="file"] { width:100%; }
-    input[type="range"] { accent-color:var(--accent); height:6px; -webkit-appearance:none; appearance:none; background:transparent; cursor:pointer; }
+    input[type="range"] { accent-color:var(--accent); -webkit-appearance:none; appearance:none; background:transparent; cursor:pointer; height:20px; margin:0; padding:0; border:none; outline:none; }
     input[type="range"]::-webkit-slider-runnable-track { height:6px; border-radius:3px; background:linear-gradient(to right,var(--accent) 0%,var(--accent) var(--range-pct,50%),var(--slider-track) var(--range-pct,50%),var(--slider-track) 100%); }
-    input[type="range"]::-webkit-slider-thumb { -webkit-appearance:none; width:16px; height:16px; border-radius:50%; background:var(--accent); border:2px solid var(--slider-track); margin-top:-5px; box-shadow:0 1px 4px rgba(0,0,0,.4); transition:transform .12s,box-shadow .12s; }
+    input[type="range"]::-webkit-slider-thumb { -webkit-appearance:none; width:18px; height:18px; border-radius:50%; background:var(--accent); border:2px solid var(--slider-track); margin-top:-6px; box-shadow:0 1px 4px rgba(0,0,0,.4); transition:transform .12s,box-shadow .12s; }
     input[type="range"]::-webkit-slider-thumb:hover { transform:scale(1.2); box-shadow:0 0 0 4px rgba(96,165,250,.2); }
     input[type="range"]::-moz-range-track { height:6px; border-radius:3px; background:var(--slider-track); }
     input[type="range"]::-moz-range-progress { height:6px; border-radius:3px; background:var(--accent); }
@@ -270,7 +270,7 @@
         <div class="inline-grid-2" style="margin-top:8px;"><button id="toggleBold" class="secondary">Bold</button><button id="toggleItalic" class="secondary">Italic</button></div>
         <label for="textColor" style="margin-top:8px;">Farba</label><input id="textColor" type="color" value="#ffffff" />
         <label style="margin-top:8px;">Opacity</label><div class="range-line"><input id="textOpacity" type="range" min="0" max="100" value="45" /><output id="textOpacityOut">45%</output></div>
-        <label>Size</label><div class="range-line"><input id="textSize" type="range" min="12" max="120" value="30" /><output id="textSizeOut">30px</output></div>
+        <label>Size (px)</label><div class="range-line"><input id="textSize" type="number" min="1" max="9999" value="30" /><output id="textSizeOut">30px</output></div>
         <label>Rotation</label><div class="range-line"><input id="textRotate" type="range" min="-180" max="180" value="0" /><output id="textRotateOut">0°</output></div>
         <label for="textStrokeColor">Stroke farba</label><input id="textStrokeColor" type="color" value="#000000" />
         <label style="margin-top:8px;">Stroke hrúbka</label><div class="range-line"><input id="textStrokeWidth" type="range" min="0" max="20" value="3" /><output id="textStrokeWidthOut">3px</output></div>
@@ -399,6 +399,10 @@
     const canvasBox = byId('canvasBox');
     const dropHint = byId('dropHint');
     const ctx = canvas.getContext('2d');
+    // ============================
+    // CONFIG: Change your default watermark text here
+    const DEFAULT_WATERMARK_TEXT = '© BlackAngel';
+    // ============================
 
     const undoBtn = byId('undoBtn');
     const redoBtn = byId('redoBtn');
@@ -533,6 +537,7 @@
     let textIsItalic = false;
     let customTextPos = null;
     let customLogoPos = null;
+    let isExporting = false;
     let isDraggingText = false;
     let isDraggingLogo = false;
     let isDraggingLayer = false;
@@ -570,7 +575,7 @@
     function createDefaultTextLayer(id) {
       return {
         id: id || `txt_${Date.now()}_${Math.random().toString(36).slice(2,7)}`,
-        text: '© BlackAngel', pos: 'bottom-right', fontFamily: 'Arial, sans-serif',
+        text: DEFAULT_WATERMARK_TEXT, pos: 'bottom-right', fontFamily: 'Arial, sans-serif',
         isBold: true, isItalic: false, color: '#ffffff', opacity: 45, size: 30, rotation: 0,
         strokeColor: '#000000', strokeWidth: 3, shadowColor: '#000000', shadowBlur: 8, shadowX: 2, shadowY: 2,
         customPos: null, bgEnabled: false, bgColor: '#000000', bgOpacity: 50, bgPadding: 8,
@@ -690,6 +695,7 @@
       if (outputs.temperature) outputs.temperature.textContent = `${temperatureEl.value}`;
       if (outputs.tint) outputs.tint.textContent = `${tintEl.value}`;
       exportQuality.disabled = exportFormat.value === 'png';
+      updateAllSliderTracks();
     }
 
     function setDropActive(active) { canvasBox.classList.toggle('drag-over', active); }
@@ -1023,16 +1029,17 @@
         ctx.drawImage(layer.img, left, top, w, h);
         ctx.restore();
         layerBoundsMap.set(layer.id, { left, top, width: w, height: h, right: left + w, bottom: top + h, cx: layer.x, cy: layer.y });
-        // Draw letter badges on both sides
-        if (previewMode.value !== 'original') {
+        // Draw letter badges on both sides (editor only, not in export)
+        if (previewMode.value !== 'original' && !isExporting) {
           const letter = String.fromCharCode(65 + idx); // A, B, C...
           const isSel = selected && layer.id === selected.id;
           drawLayerBadge(left, top, letter, isSel);
           drawLayerBadge(left + w - 20, top, letter, isSel);
         }
       });
+      // Draw selection border and resize handle (editor only, not in export)
       const b = selected ? layerBoundsMap.get(selected.id) : null;
-      if (b && previewMode.value !== 'original') {
+      if (b && previewMode.value !== 'original' && !isExporting) {
         ctx.save(); ctx.strokeStyle = 'rgba(56,189,248,.95)'; ctx.lineWidth = 1.5; ctx.setLineDash([8, 6]);
         ctx.strokeRect(b.left, b.top, b.width, b.height); ctx.setLineDash([]);
         ctx.fillStyle = 'rgba(34,211,238,.95)'; ctx.fillRect(b.right - 6, b.bottom - 6, 12, 12); ctx.restore();
@@ -1335,10 +1342,12 @@
 
     function isPointInRotatedText(px, py, bounds) {
       if (!bounds) return false;
-      const dx = px - bounds.x, dy = py - bounds.y;
+      const halfW = bounds.width / 2;
+      const halfH = (bounds.ascent + bounds.descent) / 2;
+      const dx = px - bounds.cx, dy = py - bounds.cy;
       const cos = Math.cos(-bounds.angle), sin = Math.sin(-bounds.angle);
       const lx = dx * cos - dy * sin, ly = dx * sin + dy * cos;
-      return lx >= 0 && lx <= bounds.width && ly >= -bounds.ascent && ly <= bounds.descent;
+      return lx >= -halfW && lx <= halfW && ly >= -halfH && ly <= halfH;
     }
 
     function isPointInRotatedLogo(px, py, bounds) {
@@ -1356,18 +1365,19 @@
 
     function getTextTransformData() {
       if (!textBounds) return null;
-      const left = 0, right = textBounds.width, top = -textBounds.ascent, bottom = textBounds.descent;
-      const cx = textBounds.width / 2, cy = (top + bottom) / 2;
+      const halfW = textBounds.width / 2;
+      const halfH = (textBounds.ascent + textBounds.descent) / 2;
+      const oX = textBounds.cx, oY = textBounds.cy;
       const corners = [
-        rotateLocalToWorld(textBounds.x, textBounds.y, textBounds.angle, left, top),
-        rotateLocalToWorld(textBounds.x, textBounds.y, textBounds.angle, right, top),
-        rotateLocalToWorld(textBounds.x, textBounds.y, textBounds.angle, right, bottom),
-        rotateLocalToWorld(textBounds.x, textBounds.y, textBounds.angle, left, bottom)
+        rotateLocalToWorld(oX, oY, textBounds.angle, -halfW, -halfH),
+        rotateLocalToWorld(oX, oY, textBounds.angle, halfW, -halfH),
+        rotateLocalToWorld(oX, oY, textBounds.angle, halfW, halfH),
+        rotateLocalToWorld(oX, oY, textBounds.angle, -halfW, halfH)
       ];
       return {
-        type: 'text', center: rotateLocalToWorld(textBounds.x, textBounds.y, textBounds.angle, cx, cy), corners,
-        rotateHandle: rotateLocalToWorld(textBounds.x, textBounds.y, textBounds.angle, cx, top - 26),
-        scaleHandle: rotateLocalToWorld(textBounds.x, textBounds.y, textBounds.angle, right, bottom)
+        type: 'text', center: { x: oX, y: oY }, corners,
+        rotateHandle: rotateLocalToWorld(oX, oY, textBounds.angle, 0, -halfH - 26),
+        scaleHandle: rotateLocalToWorld(oX, oY, textBounds.angle, halfW, halfH)
       };
     }
 
@@ -1635,36 +1645,43 @@
         }
       }
 
+      // Calculate center of text bounding box for center-based rotation
+      const halfW = textWidth / 2;
+      const halfH = (ascent + descent) / 2;
+      const cx = x + halfW;
+      const cy = y + (descent - ascent) / 2;
+
       // Update the selected text layer's bounds for interaction
       if (tl.id === selectedTextLayerId) {
-        textBounds = { x, y, width: textWidth, ascent, descent, angle };
+        textBounds = { x, y, cx, cy, width: textWidth, ascent, descent, angle };
         if (tl.pos === 'custom' && tl.customPos) { /* keep */ }
       }
 
       ctx.save();
       ctx.globalAlpha = Number(tl.opacity) / 100;
-      ctx.translate(x, y);
+      ctx.translate(cx, cy);
       ctx.rotate(angle);
 
-      // BG box
+      // BG box (drawn relative to center)
       if (tl.bgEnabled) {
         const bgPad = Number(tl.bgPadding);
         ctx.save();
         ctx.fillStyle = tl.bgColor;
         ctx.globalAlpha = Number(tl.bgOpacity) / 100;
-        ctx.fillRect(-bgPad, -ascent - bgPad, textWidth + bgPad * 2, ascent + descent + bgPad * 2);
+        ctx.fillRect(-halfW - bgPad, -halfH - bgPad, textWidth + bgPad * 2, ascent + descent + bgPad * 2);
         ctx.restore();
       }
 
-      // Text shadow
+      // Text shadow (drawn relative to center - baseline is at halfH from top)
+      const baselineY = halfH - descent;
       ctx.shadowColor = tl.shadowColor;
       ctx.shadowBlur = Number(tl.shadowBlur);
       ctx.shadowOffsetX = Number(tl.shadowX) || 0;
       ctx.shadowOffsetY = Number(tl.shadowY) || 0;
       ctx.fillStyle = tl.color || '#ffffff';
       const strokeW = Number(tl.strokeWidth);
-      if (strokeW > 0) { ctx.strokeStyle = tl.strokeColor; ctx.lineWidth = strokeW; ctx.strokeText(text, 0, 0); }
-      ctx.fillText(text, 0, 0);
+      if (strokeW > 0) { ctx.strokeStyle = tl.strokeColor; ctx.lineWidth = strokeW; ctx.strokeText(text, -halfW, baselineY); }
+      ctx.fillText(text, -halfW, baselineY);
       ctx.restore();
     }
 
@@ -1675,8 +1692,8 @@
       const layerOffset = imageLayers.length; // letters continue after image layers
       sorted.forEach((tl, idx) => {
         drawSingleTextWatermark(tl);
-        // Draw letter badge for text layer
-        if (previewMode.value !== 'original' && tl.text.trim() && textBounds) {
+        // Draw letter badge for text layer (editor only, not in export)
+        if (previewMode.value !== 'original' && !isExporting && tl.text.trim() && textBounds) {
           const letter = String.fromCharCode(65 + layerOffset + idx);
           const isSelected = tl.id === selectedTextLayerId;
           const badgeX = textBounds.x + textBounds.width + 6;
@@ -1760,8 +1777,11 @@
       } else {
         drawEditedScene();
       }
-      drawGuidesOverlay();
-      drawWatermarkTransformOverlay();
+      // Guide lines and transform overlay are editor-only (not in export)
+      if (!isExporting) {
+        drawGuidesOverlay();
+        drawWatermarkTransformOverlay();
+      }
       if (cropMode) drawCropOverlay();
     }
 
@@ -1839,7 +1859,7 @@
       brightness.value = c.brightness ?? 100; contrast.value = c.contrast ?? 100; saturate.value = c.saturate ?? 100;
       hueRotate.value = c.hueRotate ?? 0; sepiaEl.value = c.sepia ?? 0; grayscaleEl.value = c.grayscale ?? 0;
       invertColors.checked = c.invertColors ?? false; imgBlurEl.value = c.imgBlur ?? 0; vignetteEl.value = c.vignette ?? 0;
-      watermarkText.value = c.watermarkText ?? '© BlackAngel'; textPos.value = c.textPos ?? 'bottom-right';
+      watermarkText.value = c.watermarkText ?? DEFAULT_WATERMARK_TEXT; textPos.value = c.textPos ?? 'bottom-right';
       fontFamily.value = c.fontFamily ?? 'Arial, sans-serif';
       textColor.value = c.textColor ?? '#ffffff';
       textIsBold = c.textIsBold ?? true; textIsItalic = c.textIsItalic ?? false;
@@ -2730,18 +2750,7 @@
     applyCropBtn.addEventListener('click', applyCrop);
     cancelCropBtn.addEventListener('click', cancelCropMode);
 
-    downloadBtn.addEventListener('click', () => {
-      if (!hasImage) return;
-      const format = exportFormat.value;
-      const mime = format === 'png' ? 'image/png' : (format === 'webp' ? 'image/webp' : 'image/jpeg');
-      const extension = format === 'jpeg' ? 'jpg' : format;
-      const quality = Number(exportQuality.value) / 100;
-      const link = document.createElement('a');
-      link.download = `edited-image.${extension}`;
-      link.href = mime === 'image/png' ? canvas.toDataURL(mime) : canvas.toDataURL(mime, quality);
-      link.click();
-    });
-
+    // Download handler is defined below (with custom filename support)
     resetBtn.addEventListener('click', () => {
       if (hasImage && !confirm('Reset all edits? This cannot be undone.')) return;
       resetControls(); pushHistory(); scheduleAutoSave();
@@ -2791,8 +2800,7 @@
       }
     });
 
-    // Use export filename in download
-    downloadBtn.removeEventListener('click', downloadBtn.onclick);
+    // Download handler with custom filename
     downloadBtn.addEventListener('click', () => {
       if (!hasImage) return;
       const format = exportFormat.value;
@@ -2800,10 +2808,16 @@
       const extension = format === 'jpeg' ? 'jpg' : format;
       const quality = Number(exportQuality.value) / 100;
       const filename = (exportFilename.value || 'edited-image').replace(/[^a-zA-Z0-9_\-]/g, '_');
+      // Redraw without editor badges before exporting
+      isExporting = true;
+      redraw();
       const link = document.createElement('a');
       link.download = `${filename}.${extension}`;
       link.href = mime === 'image/png' ? canvas.toDataURL(mime) : canvas.toDataURL(mime, quality);
       link.click();
+      // Redraw with editor badges back
+      isExporting = false;
+      redraw();
       showToast(`Exported as ${filename}.${extension}`, 'success');
     });
 
@@ -2813,15 +2827,31 @@
     sharpenEl.value = 0; temperatureEl.value = 0; tintEl.value = 0;
 
     // --- Range slider colored track ---
+    // Adjust gradient stop to match thumb center position.
+    // In WebKit, thumb center moves between thumbRadius and (width - thumbRadius),
+    // so raw percentage doesn't align with the thumb.
     function updateSliderTrack(slider) {
       const min = Number(slider.min), max = Number(slider.max), val = Number(slider.value);
       const pct = ((val - min) / (max - min)) * 100;
-      slider.style.setProperty('--range-pct', pct + '%');
+      const thumbDiam = 18; // must match CSS thumb width
+      const width = slider.getBoundingClientRect().width || slider.offsetWidth || 100;
+      const thumbPct = (thumbDiam / width) * 100;
+      const adjusted = thumbPct / 2 + pct * (100 - thumbPct) / 100;
+      slider.style.setProperty('--range-pct', adjusted + '%');
     }
-    document.querySelectorAll('input[type="range"]').forEach(slider => {
-      updateSliderTrack(slider);
-      slider.addEventListener('input', () => updateSliderTrack(slider));
+    function updateAllSliderTracks() {
+      document.querySelectorAll('input[type="range"]').forEach(updateSliderTrack);
+    }
+    // Defer initial track update to ensure sliders are fully laid out
+    requestAnimationFrame(() => {
+      document.querySelectorAll('input[type="range"]').forEach(slider => {
+        updateSliderTrack(slider);
+        slider.addEventListener('input', () => updateSliderTrack(slider));
+      });
     });
+    // Recalculate on layout changes
+    window.addEventListener('resize', updateAllSliderTracks);
+    new ResizeObserver(updateAllSliderTracks).observe(document.body);
 
     // --- Canvas info bar ---
     const canvasInfoBar = byId('canvasInfoBar');
@@ -3148,10 +3178,14 @@
         const extension = format === 'jpeg' ? 'jpg' : format;
         const quality = Number(exportQuality.value) / 100;
         const filename = (exportFilename.value || 'edited-image').replace(/[^a-zA-Z0-9_\-]/g, '_');
+        isExporting = true;
+        redraw();
         const link = document.createElement('a');
         link.download = `${filename}.${extension}`;
         link.href = mime === 'image/png' ? canvas.toDataURL(mime) : canvas.toDataURL(mime, quality);
         link.click();
+        isExporting = false;
+        redraw();
         showToast(`Exported as ${filename}.${extension}`, 'success');
       }, { disabled: !hasImage, shortcut: 'Ctrl+S' }));
 
