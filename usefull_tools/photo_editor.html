@@ -1028,7 +1028,7 @@
       const fit = Math.min(1, Math.min((canvas.width * 0.55) / Math.max(1, layerImg.naturalWidth), (canvas.height * 0.55) / Math.max(1, layerImg.naturalHeight)));
       const layer = {
         id: `layer_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`, name, src: dataUrl, img: layerImg,
-        x: canvas.width / 2, y: canvas.height / 2, scale: Math.round(100 * fit), opacity: 1, blendMode: 'source-over', bgColor: null, visible: true, locked: false, rotation: 0
+        x: canvas.width / 2, y: canvas.height / 2, scale: Math.round(100 * fit), scaleX: Math.round(100 * fit), scaleY: Math.round(100 * fit), opacity: 1, blendMode: 'source-over', bgColor: null, visible: true, locked: false, rotation: 0
       };
       imageLayers.push(layer);
       selectedLayerId = layer.id;
@@ -1059,8 +1059,10 @@
       const selected = getSelectedLayer();
       imageLayers.forEach((layer, idx) => {
         if (!layer.img?.src || layer.visible === false) return;
-        const w = Math.max(1, layer.img.naturalWidth * ((layer.scale ?? 100) / 100));
-        const h = Math.max(1, layer.img.naturalHeight * ((layer.scale ?? 100) / 100));
+        const sx = (layer.scaleX ?? layer.scale ?? 100) / 100;
+        const sy = (layer.scaleY ?? layer.scale ?? 100) / 100;
+        const w = Math.max(1, layer.img.naturalWidth * sx);
+        const h = Math.max(1, layer.img.naturalHeight * sy);
         const cx = layer.x, cy = layer.y;
         const angle = ((layer.rotation ?? 0) * Math.PI) / 180;
         const left = cx - w / 2; const top = cy - h / 2;
@@ -1097,8 +1099,27 @@
         ctx.rotate(angle);
         ctx.strokeStyle = 'rgba(56,189,248,.95)'; ctx.lineWidth = 1.5; ctx.setLineDash([8, 6]);
         ctx.strokeRect(-b.width / 2, -b.height / 2, b.width, b.height); ctx.setLineDash([]);
-        // Resize handle (bottom-right)
-        ctx.fillStyle = 'rgba(34,211,238,.95)'; ctx.fillRect(b.width / 2 - 6, b.height / 2 - 6, 12, 12);
+        // 4 corner resize handles
+        const hs = 6; // half handle size
+        const hw = b.width / 2, hh = b.height / 2;
+        // Top-left
+        ctx.fillStyle = 'rgba(34,211,238,.95)'; ctx.fillRect(-hw - hs, -hh - hs, 12, 12);
+        // Top-right
+        ctx.fillRect(hw - hs, -hh - hs, 12, 12);
+        // Bottom-left
+        ctx.fillRect(-hw - hs, hh - hs, 12, 12);
+        // Bottom-right
+        ctx.fillRect(hw - hs, hh - hs, 12, 12);
+        // 4 edge midpoint handles (between corners)
+        const ehs = 4; // edge handle half size (smaller)
+        // Top edge center
+        ctx.fillRect(-ehs, -hh - ehs, 8, 8);
+        // Bottom edge center
+        ctx.fillRect(-ehs, hh - ehs, 8, 8);
+        // Left edge center
+        ctx.fillRect(-hw - ehs, -ehs, 8, 8);
+        // Right edge center
+        ctx.fillRect(hw - ehs, -ehs, 8, 8);
         ctx.restore();
         // Draw line from top-center to rotation handle
         ctx.save();
@@ -1954,7 +1975,7 @@
         selectedLayerId,
         layers: imageLayers.map(layer => ({
           id: layer.id, name: layer.name, src: layer.src,
-          x: layer.x, y: layer.y, scale: layer.scale, opacity: layer.opacity, rotation: layer.rotation ?? 0,
+          x: layer.x, y: layer.y, scale: layer.scale, scaleX: layer.scaleX, scaleY: layer.scaleY, opacity: layer.opacity, rotation: layer.rotation ?? 0,
           blendMode: layer.blendMode, bgColor: Array.isArray(layer.bgColor) ? [...layer.bgColor] : null, visible: layer.visible !== false, locked: layer.locked === true,
           groupId: layer.groupId || null
         })),
@@ -2003,7 +2024,7 @@
           id: raw.id || `layer_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
           name: raw.name || 'Layer', src: raw.src, img: layerImg,
           x: Number(raw.x ?? canvas.width / 2), y: Number(raw.y ?? canvas.height / 2),
-          scale: Number(raw.scale ?? 100), opacity: Math.max(0, Math.min(1, Number(raw.opacity ?? 1))),
+          scale: Number(raw.scale ?? 100), scaleX: Number(raw.scaleX ?? raw.scale ?? 100), scaleY: Number(raw.scaleY ?? raw.scale ?? 100), opacity: Math.max(0, Math.min(1, Number(raw.opacity ?? 1))),
           blendMode: raw.blendMode || 'source-over', bgColor: Array.isArray(raw.bgColor) ? [...raw.bgColor] : null, visible: raw.visible !== false, locked: raw.locked === true,
           rotation: Number(raw.rotation ?? 0), groupId: raw.groupId || null
         });
@@ -2424,6 +2445,8 @@
     layerScale.addEventListener('input', () => {
       const selected = getSelectedLayer(); if (!selected) return;
       selected.scale = Number(layerScale.value);
+      selected.scaleX = Number(layerScale.value);
+      selected.scaleY = Number(layerScale.value);
       updateOutputValues(); redraw(); scheduleAutoSave();
     });
     layerScale.addEventListener('change', () => { if (!getSelectedLayer()) return; pushHistory(); scheduleAutoSave(); });
@@ -2568,20 +2591,41 @@
               canvas.setPointerCapture(evt.pointerId);
               redraw(); return;
             }
-            // Resize handle position (bottom-right corner)
-            const rhx = sb.cx + (sb.width / 2) * cosA - (sb.height / 2) * sinA;
-            const rhY = sb.cy + (sb.width / 2) * sinA + (sb.height / 2) * cosA;
-            const handleDist = Math.hypot(p.x - rhx, p.y - rhY);
-            if (handleDist < 22) {
-              layerResizeDrag = {
-                layerId: selLayer.id,
-                startScale: selLayer.scale ?? 100,
-                startDist: Math.max(1, Math.hypot(p.x - sb.cx, p.y - sb.cy)),
-                centerX: sb.cx, centerY: sb.cy
-              };
-              activeSnapGuides = [];
-              canvas.setPointerCapture(evt.pointerId);
-              redraw(); return;
+            // Check all 4 corner + 4 edge resize handles
+            const hw = sb.width / 2, hh = sb.height / 2;
+            const handles = [
+              { lx: -hw, ly: -hh, cursor: 'nwse-resize', sx: -1, sy: -1 }, // top-left corner
+              { lx:  hw, ly: -hh, cursor: 'nesw-resize', sx:  1, sy: -1 }, // top-right corner
+              { lx: -hw, ly:  hh, cursor: 'nesw-resize', sx: -1, sy:  1 }, // bottom-left corner
+              { lx:  hw, ly:  hh, cursor: 'nwse-resize', sx:  1, sy:  1 }, // bottom-right corner
+              { lx:   0, ly: -hh, cursor: 'ns-resize',   sx:  0, sy: -1 }, // top edge
+              { lx:   0, ly:  hh, cursor: 'ns-resize',   sx:  0, sy:  1 }, // bottom edge
+              { lx: -hw, ly:   0, cursor: 'ew-resize',   sx: -1, sy:  0 }, // left edge
+              { lx:  hw, ly:   0, cursor: 'ew-resize',   sx:  1, sy:  0 }  // right edge
+            ];
+            for (let ci = 0; ci < handles.length; ci++) {
+              const c = handles[ci];
+              const chx = sb.cx + c.lx * cosA - c.ly * sinA;
+              const chy = sb.cy + c.lx * sinA + c.ly * cosA;
+              const hitDist = ci < 4 ? 22 : 16; // corners get larger hit area
+              if (Math.hypot(p.x - chx, p.y - chy) < hitDist) {
+                layerResizeDrag = {
+                  layerId: selLayer.id,
+                  cornerIndex: ci,
+                  startScaleX: (selLayer.scaleX ?? selLayer.scale ?? 100),
+                  startScaleY: (selLayer.scaleY ?? selLayer.scale ?? 100),
+                  startWidth: sb.width,
+                  startHeight: sb.height,
+                  startMouseX: p.x,
+                  startMouseY: p.y,
+                  centerX: sb.cx, centerY: sb.cy,
+                  signX: c.sx, signY: c.sy,
+                  cosA: cosA, sinA: sinA
+                };
+                activeSnapGuides = [];
+                canvas.setPointerCapture(evt.pointerId);
+                redraw(); return;
+              }
             }
           }
         }
@@ -2687,10 +2731,36 @@
       if (layerResizeDrag) {
         const layer = imageLayers.find(l => l.id === layerResizeDrag.layerId);
         if (layer) {
-          const dist = Math.max(1, Math.hypot(p.x - layerResizeDrag.centerX, p.y - layerResizeDrag.centerY));
-          const newScale = Math.round(Math.min(500, Math.max(5, layerResizeDrag.startScale * (dist / layerResizeDrag.startDist))));
-          layer.scale = newScale;
-          layerScale.value = String(newScale);
+          // Compute mouse delta in world space, then project onto the layer's local axes
+          const dx = p.x - layerResizeDrag.startMouseX;
+          const dy = p.y - layerResizeDrag.startMouseY;
+          const cosA = layerResizeDrag.cosA, sinA = layerResizeDrag.sinA;
+          // Project delta onto local X and Y axes of the layer
+          const localDx = dx * cosA + dy * sinA;
+          const localDy = -dx * sinA + dy * cosA;
+          const startW = Math.max(1, layerResizeDrag.startWidth);
+          const startH = Math.max(1, layerResizeDrag.startHeight);
+          const ci = layerResizeDrag.cornerIndex;
+          if (ci < 4) {
+            // Corner handles: proportional scaling (both axes change together)
+            const ratioX = (startW + layerResizeDrag.signX * localDx * 2) / startW;
+            const ratioY = (startH + layerResizeDrag.signY * localDy * 2) / startH;
+            const ratio = Math.max(0.05, (ratioX + ratioY) / 2);
+            const newScale = Math.round(Math.min(500, Math.max(5, layerResizeDrag.startScaleX * ratio)));
+            layer.scaleX = newScale;
+            layer.scaleY = newScale;
+            layer.scale = newScale;
+          } else {
+            // Edge handles: independent axis stretching
+            const ratioX = (startW + layerResizeDrag.signX * localDx * 2) / startW;
+            const ratioY = (startH + layerResizeDrag.signY * localDy * 2) / startH;
+            const newScaleX = Math.round(Math.min(500, Math.max(5, layerResizeDrag.startScaleX * Math.max(0.05, ratioX))));
+            const newScaleY = Math.round(Math.min(500, Math.max(5, layerResizeDrag.startScaleY * Math.max(0.05, ratioY))));
+            layer.scaleX = newScaleX;
+            layer.scaleY = newScaleY;
+            layer.scale = Math.round((newScaleX + newScaleY) / 2);
+          }
+          layerScale.value = String(layer.scale);
           updateOutputValues(); redraw();
         }
         return;
@@ -2841,10 +2911,25 @@
               const trHY = tb.cy + (0) * Math.sin(tAngle) + (-tHalfH - tRH) * Math.cos(tAngle);
               if (Math.hypot(p.x - trHX, p.y - trHY) < 16) { canvas.style.cursor = 'grab'; activeSnapGuides = []; return; }
             }
-            // Resize handle cursor
-            const rhx = sb.cx + (sb.width / 2) * cosA - (sb.height / 2) * sinA;
-            const rhY = sb.cy + (sb.width / 2) * sinA + (sb.height / 2) * cosA;
-            if (Math.hypot(p.x - rhx, p.y - rhY) < 18) { canvas.style.cursor = 'nwse-resize'; activeSnapGuides = []; return; }
+            // All resize handle cursors (corners + edges)
+            const chw = sb.width / 2, chh = sb.height / 2;
+            const handleDefs = [
+              { lx: -chw, ly: -chh, cursor: 'nwse-resize' }, // TL
+              { lx:  chw, ly: -chh, cursor: 'nesw-resize' }, // TR
+              { lx: -chw, ly:  chh, cursor: 'nesw-resize' }, // BL
+              { lx:  chw, ly:  chh, cursor: 'nwse-resize' }, // BR
+              { lx:    0, ly: -chh, cursor: 'ns-resize' },   // top
+              { lx:    0, ly:  chh, cursor: 'ns-resize' },   // bottom
+              { lx: -chw, ly:    0, cursor: 'ew-resize' },   // left
+              { lx:  chw, ly:    0, cursor: 'ew-resize' }    // right
+            ];
+            for (let hi = 0; hi < handleDefs.length; hi++) {
+              const hd = handleDefs[hi];
+              const hx = sb.cx + hd.lx * cosA - hd.ly * sinA;
+              const hy = sb.cy + hd.lx * sinA + hd.ly * cosA;
+              const hDist = hi < 4 ? 18 : 14;
+              if (Math.hypot(p.x - hx, p.y - hy) < hDist) { canvas.style.cursor = hd.cursor; activeSnapGuides = []; return; }
+            }
           }
         }
       }
