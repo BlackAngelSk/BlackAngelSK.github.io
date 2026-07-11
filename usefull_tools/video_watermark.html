@@ -1,0 +1,1735 @@
+<!DOCTYPE html>
+<html lang="sk">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Video Watermark Editor</title>
+  <style>
+    /* Themes */
+    :root, [data-theme="night"] { --bg:#0f172a; --card:#111827; --text:#e5e7eb; --muted:#9ca3af; --accent:#60a5fa; --border:#1f2937; --surface:#1a2332; --hover:#1e293b; --input-bg:#0b1220; --input-border:#2d3748; --slider-track:#1e293b; --body-grad-a:#1e293b; --body-grad-b:#020617; --panel-bg:rgba(17,24,39,.92); --card-shadow:rgba(0,0,0,.3); --scrollbar-thumb:#374151; --group-header-color:#cbd5e1; }
+    [data-theme="dark"] { --bg:#111111; --card:#1a1a1a; --text:#d4d4d4; --muted:#737373; --accent:#3b82f6; --border:#2a2a2a; --surface:#222222; --hover:#262626; --input-bg:#0a0a0a; --input-border:#333333; --slider-track:#262626; --body-grad-a:#1a1a1a; --body-grad-b:#0a0a0a; --panel-bg:rgba(26,26,26,.95); --card-shadow:rgba(0,0,0,.5); --scrollbar-thumb:#404040; --group-header-color:#d4d4d4; }
+    [data-theme="light"] { --bg:#f8fafc; --card:#ffffff; --text:#1e293b; --muted:#64748b; --accent:#2563eb; --border:#e2e8f0; --surface:#f1f5f9; --hover:#e2e8f0; --input-bg:#ffffff; --input-border:#cbd5e1; --slider-track:#e2e8f0; --body-grad-a:#e2e8f0; --body-grad-b:#f8fafc; --panel-bg:rgba(255,255,255,.95); --card-shadow:rgba(0,0,0,.08); --scrollbar-thumb:#94a3b8; --group-header-color:#334155; }
+    [data-theme="midnight"] { --bg:#0c0a1a; --card:#151230; --text:#d4d0f0; --muted:#8b83b8; --accent:#818cf8; --border:#2a2550; --surface:#1a1740; --hover:#1e1b45; --input-bg:#0a0820; --input-border:#332e60; --slider-track:#1e1b45; --body-grad-a:#1a1740; --body-grad-b:#070612; --panel-bg:rgba(21,18,48,.94); --card-shadow:rgba(0,0,0,.4); --scrollbar-thumb:#3d3670; --group-header-color:#c4bff0; }
+    [data-theme="ocean"] { --bg:#0a1628; --card:#0f2035; --text:#c8e2f0; --muted:#6da3c4; --accent:#22d3ee; --border:#1a3550; --surface:#132840; --hover:#173050; --input-bg:#081520; --input-border:#1e4060; --slider-track:#173050; --body-grad-a:#132840; --body-grad-b:#060e1a; --panel-bg:rgba(15,32,53,.94); --card-shadow:rgba(0,0,0,.4); --scrollbar-thumb:#2a5580; --group-header-color:#a8d4e8; }
+    [data-theme="forest"] { --bg:#0a1a0f; --card:#0f2518; --text:#c8e8d0; --muted:#6dae80; --accent:#4ade80; --border:#1a3828; --surface:#132d1e; --hover:#173525; --input-bg:#081510; --input-border:#1e4530; --slider-track:#173525; --body-grad-a:#132d1e; --body-grad-b:#06120a; --panel-bg:rgba(15,37,24,.94); --card-shadow:rgba(0,0,0,.4); --scrollbar-thumb:#2a6040; --group-header-color:#a8e0b8; }
+    [data-theme="sunset"] { --bg:#1a0a0a; --card:#251210; --text:#f0d4c8; --muted:#c48a6d; --accent:#f97316; --border:#3d1f1a; --surface:#2d1815; --hover:#352018; --input-bg:#150a08; --input-border:#4d2a20; --slider-track:#352018; --body-grad-a:#2d1815; --body-grad-b:#120806; --panel-bg:rgba(37,18,16,.94); --card-shadow:rgba(0,0,0,.4); --scrollbar-thumb:#6d3a28; --group-header-color:#e8c0a8; }
+    [data-theme="purple"] { --bg:#130a1a; --card:#1c1230; --text:#dcd0f5; --muted:#9a83b8; --accent:#a78bfa; --border:#2e2250; --surface:#221840; --hover:#281e48; --input-bg:#0e0820; --input-border:#3a2e60; --slider-track:#281e48; --body-grad-a:#221840; --body-grad-b:#0a0612; --panel-bg:rgba(28,18,48,.94); --card-shadow:rgba(0,0,0,.4); --scrollbar-thumb:#4a3578; --group-header-color:#c8b8f0; }
+
+    * { box-sizing: border-box; }
+    body { margin:0; font-family:system-ui,Arial,sans-serif; background:radial-gradient(circle at top,var(--body-grad-a),var(--body-grad-b) 65%); color:var(--text); min-height:100vh; padding:20px; }
+    .wrap { max-width:1400px; margin:0 auto; display:grid; grid-template-columns:360px 1fr; gap:16px; }
+
+    .panel,.video-box { background:var(--panel-bg); border:1px solid var(--border); border-radius:14px; box-shadow:0 12px 40px var(--card-shadow); backdrop-filter:blur(5px); }
+    .panel { padding:12px; display:flex; flex-direction:column; gap:2px; max-height:calc(100vh - 40px); overflow-y:auto; overflow-x:hidden; scrollbar-width:thin; scrollbar-color:var(--scrollbar-thumb) transparent; }
+    .panel::-webkit-scrollbar { width:6px; }
+    .panel::-webkit-scrollbar-thumb { background:var(--scrollbar-thumb); border-radius:3px; }
+    .panel-header { padding:8px 8px 10px; display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+    .panel-header h1 { margin:0; font-size:1.05rem; font-weight:800; letter-spacing:-.3px; }
+    .panel-header .ver { font-size:.65rem; color:var(--muted); background:var(--surface); padding:2px 7px; border-radius:6px; }
+
+    .group { border-radius:10px; padding-bottom:4px; border-left:3px solid transparent; transition:border-color .25s; }
+    .group[data-section="video"] { border-left-color:rgba(96,165,250,.25); }
+    .group[data-section="filters"] { border-left-color:rgba(168,85,247,.25); }
+    .group[data-section="trim"] { border-left-color:rgba(251,146,60,.25); }
+    .group[data-section="text"] { border-left-color:rgba(251,191,36,.25); }
+    .group[data-section="logo"] { border-left-color:rgba(244,114,182,.25); }
+    .group[data-section="export"] { border-left-color:rgba(52,211,153,.25); }
+    .group:hover { border-left-color:rgba(96,165,250,.5); }
+    .group-header { display:flex; align-items:center; gap:8px; padding:8px 10px; cursor:pointer; user-select:none; border-radius:10px; transition:background .15s; font-size:.85rem; font-weight:600; color:var(--group-header-color); }
+    .group-header:hover { background:var(--hover); }
+    .group-header .icon { font-size:1rem; width:20px; text-align:center; flex-shrink:0; }
+    .group-header .arrow { margin-left:auto; font-size:.65rem; color:var(--muted); transition:transform .2s; }
+    .group.collapsed .group-header .arrow { transform:rotate(-90deg); }
+    .group-body { padding:2px 10px 8px; display:flex; flex-direction:column; gap:6px; max-height:2000px; opacity:1; transition:max-height .35s ease, opacity .25s ease, padding .25s ease; overflow:hidden; }
+    .group.collapsed .group-body { max-height:0; padding:0 10px; opacity:0; }
+    .group.collapsed { padding-bottom:0; }
+
+    label { display:block; font-size:.82rem; margin-bottom:4px; color:#94a3b8; font-weight:500; }
+    input[type="range"], input[type="text"], input[type="number"], select, input[type="file"] { width:100%; }
+    input[type="range"] { accent-color:var(--accent); -webkit-appearance:none; appearance:none; background:transparent; cursor:pointer; height:20px; margin:0; padding:0; border:none; outline:none; }
+    input[type="range"]::-webkit-slider-runnable-track { height:6px; border-radius:3px; background:linear-gradient(to right,var(--accent) 0%,var(--accent) var(--range-pct,50%),var(--slider-track) var(--range-pct,50%),var(--slider-track) 100%); }
+    input[type="range"]::-webkit-slider-thumb { -webkit-appearance:none; width:18px; height:18px; border-radius:50%; background:var(--accent); border:2px solid var(--slider-track); margin-top:-6px; box-shadow:0 1px 4px rgba(0,0,0,.4); transition:transform .12s,box-shadow .12s; }
+    input[type="range"]::-webkit-slider-thumb:hover { transform:scale(1.2); box-shadow:0 0 0 4px rgba(96,165,250,.2); }
+    input[type="range"]::-moz-range-track { height:6px; border-radius:3px; background:var(--slider-track); }
+    input[type="range"]::-moz-range-progress { height:6px; border-radius:3px; background:var(--accent); }
+    input[type="range"]::-moz-range-thumb { width:14px; height:14px; border-radius:50%; background:var(--accent); border:2px solid var(--slider-track); box-shadow:0 1px 4px rgba(0,0,0,.4); }
+    input[type="text"], input[type="number"], select { border:1px solid var(--input-border); background:var(--input-bg); color:var(--text); border-radius:8px; padding:7px 10px; font-size:.85rem; transition:border-color .15s; }
+    input[type="text"]:focus, input[type="number"]:focus, select:focus { border-color:var(--accent); outline:none; }
+    input[type="color"] { width:100%; height:32px; border:1px solid var(--input-border); background:var(--input-bg); border-radius:8px; padding:2px; cursor:pointer; }
+    .range-line { display:grid; grid-template-columns:1fr 44px; align-items:center; gap:8px; margin-bottom:6px; }
+    .range-line output { color:#94a3b8; font-size:.75rem; text-align:right; font-variant-numeric:tabular-nums; }
+    .inline-grid-2 { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+
+    .btn-row { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+    .btn-row-3 { display:grid; grid-template-columns:1fr 1fr 1fr; gap:6px; }
+    button { border:none; border-radius:9px; padding:9px 12px; font-weight:700; font-size:.82rem; cursor:pointer; color:#0b1220; background:linear-gradient(135deg,#93c5fd,#60a5fa); transition:opacity .15s,transform .1s; }
+    button:hover { opacity:.9; }
+    button:active { transform:scale(.97); }
+    button.secondary { color:var(--text); border:1px solid var(--accent); background:rgba(96,165,250,.08); }
+    button.warn { color:#fecaca; border:1px solid #ef4444; background:rgba(239,68,68,.08); }
+    button.is-active { border-color:#60a5fa; color:#93c5fd; background:rgba(96,165,250,.15); box-shadow:0 0 0 1px rgba(96,165,250,.3) inset; }
+    button:disabled { opacity:.35; cursor:not-allowed; pointer-events:none; }
+    .small { font-size:.75rem; color:#64748b; margin:0; line-height:1.4; }
+    .status { font-size:.75rem; color:#38bdf8; margin:2px 0 0; min-height:16px; }
+    .status.error { color:#fca5a5; }
+
+    .video-box { position:relative; padding:12px; display:flex; flex-direction:column; align-items:center; justify-content:center; min-height:calc(100vh - 40px); overflow:auto; transition:border-color .18s, box-shadow .18s, background-color .18s; }
+    .video-box.drag-over { border-color:#60a5fa; box-shadow:0 0 0 2px rgba(96,165,250,.35), 0 12px 40px rgba(0,0,0,.3); background:rgba(15,23,42,.97); }
+    .preview-container { position:relative; width:100%; display:flex; align-items:center; justify-content:center; flex:1; }
+    #previewCanvas { max-width:100%; max-height:calc(100vh - 200px); border-radius:10px; background:#000; }
+    video#hiddenVideo { display:none; }
+
+    .video-controls { width:100%; max-width:800px; display:flex; flex-direction:column; gap:8px; padding:10px 0 0; }
+    .timeline-row { display:flex; align-items:center; gap:8px; }
+    #timeline { flex:1; }
+    .time-display { font-size:.75rem; color:var(--muted); white-space:nowrap; font-variant-numeric:tabular-nums; min-width:90px; text-align:right; }
+    .playback-row { display:flex; align-items:center; justify-content:center; gap:8px; flex-wrap:wrap; }
+    .playback-row button { padding:8px 14px; font-size:.85rem; border-radius:8px; }
+    .playback-row select { width:auto; min-width:70px; padding:5px 8px; font-size:.78rem; border-radius:6px; }
+    .volume-row { display:flex; align-items:center; gap:8px; width:100%; }
+    .volume-row label { margin:0; white-space:nowrap; font-size:.78rem; }
+    #volume { flex:1; }
+
+    .drop-hint { position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); padding:20px 30px; border:2px dashed rgba(148,163,184,.35); border-radius:16px; background:rgba(2,6,23,.85); color:#94a3b8; font-size:.88rem; pointer-events:none; opacity:.9; transition:opacity .18s, border-color .18s, color .18s; text-align:center; }
+    .video-box.drag-over .drop-hint { color:#dbeafe; border-color:rgba(96,165,250,.9); }
+    .drop-hint.hidden { opacity:0; pointer-events:none; }
+
+    .export-progress { width:100%; margin-top:8px; display:none; }
+    .export-progress.active { display:block; }
+    .progress-bar-bg { width:100%; height:8px; background:var(--slider-track); border-radius:4px; overflow:hidden; }
+    .progress-bar-fill { height:100%; background:linear-gradient(90deg,#60a5fa,#a78bfa); border-radius:4px; width:0%; transition:width .1s; }
+    .progress-text { font-size:.75rem; color:var(--muted); margin-top:4px; text-align:center; }
+
+    .toast-container { position:fixed; top:16px; right:16px; z-index:99999; display:flex; flex-direction:column; gap:8px; pointer-events:none; }
+    .toast { padding:10px 18px; border-radius:10px; font-size:.82rem; font-weight:600; color:#fff; background:rgba(15,23,42,.95); border:1px solid #334155; box-shadow:0 8px 24px rgba(0,0,0,.4); backdrop-filter:blur(8px); pointer-events:auto; opacity:0; transform:translateX(40px); transition:opacity .3s,transform .3s; max-width:340px; }
+    .toast.show { opacity:1; transform:translateX(0); }
+    .toast.success { border-color:#22c55e; background:rgba(5,45,20,.92); }
+    .toast.error { border-color:#ef4444; background:rgba(45,5,5,.92); }
+    .toast.info { border-color:#60a5fa; background:rgba(5,20,45,.92); }
+
+    .video-info { width:100%; display:flex; align-items:center; justify-content:center; gap:12px; padding:6px 0; font-size:.72rem; color:var(--muted); flex-wrap:wrap; }
+    .video-info span { white-space:nowrap; }
+
+    /* Trim markers on timeline */
+    .timeline-wrapper { position:relative; flex:1; }
+    .trim-info { display:flex; align-items:center; justify-content:space-between; gap:6px; font-size:.72rem; color:var(--muted); margin-top:2px; }
+    .trim-badge { display:inline-block; padding:1px 6px; border-radius:4px; background:rgba(251,146,60,.15); color:#fb923c; font-size:.7rem; }
+
+    @media (max-width:960px) { .wrap { grid-template-columns:1fr; } .video-box { min-height:50vh; } }
+  </style>
+</head>
+<body>
+  <div class="toast-container" id="toastContainer"></div>
+
+  <div class="wrap">
+    <aside class="panel">
+      <div class="panel-header">
+        <h1>🎬 Video Watermark</h1>
+        <span class="ver">v1.3</span>
+        <select id="themeSelect" style="margin-left:auto;width:auto;min-width:90px;padding:3px 6px;font-size:.7rem;border-radius:6px;">
+          <option value="night">🌙 Night</option><option value="dark">⬛ Dark</option><option value="light">☀️ Light</option><option value="midnight">🔮 Midnight</option><option value="ocean">🌊 Ocean</option><option value="forest">🌲 Forest</option><option value="sunset">🌅 Sunset</option><option value="purple">💜 Purple</option>
+        </select>
+      </div>
+
+      <!-- Video input -->
+      <div class="group" data-section="video">
+        <div class="group-header" onclick="this.parentElement.classList.toggle('collapsed')"><span class="icon">🎬</span> Video <span class="arrow">▼</span></div>
+        <div class="group-body">
+          <label for="videoUpload">Choose video</label>
+          <input id="videoUpload" type="file" accept="video/*" />
+          <p class="small" style="margin-top:4px;">Or drag & drop onto the preview area</p>
+          <div id="videoLoadedInfo" style="display:none; margin-top:8px;">
+            <p class="small" id="videoFileName"></p>
+            <p class="small" id="videoResolution"></p>
+          </div>
+          <div class="btn-row" style="margin-top:8px;">
+            <button id="detectFpsBtn" class="secondary" disabled>🔍 Detect Frame Rate</button>
+            <button id="screenshotBtn" class="secondary" disabled>📸 Screenshot</button>
+          </div>
+          <div id="fpsInfoDisplay" style="display:none; margin-top:8px; padding:8px 10px; border-radius:8px; background:var(--surface); border:1px solid var(--border);">
+            <p class="small" style="margin:0 0 2px;"><strong style="color:var(--accent);">📊 Frame Analysis</strong></p>
+            <p class="small" id="fpsDetected" style="margin:1px 0;">FPS: —</p>
+            <p class="small" id="frameCountDetected" style="margin:1px 0;">Total frames: —</p>
+            <p class="small" id="frameDurationNs" style="margin:1px 0;">Frame duration: —</p>
+            <p class="small" id="fpsMethod" style="margin:1px 0; color:var(--muted);">Method: —</p>
+          </div>
+          <button id="resetFiltersBtn" class="secondary" disabled style="margin-top:8px;">🎨 Reset Filters</button>
+        </div>
+      </div>
+
+      <!-- Video Filters -->
+      <div class="group" data-section="filters">
+        <div class="group-header" onclick="this.parentElement.classList.toggle('collapsed')"><span class="icon">🎨</span> Video Filters <span class="arrow">▼</span></div>
+        <div class="group-body">
+          <label>Brightness</label>
+          <div class="range-line"><input id="filterBrightness" type="range" min="0" max="200" value="100" /><output id="filterBrightnessOut">100%</output></div>
+          <label>Contrast</label>
+          <div class="range-line"><input id="filterContrast" type="range" min="0" max="200" value="100" /><output id="filterContrastOut">100%</output></div>
+          <label>Saturation</label>
+          <div class="range-line"><input id="filterSaturate" type="range" min="0" max="200" value="100" /><output id="filterSaturateOut">100%</output></div>
+          <label>Hue Rotate</label>
+          <div class="range-line"><input id="filterHue" type="range" min="0" max="360" value="0" /><output id="filterHueOut">0°</output></div>
+          <label>Blur</label>
+          <div class="range-line"><input id="filterBlur" type="range" min="0" max="20" value="0" step="0.5" /><output id="filterBlurOut">0px</output></div>
+          <label style="display:flex;align-items:center;gap:8px;margin-top:4px;"><input id="filterGrayscale" type="checkbox" /> Grayscale</label>
+          <label style="display:flex;align-items:center;gap:8px;margin-top:2px;"><input id="filterInvert" type="checkbox" /> Invert colors</label>
+        </div>
+      </div>
+
+      <!-- Trim -->
+      <div class="group" data-section="trim">
+        <div class="group-header" onclick="this.parentElement.classList.toggle('collapsed')"><span class="icon">✂️</span> Trim <span class="arrow">▼</span></div>
+        <div class="group-body">
+          <p class="small">Export only a portion of the video. Set start and end points.</p>
+          <div class="inline-grid-2" style="margin-top:4px;">
+            <div><label>Start time</label><input id="trimStart" type="text" value="0:00" placeholder="0:00" /></div>
+            <div><label>End time</label><input id="trimEnd" type="text" value="" placeholder="full length" /></div>
+          </div>
+          <div class="btn-row" style="margin-top:6px;">
+            <button id="setTrimStartBtn" class="secondary" disabled>Set Start ◀</button>
+            <button id="setTrimEndBtn" class="secondary" disabled">Set End ▶</button>
+          </div>
+          <div class="btn-row" style="margin-top:4px;">
+            <button id="clearTrimBtn" class="warn" disabled>Clear Trim</button>
+            <button id="previewTrimBtn" class="secondary" disabled>Preview Trim</button>
+          </div>
+          <div id="trimInfoDisplay" class="trim-info" style="display:none;">
+            <span class="trim-badge" id="trimDurationBadge">—</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Text watermark -->
+      <div class="group" data-section="text">
+        <div class="group-header" onclick="this.parentElement.classList.toggle('collapsed')"><span class="icon">✏️</span> Text Watermark <span class="arrow">▼</span></div>
+        <div class="group-body">
+          <label style="display:flex;align-items:center;gap:8px;margin-bottom:8px;"><input id="textEnabled" type="checkbox" checked /> Enable text watermark</label>
+          <label style="display:flex;align-items:center;gap:8px;margin-bottom:8px;"><input id="textTiled" type="checkbox" /> 🔄 Tiled pattern (diagonal)</label>
+          <div id="tiledOptions" style="display:none;">
+            <label>Tile spacing</label>
+            <div class="range-line"><input id="tileSpacing" type="range" min="50" max="400" value="150" /><output id="tileSpacingOut">150px</output></div>
+            <label>Tile angle</label>
+            <div class="range-line"><input id="tileAngle" type="range" min="-90" max="90" value="-45" /><output id="tileAngleOut">-45°</output></div>
+          </div>
+          <label for="wmText">Text</label>
+          <input id="wmText" type="text" value="© BlackAngel" placeholder="Watermark text" />
+          <label for="wmPosition" style="margin-top:8px;">Position</label>
+          <select id="wmPosition">
+            <option value="bottom-right">Bottom right</option>
+            <option value="bottom-left">Bottom left</option>
+            <option value="top-right">Top right</option>
+            <option value="top-left">Top left</option>
+            <option value="center">Center</option>
+            <option value="custom">🎯 Custom (drag on canvas)</option>
+          </select>
+          <label for="wmFont" style="margin-top:8px;">Font</label>
+          <select id="wmFont">
+            <option value="Arial, sans-serif">Arial</option>
+            <option value="Verdana, sans-serif">Verdana</option>
+            <option value="Tahoma, sans-serif">Tahoma</option>
+            <option value="Georgia, serif">Georgia</option>
+            <option value="Times New Roman, serif">Times New Roman</option>
+            <option value="Courier New, monospace">Courier New</option>
+            <option value="Impact, sans-serif">Impact</option>
+          </select>
+          <div class="inline-grid-2" style="margin-top:8px;">
+            <button id="wmBoldBtn" class="secondary is-active">Bold</button>
+            <button id="wmItalicBtn" class="secondary">Italic</button>
+          </div>
+          <label for="wmColor" style="margin-top:8px;">Color</label>
+          <input id="wmColor" type="color" value="#ffffff" />
+          <label style="margin-top:8px;">Opacity</label>
+          <div class="range-line"><input id="wmOpacity" type="range" min="0" max="100" value="80" /><output id="wmOpacityOut">80%</output></div>
+          <label>Size (px)</label>
+          <div class="range-line"><input id="wmSize" type="range" min="10" max="200" value="48" /><output id="wmSizeOut">48px</output></div>
+          <label>Rotation</label>
+          <div class="range-line"><input id="wmRotation" type="range" min="-180" max="180" value="0" /><output id="wmRotationOut">0°</output></div>
+          <label style="margin-top:8px;">Stroke color</label>
+          <input id="wmStrokeColor" type="color" value="#000000" />
+          <label>Stroke width</label>
+          <div class="range-line"><input id="wmStrokeWidth" type="range" min="0" max="20" value="2" /><output id="wmStrokeWidthOut">2px</output></div>
+          <label style="margin-top:8px;">Shadow blur</label>
+          <div class="range-line"><input id="wmShadowBlur" type="range" min="0" max="50" value="4" /><output id="wmShadowBlurOut">4</output></div>
+        </div>
+      </div>
+
+      <!-- Logo watermark -->
+      <div class="group" data-section="logo">
+        <div class="group-header" onclick="this.parentElement.classList.toggle('collapsed')"><span class="icon">🖼️</span> Logo Watermark <span class="arrow">▼</span></div>
+        <div class="group-body">
+          <label style="display:flex;align-items:center;gap:8px;margin-bottom:8px;"><input id="logoEnabled" type="checkbox" /> Enable logo watermark</label>
+          <label for="logoUpload">Logo image</label>
+          <input id="logoUpload" type="file" accept="image/*" />
+          <button id="removeLogoBtn" class="warn" style="margin-top:8px;" disabled>Remove Logo</button>
+          <label for="logoPosition" style="margin-top:8px;">Position</label>
+          <select id="logoPosition">
+            <option value="bottom-right">Bottom right</option>
+            <option value="bottom-left">Bottom left</option>
+            <option value="top-right">Top right</option>
+            <option value="top-left">Top left</option>
+            <option value="center">Center</option>
+          </select>
+          <label style="margin-top:8px;">Opacity</label>
+          <div class="range-line"><input id="logoOpacity" type="range" min="0" max="100" value="60" /><output id="logoOpacityOut">60%</output></div>
+          <label>Scale</label>
+          <div class="range-line"><input id="logoScale" type="range" min="5" max="200" value="30" /><output id="logoScaleOut">30%</output></div>
+        </div>
+      </div>
+
+      <!-- Export -->
+      <div class="group" data-section="export">
+        <div class="group-header" onclick="this.parentElement.classList.toggle('collapsed')"><span class="icon">💾</span> Export <span class="arrow">▼</span></div>
+        <div class="group-body">
+          <label for="exportFilename">Filename</label>
+          <input id="exportFilename" type="text" value="watermarked-video" placeholder="filename" />
+          <label for="exportFormat" style="margin-top:8px;">Format</label>
+          <select id="exportFormat">
+            <option value="webm">WebM (fastest)</option>
+            <option value="mp4">MP4 (if supported)</option>
+          </select>
+          <label style="margin-top:8px;">Quality (% of original bitrate)</label>
+          <div class="range-line"><input id="exportQuality" type="range" min="1" max="100" value="80" /><output id="exportQualityOut">80%</output></div>
+          <p class="small" style="margin-top:2px;">100% = same size as original, 80% = smaller, lower = much smaller</p>
+          <label style="margin-top:8px;">Framerate</label>
+          <select id="exportSpeed">
+            <option value="original" selected>Original fps (from video)</option>
+            <option value="30">30 fps (smooth, slower export)</option>
+            <option value="24">24 fps (balanced)</option>
+            <option value="15">15 fps (fast export)</option>
+            <option value="10">10 fps (fastest)</option>
+          </select>
+          <p class="small" style="margin-top:2px;">"Original fps" keeps the source video's frame rate. Lower fps = faster export.</p>
+          <div class="btn-row" style="margin-top:10px;">
+            <button id="exportBtn" disabled>⬇ Export Video</button>
+            <button id="cancelExportBtn" class="warn" disabled>✕ Cancel</button>
+          </div>
+          <div class="export-progress" id="exportProgress">
+            <div class="progress-bar-bg"><div class="progress-bar-fill" id="progressFill"></div></div>
+            <p class="progress-text" id="progressText">Preparing...</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Bottom -->
+      <div class="group">
+        <div class="btn-row">
+          <button id="resetBtn" class="secondary" disabled>↺ Reset All</button>
+          <a id="backLink" href="tools.html" style="text-decoration:none;"><button type="button" class="secondary" style="width:100%;">← Tools</button></a>
+        </div>
+      </div>
+    </aside>
+
+    <!-- RIGHT: VIDEO PREVIEW -->
+    <section id="videoBox" class="video-box">
+      <div id="videoInfo" class="video-info" style="display:none;">
+        <span id="infoDims">—</span>
+        <span id="infoDuration">—</span>
+        <span id="infoSpeed">1x</span>
+      </div>
+
+      <div class="preview-container">
+        <canvas id="previewCanvas" width="1280" height="720"></canvas>
+        <video id="hiddenVideo" crossorigin="anonymous" preload="auto"></video>
+        <div id="dropHint" class="drop-hint">
+          <div style="font-size:2.5rem;margin-bottom:8px;">🎬</div>
+          <div>Drop video here or use "Choose video"</div>
+          <div style="font-size:.75rem;margin-top:6px;opacity:.6;">Supports MP4, WebM, MOV, AVI</div>
+        </div>
+      </div>
+
+      <div class="video-controls" id="videoControls" style="display:none;">
+        <div class="timeline-row">
+          <div class="timeline-wrapper">
+            <input id="timeline" type="range" min="0" max="1000" value="0" step="1" style="width:100%;" />
+          </div>
+          <span class="time-display" id="timeDisplay">0:00 / 0:00</span>
+        </div>
+        <div class="playback-row">
+          <button id="skipBackBtn" class="secondary">⏮ -5s</button>
+          <button id="playPauseBtn">▶ Play</button>
+          <button id="skipFwdBtn" class="secondary">⏭ +5s</button>
+          <button id="stopBtn" class="secondary">⏹ Stop</button>
+          <select id="playbackSpeed" title="Playback speed">
+            <option value="0.25">0.25x</option>
+            <option value="0.5">0.5x</option>
+            <option value="1" selected>1x</option>
+            <option value="1.5">1.5x</option>
+            <option value="2">2x</option>
+          </select>
+        </div>
+        <div class="volume-row">
+          <label>🔊</label>
+          <input id="volume" type="range" min="0" max="100" value="80" />
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <script>
+    const $ = id => document.getElementById(id);
+
+    // =====================
+    // Utility
+    // =====================
+    function showToast(msg, type = 'info') {
+      const container = $('toastContainer');
+      const t = document.createElement('div');
+      t.className = 'toast ' + type;
+      t.textContent = msg;
+      container.appendChild(t);
+      requestAnimationFrame(() => t.classList.add('show'));
+      setTimeout(() => { t.classList.remove('show'); setTimeout(() => t.remove(), 350); }, 3000);
+    }
+
+    function formatTime(s) {
+      if (!isFinite(s) || s < 0) return '0:00';
+      const m = Math.floor(s / 60);
+      const sec = Math.floor(s % 60);
+      return m + ':' + String(sec).padStart(2, '0');
+    }
+
+    function parseTime(str) {
+      if (!str || !str.trim()) return NaN;
+      str = str.trim();
+      // Support "M:SS" or "MM:SS" or just seconds
+      if (str.includes(':')) {
+        const parts = str.split(':');
+        if (parts.length === 2) return parseInt(parts[0]) * 60 + parseInt(parts[1]);
+        if (parts.length === 3) return parseInt(parts[0]) * 3600 + parseInt(parts[1]) * 60 + parseInt(parts[2]);
+      }
+      return parseFloat(str);
+    }
+
+    function updateSliderTrack(el) {
+      const min = Number(el.min), max = Number(el.max), val = Number(el.value);
+      const pct = ((val - min) / (max - min)) * 100;
+      el.style.setProperty('--range-pct', pct + '%');
+    }
+
+    // =====================
+    // Theme
+    // =====================
+    const themeSelect = $('themeSelect');
+    function applyTheme(t) { document.documentElement.setAttribute('data-theme', t); localStorage.setItem('videoWmTheme', t); }
+    themeSelect.addEventListener('change', () => applyTheme(themeSelect.value));
+    applyTheme(localStorage.getItem('videoWmTheme') || 'night');
+
+    // =====================
+    // Elements
+    // =====================
+    const videoUpload = $('videoUpload');
+    const hiddenVideo = $('hiddenVideo');
+    const previewCanvas = $('previewCanvas');
+    const pCtx = previewCanvas.getContext('2d');
+    const dropHint = $('dropHint');
+    const videoBox = $('videoBox');
+    const videoControls = $('videoControls');
+    const videoInfo = $('videoInfo');
+    const videoLoadedInfo = $('videoLoadedInfo');
+    const timeline = $('timeline');
+    const timeDisplay = $('timeDisplay');
+    const playPauseBtn = $('playPauseBtn');
+    const skipBackBtn = $('skipBackBtn');
+    const skipFwdBtn = $('skipFwdBtn');
+    const stopBtn = $('stopBtn');
+    const playbackSpeed = $('playbackSpeed');
+    const volumeSlider = $('volume');
+    const exportBtn = $('exportBtn');
+    const cancelExportBtn = $('cancelExportBtn');
+    const resetBtn = $('resetBtn');
+    const exportProgress = $('exportProgress');
+    const progressFill = $('progressFill');
+    const progressText = $('progressText');
+    const screenshotBtn = $('screenshotBtn');
+    const resetFiltersBtn = $('resetFiltersBtn');
+    const detectFpsBtn = $('detectFpsBtn');
+    const fpsInfoDisplay = $('fpsInfoDisplay');
+    const fpsDetected = $('fpsDetected');
+    const frameCountDetected = $('frameCountDetected');
+    const frameDurationNs = $('frameDurationNs');
+    const fpsMethod = $('fpsMethod');
+
+    // Filters
+    const filterBrightness = $('filterBrightness');
+    const filterContrast = $('filterContrast');
+    const filterSaturate = $('filterSaturate');
+    const filterHue = $('filterHue');
+    const filterBlur = $('filterBlur');
+    const filterGrayscale = $('filterGrayscale');
+    const filterInvert = $('filterInvert');
+
+    // Trim
+    const trimStart = $('trimStart');
+    const trimEnd = $('trimEnd');
+    const setTrimStartBtn = $('setTrimStartBtn');
+    const setTrimEndBtn = $('setTrimEndBtn');
+    const clearTrimBtn = $('clearTrimBtn');
+    const previewTrimBtn = $('previewTrimBtn');
+    const trimInfoDisplay = $('trimInfoDisplay');
+    const trimDurationBadge = $('trimDurationBadge');
+
+    // Text controls
+    const textEnabled = $('textEnabled');
+    const wmText = $('wmText');
+    const wmPosition = $('wmPosition');
+    const wmFont = $('wmFont');
+    const wmBoldBtn = $('wmBoldBtn');
+    const wmItalicBtn = $('wmItalicBtn');
+    const wmColor = $('wmColor');
+    const wmOpacity = $('wmOpacity');
+    const wmSize = $('wmSize');
+    const wmRotation = $('wmRotation');
+    const wmStrokeColor = $('wmStrokeColor');
+    const wmStrokeWidth = $('wmStrokeWidth');
+    const wmShadowBlur = $('wmShadowBlur');
+    const wmOpacityOut = $('wmOpacityOut');
+    const wmSizeOut = $('wmSizeOut');
+    const wmRotationOut = $('wmRotationOut');
+    const wmStrokeWidthOut = $('wmStrokeWidthOut');
+    const wmShadowBlurOut = $('wmShadowBlurOut');
+
+    // Tiled pattern controls
+    const textTiled = $('textTiled');
+    const tiledOptions = $('tiledOptions');
+    const tileSpacing = $('tileSpacing');
+    const tileAngle = $('tileAngle');
+    const tileSpacingOut = $('tileSpacingOut');
+    const tileAngleOut = $('tileAngleOut');
+
+    // Logo controls
+    const logoEnabled = $('logoEnabled');
+    const logoUpload = $('logoUpload');
+    const removeLogoBtn = $('removeLogoBtn');
+    const logoPosition = $('logoPosition');
+    const logoOpacity = $('logoOpacity');
+    const logoScale = $('logoScale');
+    const logoOpacityOut = $('logoOpacityOut');
+    const logoScaleOut = $('logoScaleOut');
+
+    const exportFilename = $('exportFilename');
+    const exportFormat = $('exportFormat');
+    const exportQuality = $('exportQuality');
+    const exportQualityOut = $('exportQualityOut');
+    const exportSpeed = $('exportSpeed');
+
+    // =====================
+    // State
+    // =====================
+    let videoLoaded = false;
+    let isPlaying = false;
+    let animFrameId = null;
+    let isBold = true;
+    let isItalic = false;
+    let logoImg = null;
+    let logoReady = false;
+    let isExporting = false;
+    let exportCancelled = false;
+    let trimStartTime = 0;
+    let trimEndTime = 0; // 0 means use full duration
+    let originalFileSize = 0;   // bytes of the source video file
+    let originalBitrate = 0;    // estimated bitrate of source video (bits/sec)
+
+    // Drag & rotate text watermark on canvas
+    let customTextPos = null; // {x, y} in canvas coords
+    let isDraggingText = false;
+    let isRotatingText = false;
+    let textSelected = false;
+    let textBounds = null; // {x, y, w, h, cx, cy} for hit-testing
+    let dragOffset = {x: 0, y: 0};
+    let rotateStartAngle = 0;
+    let rotateStartValue = 0;
+
+    // =====================
+    // Frame rate detection state
+    // =====================
+    let detectedFps = 0;          // Detected frames per second
+    let detectedFrameCount = 0;   // Total estimated frame count
+    let detectedFrameDuration = 0; // Frame duration in seconds (1/fps)
+    let detectionMethod = 'none'; // 'rVFC' | 'webkit' | 'estimate'
+    let isDetectingFps = false;
+    let rVfcId = null;             // requestVideoFrameCallback handle
+
+    // Feature detection: requestVideoFrameCallback (Chrome/Edge)
+    const hasRVFC = typeof hiddenVideo.requestVideoFrameCallback === 'function';
+
+    // =====================
+    // Outputs update
+    // =====================
+    function updateOutputs() {
+      wmOpacityOut.textContent = wmOpacity.value + '%';
+      wmSizeOut.textContent = wmSize.value + 'px';
+      wmRotationOut.textContent = wmRotation.value + '°';
+      wmStrokeWidthOut.textContent = wmStrokeWidth.value + 'px';
+      wmShadowBlurOut.textContent = wmShadowBlur.value;
+      logoOpacityOut.textContent = logoOpacity.value + '%';
+      logoScaleOut.textContent = logoScale.value + '%';
+      exportQualityOut.textContent = exportQuality.value + '%';
+      // Filter outputs
+      $('filterBrightnessOut').textContent = filterBrightness.value + '%';
+      $('filterContrastOut').textContent = filterContrast.value + '%';
+      $('filterSaturateOut').textContent = filterSaturate.value + '%';
+      $('filterHueOut').textContent = filterHue.value + '°';
+      $('filterBlurOut').textContent = filterBlur.value + 'px';
+      // Update all slider tracks
+      [wmOpacity, wmSize, wmRotation, wmStrokeWidth, wmShadowBlur, logoOpacity, logoScale, exportQuality, volumeSlider,
+       filterBrightness, filterContrast, filterSaturate, filterHue, filterBlur, timeline].forEach(updateSliderTrack);
+    }
+    updateOutputs();
+
+    // Text-related sliders -> render even without video
+    [wmOpacity, wmSize, wmRotation, wmStrokeWidth, wmShadowBlur].forEach(el => {
+      el.addEventListener('input', () => { updateOutputs(); if (!isPlaying) renderFrame(); });
+    });
+    // Video-related sliders -> require video loaded
+    [logoOpacity, logoScale, exportQuality, volumeSlider,
+     filterBrightness, filterContrast, filterSaturate, filterHue, filterBlur].forEach(el => {
+      el.addEventListener('input', () => { updateOutputs(); if (videoLoaded && !isPlaying) renderFrame(); });
+    });
+
+    [filterGrayscale, filterInvert].forEach(el => {
+      el.addEventListener('change', () => { if (videoLoaded && !isPlaying) renderFrame(); });
+    });
+
+    [textEnabled, wmText, wmPosition, wmFont, wmColor, wmStrokeColor].forEach(el => {
+      el.addEventListener('input', () => { if (!isPlaying) renderFrame(); });
+      el.addEventListener('change', () => { if (!isPlaying) renderFrame(); });
+    });
+
+    [logoEnabled, logoPosition].forEach(el => {
+      el.addEventListener('change', () => { if (videoLoaded && !isPlaying) renderFrame(); });
+    });
+
+    wmBoldBtn.addEventListener('click', () => { isBold = !isBold; wmBoldBtn.classList.toggle('is-active', isBold); if (!isPlaying) renderFrame(); });
+    wmItalicBtn.addEventListener('click', () => { isItalic = !isItalic; wmItalicBtn.classList.toggle('is-active', isItalic); if (!isPlaying) renderFrame(); });
+
+    // Tiled pattern controls
+    textTiled.addEventListener('change', () => {
+      tiledOptions.style.display = textTiled.checked ? '' : 'none';
+      if (!isPlaying) renderFrame();
+    });
+    [tileSpacing, tileAngle].forEach(el => {
+      el.addEventListener('input', () => {
+        tileSpacingOut.textContent = tileSpacing.value + 'px';
+        tileAngleOut.textContent = tileAngle.value + '°';
+        updateSliderTrack(tileSpacing); updateSliderTrack(tileAngle);
+        if (!isPlaying) renderFrame();
+      });
+    });
+    updateSliderTrack(tileSpacing); updateSliderTrack(tileAngle);
+
+    // =====================
+    // Build CSS filter string
+    // =====================
+    function getFilterCSS() {
+      let f = '';
+      const br = Number(filterBrightness.value);
+      const co = Number(filterContrast.value);
+      const sa = Number(filterSaturate.value);
+      const hu = Number(filterHue.value);
+      const bl = Number(filterBlur.value);
+      if (br !== 100) f += 'brightness(' + (br / 100) + ') ';
+      if (co !== 100) f += 'contrast(' + (co / 100) + ') ';
+      if (sa !== 100) f += 'saturate(' + (sa / 100) + ') ';
+      if (hu !== 0) f += 'hue-rotate(' + hu + 'deg) ';
+      if (bl > 0) f += 'blur(' + bl + 'px) ';
+      if (filterGrayscale.checked) f += 'grayscale(1) ';
+      if (filterInvert.checked) f += 'invert(1) ';
+      return f.trim();
+    }
+
+    // =====================
+    // Logo upload
+    // =====================
+    logoUpload.addEventListener('change', () => {
+      const file = logoUpload.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = () => {
+        logoImg = new Image();
+        logoImg.onload = () => { logoReady = true; removeLogoBtn.disabled = false; logoEnabled.checked = true; showToast('Logo loaded', 'success'); if (videoLoaded && !isPlaying) renderFrame(); };
+        logoImg.src = reader.result;
+      };
+      reader.readAsDataURL(file);
+    });
+
+    removeLogoBtn.addEventListener('click', () => {
+      logoImg = null; logoReady = false; logoUpload.value = ''; removeLogoBtn.disabled = true; logoEnabled.checked = false;
+      showToast('Logo removed', 'info');
+      if (videoLoaded && !isPlaying) renderFrame();
+    });
+
+    // =====================
+    // Video loading
+    // =====================
+    function loadVideo(file) {
+      if (!file || !file.type.startsWith('video/')) { showToast('Please select a video file', 'error'); return; }
+      const url = URL.createObjectURL(file);
+      hiddenVideo.src = url;
+      hiddenVideo.load();
+      hiddenVideo.onloadedmetadata = () => {
+        videoLoaded = true;
+        previewCanvas.width = hiddenVideo.videoWidth;
+        previewCanvas.height = hiddenVideo.videoHeight;
+        dropHint.classList.add('hidden');
+        videoControls.style.display = '';
+        videoInfo.style.display = '';
+        videoLoadedInfo.style.display = '';
+        exportBtn.disabled = false;
+        resetBtn.disabled = false;
+        screenshotBtn.disabled = false;
+        resetFiltersBtn.disabled = false;
+        detectFpsBtn.disabled = false;
+        setTrimStartBtn.disabled = false;
+        setTrimEndBtn.disabled = false;
+        clearTrimBtn.disabled = false;
+        previewTrimBtn.disabled = false;
+        // Reset previous detection state
+        detectedFps = 0; detectedFrameCount = 0; detectedFrameDuration = 0;
+        detectionMethod = 'none';
+        fpsInfoDisplay.style.display = 'none';
+        // Store original file size and estimate bitrate for size-matched export
+        originalFileSize = file.size || 0;
+        if (originalFileSize > 0 && hiddenVideo.duration > 0) {
+          originalBitrate = Math.round((originalFileSize * 8) / hiddenVideo.duration);
+        } else {
+          originalBitrate = 0;
+        }
+        timeline.max = Math.floor(hiddenVideo.duration * 1000);
+        timeline.value = 0;
+        hiddenVideo.volume = volumeSlider.value / 100;
+        $('videoFileName').textContent = '📁 ' + file.name + ' (' + (originalFileSize / 1048576).toFixed(1) + ' MB)';
+        $('videoResolution').textContent = hiddenVideo.videoWidth + '×' + hiddenVideo.videoHeight + ' | ' + formatTime(hiddenVideo.duration);
+        $('infoDims').textContent = hiddenVideo.videoWidth + '×' + hiddenVideo.videoHeight;
+        $('infoDuration').textContent = 'Duration: ' + formatTime(hiddenVideo.duration);
+        // Reset trim
+        trimStartTime = 0; trimEndTime = 0;
+        trimStart.value = '0:00'; trimEnd.value = '';
+        trimInfoDisplay.style.display = 'none';
+        showToast('Video loaded: ' + file.name, 'success');
+        updateOutputs();
+        renderFrame();
+      };
+      hiddenVideo.onerror = () => { showToast('Error loading video', 'error'); };
+    }
+
+    videoUpload.addEventListener('change', () => { if (videoUpload.files[0]) loadVideo(videoUpload.files[0]); });
+
+    // Drag & drop
+    ['dragenter','dragover'].forEach(ev => videoBox.addEventListener(ev, e => { e.preventDefault(); videoBox.classList.add('drag-over'); }));
+    ['dragleave','drop'].forEach(ev => videoBox.addEventListener(ev, e => { e.preventDefault(); videoBox.classList.remove('drag-over'); }));
+    videoBox.addEventListener('drop', e => {
+      const file = e.dataTransfer.files[0];
+      if (file) loadVideo(file);
+    });
+
+    // =====================
+    // Render watermark on canvas
+    // =====================
+    function getPosCoords(pos, canvasW, canvasH, elemW, elemH, margin) {
+      margin = margin || 20;
+      let x, y;
+      switch (pos) {
+        case 'top-left': x = margin; y = margin + elemH; break;
+        case 'top-right': x = canvasW - margin - elemW; y = margin + elemH; break;
+        case 'bottom-left': x = margin; y = canvasH - margin; break;
+        case 'center': x = (canvasW - elemW) / 2; y = (canvasH + elemH) / 2; break;
+        case 'bottom-right': default: x = canvasW - margin - elemW; y = canvasH - margin; break;
+      }
+      return { x, y };
+    }
+
+    function getLogoPosCoords(pos, canvasW, canvasH, logoW, logoH, margin) {
+      margin = margin || 20;
+      let x, y;
+      switch (pos) {
+        case 'top-left': x = margin; y = margin; break;
+        case 'top-right': x = canvasW - margin - logoW; y = margin; break;
+        case 'bottom-left': x = margin; y = canvasH - margin - logoH; break;
+        case 'center': x = (canvasW - logoW) / 2; y = (canvasH - logoH) / 2; break;
+        case 'bottom-right': default: x = canvasW - margin - logoW; y = canvasH - margin - logoH; break;
+      }
+      return { x, y };
+    }
+
+    // Get canvas-relative mouse position, accounting for CSS scaling
+    function getCanvasMousePos(e) {
+      const rect = previewCanvas.getBoundingClientRect();
+      const scaleX = previewCanvas.width / rect.width;
+      const scaleY = previewCanvas.height / rect.height;
+      const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+      const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+      return {
+        x: (clientX - rect.left) * scaleX,
+        y: (clientY - rect.top) * scaleY
+      };
+    }
+
+    // Check if point is inside a rotated rectangle
+    function isPointInRotatedRect(px, py, cx, cy, rw, rh, angleDeg) {
+      const rad = -angleDeg * Math.PI / 180;
+      const cos = Math.cos(rad), sin = Math.sin(rad);
+      const dx = px - cx, dy = py - cy;
+      const lx = dx * cos - dy * sin;
+      const ly = dx * sin + dy * cos;
+      return Math.abs(lx) <= rw / 2 && Math.abs(ly) <= rh / 2;
+    }
+
+    function drawWatermarkOnCtx(ctx, w, h, showHandles) {
+      // Text watermark
+      if (textEnabled.checked && wmText.value.trim()) {
+        const size = Number(wmSize.value);
+        const font = (isItalic ? 'italic ' : '') + (isBold ? 'bold ' : '') + size + 'px ' + wmFont.value;
+        ctx.save();
+        ctx.font = font;
+        const metrics = ctx.measureText(wmText.value);
+        const textW = metrics.width;
+        const textH = size;
+
+        // Determine position
+        let pos;
+        if (wmPosition.value === 'custom' && customTextPos) {
+          pos = { x: customTextPos.x, y: customTextPos.y };
+        } else {
+          pos = getPosCoords(wmPosition.value, w, h, textW, textH);
+        }
+
+        // Rotation around center of text
+        const rot = Number(wmRotation.value);
+        const cx = pos.x - textW / 2;
+        const cy = pos.y - textH / 2;
+
+        // Store bounds for hit-testing (in canvas coords, unrotated center)
+        textBounds = { x: pos.x, y: pos.y, w: textW, h: textH, cx: cx, cy: cy, rot: rot };
+
+        ctx.translate(cx, cy);
+        if (rot !== 0) ctx.rotate(rot * Math.PI / 180);
+
+        // Draw selection handles when paused (always visible so user can find them)
+        if (showHandles) {
+          ctx.save();
+          ctx.strokeStyle = '#60a5fa';
+          ctx.lineWidth = 2;
+          ctx.setLineDash([6, 4]);
+          ctx.strokeRect(-textW / 2 - 6, -textH / 2 - 6, textW + 12, textH + 12);
+          ctx.setLineDash([]);
+
+          // Rotation handle
+          const handleY = -textH / 2 - 35;
+          ctx.beginPath();
+          ctx.moveTo(0, -textH / 2 - 6);
+          ctx.lineTo(0, handleY);
+          ctx.strokeStyle = '#60a5fa';
+          ctx.lineWidth = 2;
+          ctx.stroke();
+
+          ctx.beginPath();
+          ctx.arc(0, handleY, 8, 0, Math.PI * 2);
+          ctx.fillStyle = 'rgba(96,165,250,.25)';
+          ctx.fill();
+          ctx.strokeStyle = '#60a5fa';
+          ctx.lineWidth = 2;
+          ctx.stroke();
+
+          // Small rotation icon
+          ctx.fillStyle = '#60a5fa';
+          ctx.font = '10px sans-serif';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillText('↻', 0, handleY);
+          ctx.restore();
+        }
+
+        // Draw text
+        ctx.globalAlpha = Number(wmOpacity.value) / 100;
+        const sBlur = Number(wmShadowBlur.value);
+        if (sBlur > 0) { ctx.shadowColor = 'rgba(0,0,0,0.6)'; ctx.shadowBlur = sBlur; ctx.shadowOffsetX = 2; ctx.shadowOffsetY = 2; }
+        const strokeW = Number(wmStrokeWidth.value);
+
+        if (textTiled.checked) {
+          // Tiled pattern mode: draw text repeatedly across canvas
+          ctx.restore(); // restore from the translate/rotate above
+          ctx.save();
+          ctx.font = font; // Re-apply font after restore
+          const spacing = Number(tileSpacing.value);
+          const tileAng = Number(tileAngle.value);
+          ctx.globalAlpha = Number(wmOpacity.value) / 100;
+          if (sBlur > 0) { ctx.shadowColor = 'rgba(0,0,0,0.6)'; ctx.shadowBlur = sBlur; ctx.shadowOffsetX = 2; ctx.shadowOffsetY = 2; }
+
+          // Calculate diagonal to cover entire canvas when rotated
+          const diag = Math.sqrt(w * w + h * h);
+          const tileRad = tileAng * Math.PI / 180;
+
+          ctx.translate(w / 2, h / 2);
+          ctx.rotate(tileRad);
+
+          // Draw rows of text covering the rotated area
+          const rows = Math.ceil(diag / spacing) + 2;
+          const startX = -diag / 2 - textW;
+          const endX = diag / 2 + textW;
+          const startY = -diag / 2;
+
+          for (let row = -rows; row <= rows; row++) {
+            const y = startY + row * spacing;
+            for (let x = startX; x < endX; x += textW + spacing * 0.5) {
+              if (strokeW > 0) { ctx.strokeStyle = wmStrokeColor.value; ctx.lineWidth = strokeW; ctx.lineJoin = 'round'; ctx.strokeText(wmText.value, x, y); }
+              ctx.fillStyle = wmColor.value;
+              ctx.fillText(wmText.value, x, y);
+            }
+          }
+          ctx.restore();
+          textBounds = null; // no drag/rotate in tiled mode
+        } else {
+          // Single text mode
+          if (strokeW > 0) { ctx.strokeStyle = wmStrokeColor.value; ctx.lineWidth = strokeW; ctx.lineJoin = 'round'; ctx.strokeText(wmText.value, -textW / 2, textH * 0.35); }
+          ctx.fillStyle = wmColor.value;
+          ctx.fillText(wmText.value, -textW / 2, textH * 0.35);
+          ctx.restore();
+        }
+      } else {
+        textBounds = null;
+      }
+      // Logo watermark
+      if (logoEnabled.checked && logoReady && logoImg) {
+        const scale = Number(logoScale.value) / 100;
+        const lw = logoImg.naturalWidth * scale;
+        const lh = logoImg.naturalHeight * scale;
+        const pos = getLogoPosCoords(logoPosition.value, w, h, lw, lh);
+        ctx.save();
+        ctx.globalAlpha = Number(logoOpacity.value) / 100;
+        ctx.drawImage(logoImg, pos.x, pos.y, lw, lh);
+        ctx.restore();
+      }
+    }
+
+    function renderFrame() {
+      const w = previewCanvas.width;
+      const h = previewCanvas.height;
+      pCtx.clearRect(0, 0, w, h);
+      if (videoLoaded) {
+        const filterCSS = getFilterCSS();
+        if (filterCSS) { pCtx.filter = filterCSS; }
+        pCtx.drawImage(hiddenVideo, 0, 0, w, h);
+        pCtx.filter = 'none';
+      } else {
+        // Show dark background with sample frame when no video loaded
+        pCtx.fillStyle = '#1a1a2e';
+        pCtx.fillRect(0, 0, w, h);
+        pCtx.fillStyle = '#333';
+        pCtx.font = '24px sans-serif';
+        pCtx.textAlign = 'center';
+        pCtx.fillText('Load a video to preview watermark', w/2, h/2);
+        pCtx.textAlign = 'start';
+      }
+      // Show handles when paused and text is selected/hovered
+      drawWatermarkOnCtx(pCtx, w, h, videoLoaded && !isPlaying);
+    }
+
+    // =====================
+    // Canvas mouse/touch interaction for text drag & rotate
+    // =====================
+    function getRotationHandlePos() {
+      if (!textBounds) return null;
+      const size = Number(wmSize.value);
+      const textH = size;
+      const cx = textBounds.cx, cy = textBounds.cy;
+      const rot = textBounds.rot;
+      const handleLocalY = -textH / 2 - 35;
+      // Rotate handle position
+      const rad = rot * Math.PI / 180;
+      const cos = Math.cos(rad), sin = Math.sin(rad);
+      return {
+        x: cx + (0 * cos - handleLocalY * sin),
+        y: cy + (0 * sin + handleLocalY * cos)
+      };
+    }
+
+    function handleCanvasMouseDown(e) {
+      if (!videoLoaded || isPlaying || isExporting) return;
+      if (!textEnabled.checked || !wmText.value.trim()) return;
+      e.preventDefault();
+      const pos = getCanvasMousePos(e);
+
+      // Ensure textBounds is populated by rendering once
+      if (!textBounds) { renderFrame(); }
+
+      const handlePos = getRotationHandlePos();
+
+      // Check rotation handle first (works even if text not yet selected)
+      if (handlePos) {
+        const dx = pos.x - handlePos.x, dy = pos.y - handlePos.y;
+        if (Math.sqrt(dx * dx + dy * dy) < 25) {
+          textSelected = true;
+          isRotatingText = true;
+          rotateStartAngle = Math.atan2(pos.y - textBounds.cy, pos.x - textBounds.cx);
+          rotateStartValue = Number(wmRotation.value);
+          renderFrame();
+          return;
+        }
+      }
+
+      // Check text body (generous hit area)
+      if (textBounds) {
+        const hit = isPointInRotatedRect(pos.x, pos.y, textBounds.cx, textBounds.cy, textBounds.w + 40, textBounds.h + 40, textBounds.rot);
+        if (hit) {
+          isDraggingText = true;
+          textSelected = true;
+          // Switch to custom position
+          if (wmPosition.value !== 'custom') {
+            wmPosition.value = 'custom';
+            // Initialize custom pos from current position
+            if (!customTextPos) {
+              customTextPos = { x: textBounds.x, y: textBounds.y };
+            }
+          }
+          if (!customTextPos) {
+            customTextPos = { x: textBounds.x, y: textBounds.y };
+          }
+          dragOffset.x = pos.x - textBounds.cx;
+          dragOffset.y = pos.y - textBounds.cy;
+          renderFrame();
+          return;
+        }
+      }
+
+      // Click on empty area - deselect
+      textSelected = false;
+      renderFrame();
+    }
+
+    function handleCanvasMouseMove(e) {
+      if (!videoLoaded || isPlaying) return;
+      e.preventDefault();
+      const pos = getCanvasMousePos(e);
+
+      if (isDraggingText && customTextPos) {
+        customTextPos.x = pos.x - dragOffset.x + (textBounds ? textBounds.w / 2 : 0);
+        customTextPos.y = pos.y - dragOffset.y + (textBounds ? textBounds.h / 2 : 0);
+        renderFrame();
+        return;
+      }
+
+      if (isRotatingText && textBounds) {
+        const angle = Math.atan2(pos.y - textBounds.cy, pos.x - textBounds.cx);
+        const delta = (angle - rotateStartAngle) * 180 / Math.PI;
+        let newRot = Math.round(rotateStartValue + delta);
+        // Clamp to -180..180
+        while (newRot > 180) newRot -= 360;
+        while (newRot < -180) newRot += 360;
+        wmRotation.value = newRot;
+        updateOutputs();
+        renderFrame();
+        return;
+      }
+
+      // Hover detection for cursor
+      if (textBounds && textEnabled.checked) {
+        const handlePos = getRotationHandlePos();
+        if (handlePos && textSelected) {
+          const dx = pos.x - handlePos.x, dy = pos.y - handlePos.y;
+          if (Math.sqrt(dx * dx + dy * dy) < 18) {
+            previewCanvas.style.cursor = 'crosshair';
+            return;
+          }
+        }
+        const hit = isPointInRotatedRect(pos.x, pos.y, textBounds.cx, textBounds.cy, textBounds.w + 20, textBounds.h + 20, textBounds.rot);
+        previewCanvas.style.cursor = hit ? 'move' : 'default';
+        if (hit) { textSelected = true; renderFrame(); }
+        else if (textSelected && !isDraggingText) { textSelected = false; renderFrame(); }
+      } else {
+        previewCanvas.style.cursor = 'default';
+      }
+    }
+
+    function handleCanvasMouseUp(e) {
+      if (isDraggingText) {
+        isDraggingText = false;
+        renderFrame();
+      }
+      if (isRotatingText) {
+        isRotatingText = false;
+        renderFrame();
+      }
+    }
+
+    // Mouse events
+    previewCanvas.addEventListener('mousedown', handleCanvasMouseDown);
+    previewCanvas.addEventListener('mousemove', handleCanvasMouseMove);
+    window.addEventListener('mouseup', handleCanvasMouseUp);
+
+    // Touch events
+    previewCanvas.addEventListener('touchstart', handleCanvasMouseDown, { passive: false });
+    previewCanvas.addEventListener('touchmove', handleCanvasMouseMove, { passive: false });
+    window.addEventListener('touchend', handleCanvasMouseUp);
+
+    // Click outside canvas deselects
+    document.addEventListener('mousedown', e => {
+      if (!previewCanvas.contains(e.target) && textSelected) {
+        textSelected = false;
+        if (videoLoaded && !isPlaying) renderFrame();
+      }
+    });
+
+    // =====================
+    // Frame rate detection
+    // =====================
+    function updateFpsDisplay() {
+      fpsInfoDisplay.style.display = '';
+      fpsDetected.textContent = 'FPS: ' + (detectedFps > 0 ? detectedFps.toFixed(2) : '—');
+      frameCountDetected.textContent = 'Total frames: ' + (detectedFrameCount > 0 ? detectedFrameCount : '—');
+      frameDurationNs.textContent = 'Frame duration: ' + (detectedFrameDuration > 0 ? (detectedFrameDuration * 1000).toFixed(2) + ' ms' : '—');
+      fpsMethod.textContent = 'Method: ' + detectionMethod;
+    }
+
+    // Detect frame rate using requestVideoFrameCallback (Chrome/Edge) or webkit counters
+    // Plays ~2 seconds of video silently, measures mediaTime deltas between frames
+    async function detectFrameRate() {
+      if (!videoLoaded || isDetectingFps || isExporting || isPlaying) return;
+      isDetectingFps = true;
+      detectFpsBtn.disabled = true;
+      progressText.textContent = 'Detecting frame rate...';
+      fpsInfoDisplay.style.display = '';
+      fpsMethod.textContent = 'Method: analyzing...';
+
+      const savedTime = hiddenVideo.currentTime;
+      const savedVolume = hiddenVideo.volume;
+      const savedMuted = hiddenVideo.muted;
+      hiddenVideo.volume = 0;
+      hiddenVideo.muted = true;
+
+      try {
+        // Seek to start
+        hiddenVideo.currentTime = 0;
+        await new Promise(resolve => { hiddenVideo.onseeked = resolve; });
+
+        if (hasRVFC) {
+          // Use requestVideoFrameCallback — most accurate
+          detectionMethod = 'requestVideoFrameCallback';
+          const mediaTimes = [];
+          const maxFrames = 120; // collect up to 120 frames
+          const maxDuration = 3; // or 3 seconds, whichever comes first
+
+          await new Promise((resolve) => {
+            let stopped = false;
+            function onFrame(now, metadata) {
+              if (stopped) return;
+              mediaTimes.push(metadata.mediaTime);
+              const elapsed = mediaTimes.length > 1
+                ? mediaTimes[mediaTimes.length - 1] - mediaTimes[0]
+                : 0;
+              if (mediaTimes.length >= maxFrames || elapsed >= maxDuration || exportCancelled) {
+                stopped = true;
+                resolve();
+              } else {
+                rVfcId = hiddenVideo.requestVideoFrameCallback(onFrame);
+              }
+            }
+            rVfcId = hiddenVideo.requestVideoFrameCallback(onFrame);
+            hiddenVideo.play();
+          });
+
+          hiddenVideo.pause();
+
+          if (mediaTimes.length >= 2) {
+            const timeSpan = mediaTimes[mediaTimes.length - 1] - mediaTimes[0];
+            const frameCount = mediaTimes.length - 1;
+            detectedFps = frameCount / timeSpan;
+            detectedFrameDuration = 1 / detectedFps;
+            detectedFrameCount = Math.round(hiddenVideo.duration * detectedFps);
+            detectionMethod = 'requestVideoFrameCallback (' + frameCount + ' frames sampled)';
+          } else {
+            throw new Error('Not enough frames sampled');
+          }
+        } else if (hiddenVideo.webkitDecodedFrameCount !== undefined) {
+          // Fallback: webkitDecodedFrameCount
+          detectionMethod = 'webkitDecodedFrameCount';
+          // Play for 2 seconds and count decoded frames
+          const startCount = hiddenVideo.webkitDecodedFrameCount;
+          hiddenVideo.play();
+          await new Promise(r => setTimeout(r, 2000));
+          hiddenVideo.pause();
+          const endCount = hiddenVideo.webkitDecodedFrameCount;
+          const decodedFrames = endCount - startCount;
+          detectedFps = decodedFrames / 2;
+          detectedFrameDuration = 1 / detectedFps;
+          detectedFrameCount = Math.round(hiddenVideo.duration * detectedFps);
+          detectionMethod = 'webkitDecodedFrameCount (' + decodedFrames + ' frames in 2s)';
+        } else {
+          // Final fallback: estimate from rAF timing
+          detectionMethod = 'rAF estimate';
+          const frameTimes = [];
+          let rafStop = false;
+          await new Promise((resolve) => {
+            const startTime = performance.now();
+            function rafLoop() {
+              frameTimes.push(performance.now());
+              if (frameTimes.length >= 120 || (performance.now() - startTime) > 3000 || exportCancelled) {
+                resolve();
+              } else {
+                requestAnimationFrame(rafLoop);
+              }
+            }
+            requestAnimationFrame(rafLoop);
+            hiddenVideo.play();
+          });
+          hiddenVideo.pause();
+          if (frameTimes.length >= 2) {
+            const span = (frameTimes[frameTimes.length - 1] - frameTimes[0]) / 1000;
+            // rAF runs at display rate (~60fps), but video frames may differ
+            // This is a rough estimate — use min of display rate and 30fps default
+            detectedFps = Math.min(60, (frameTimes.length - 1) / span);
+            detectedFrameDuration = 1 / detectedFps;
+            detectedFrameCount = Math.round(hiddenVideo.duration * detectedFps);
+            detectionMethod = 'rAF estimate (approximate)';
+          } else {
+            throw new Error('Detection failed');
+          }
+        }
+
+        updateFpsDisplay();
+        showToast('Frame rate detected: ' + detectedFps.toFixed(2) + ' fps (' + detectedFrameCount + ' frames)', 'success');
+      } catch (err) {
+        console.error('FPS detection error:', err);
+        // Ultimate fallback
+        detectedFps = 30;
+        detectedFrameDuration = 1 / 30;
+        detectedFrameCount = Math.round(hiddenVideo.duration * 30);
+        detectionMethod = 'fallback (30 fps)';
+        updateFpsDisplay();
+        showToast('Could not detect exact fps, using 30 fps default', 'error');
+      } finally {
+        // Restore state
+        hiddenVideo.pause();
+        hiddenVideo.muted = savedMuted;
+        hiddenVideo.volume = savedVolume;
+        hiddenVideo.currentTime = savedTime;
+        isDetectingFps = false;
+        detectFpsBtn.disabled = false;
+        renderFrame();
+      }
+    }
+
+    detectFpsBtn.addEventListener('click', detectFrameRate);
+
+    // =====================
+    // Playback controls — frame-accurate preview using requestVideoFrameCallback
+    // =====================
+    function startPreviewLoop() {
+      // Use requestVideoFrameCallback if available (frame-accurate, only on new frames)
+      if (hasRVFC) {
+        function onFrame(now, metadata) {
+          if (!isPlaying) return;
+          renderFrame();
+          timeline.value = Math.floor(hiddenVideo.currentTime * 1000);
+          updateSliderTrack(timeline);
+          timeDisplay.textContent = formatTime(hiddenVideo.currentTime) + ' / ' + formatTime(hiddenVideo.duration);
+          // Stop at trim end if set
+          if (trimEndTime > 0 && hiddenVideo.currentTime >= trimEndTime) {
+            hiddenVideo.pause();
+            isPlaying = false;
+            playPauseBtn.textContent = '▶ Play';
+            return;
+          }
+          rVfcId = hiddenVideo.requestVideoFrameCallback(onFrame);
+        }
+        rVfcId = hiddenVideo.requestVideoFrameCallback(onFrame);
+      } else {
+        // Fallback: requestAnimationFrame (display-rate, may duplicate/skip frames)
+        function loop() {
+          if (!isPlaying) return;
+          renderFrame();
+          timeline.value = Math.floor(hiddenVideo.currentTime * 1000);
+          updateSliderTrack(timeline); // FIX: update timeline blue strip
+          timeDisplay.textContent = formatTime(hiddenVideo.currentTime) + ' / ' + formatTime(hiddenVideo.duration);
+          // Stop at trim end if set
+          if (trimEndTime > 0 && hiddenVideo.currentTime >= trimEndTime) {
+            hiddenVideo.pause();
+            isPlaying = false;
+            playPauseBtn.textContent = '▶ Play';
+            return;
+          }
+          animFrameId = requestAnimationFrame(loop);
+        }
+        loop();
+      }
+    }
+
+    playPauseBtn.addEventListener('click', () => {
+      if (!videoLoaded) return;
+      if (isPlaying) {
+        hiddenVideo.pause();
+        isPlaying = false;
+        cancelAnimationFrame(animFrameId);
+        playPauseBtn.textContent = '▶ Play';
+      } else {
+        // If at trim end, restart from trim start
+        if (trimEndTime > 0 && hiddenVideo.currentTime >= trimEndTime) {
+          hiddenVideo.currentTime = trimStartTime;
+        }
+        hiddenVideo.play();
+        isPlaying = true;
+        playPauseBtn.textContent = '⏸ Pause';
+        startPreviewLoop();
+      }
+    });
+
+    stopBtn.addEventListener('click', () => {
+      if (!videoLoaded) return;
+      hiddenVideo.pause();
+      hiddenVideo.currentTime = trimStartTime;
+      isPlaying = false;
+      cancelAnimationFrame(animFrameId);
+      playPauseBtn.textContent = '▶ Play';
+      timeline.value = Math.floor(trimStartTime * 1000);
+      updateSliderTrack(timeline); // FIX
+      timeDisplay.textContent = formatTime(trimStartTime) + ' / ' + formatTime(hiddenVideo.duration);
+      renderFrame();
+    });
+
+    skipBackBtn.addEventListener('click', () => { if (!videoLoaded) return; hiddenVideo.currentTime = Math.max(0, hiddenVideo.currentTime - 5); updateSliderTrack(timeline); if (!isPlaying) renderFrame(); });
+    skipFwdBtn.addEventListener('click', () => { if (!videoLoaded) return; hiddenVideo.currentTime = Math.min(hiddenVideo.duration, hiddenVideo.currentTime + 5); updateSliderTrack(timeline); if (!isPlaying) renderFrame(); });
+
+    timeline.addEventListener('input', () => {
+      if (!videoLoaded) return;
+      hiddenVideo.currentTime = Number(timeline.value) / 1000;
+      updateSliderTrack(timeline); // FIX: update timeline blue strip
+      timeDisplay.textContent = formatTime(hiddenVideo.currentTime) + ' / ' + formatTime(hiddenVideo.duration);
+      if (!isPlaying) renderFrame();
+    });
+
+    volumeSlider.addEventListener('input', () => { hiddenVideo.volume = volumeSlider.value / 100; });
+
+    // Playback speed
+    playbackSpeed.addEventListener('change', () => {
+      hiddenVideo.playbackRate = Number(playbackSpeed.value);
+      $('infoSpeed').textContent = playbackSpeed.value + 'x';
+    });
+
+    hiddenVideo.addEventListener('ended', () => {
+      isPlaying = false;
+      cancelAnimationFrame(animFrameId);
+      playPauseBtn.textContent = '▶ Play';
+    });
+
+    // =====================
+    // Screenshot
+    // =====================
+    screenshotBtn.addEventListener('click', () => {
+      if (!videoLoaded) return;
+      renderFrame(); // ensure current frame + watermarks + filters
+      const link = document.createElement('a');
+      link.download = 'screenshot-' + formatTime(hiddenVideo.currentTime).replace(':', 'm') + 's.png';
+      link.href = previewCanvas.toDataURL('image/png');
+      link.click();
+      showToast('Screenshot saved!', 'success');
+    });
+
+    // =====================
+    // Reset Filters
+    // =====================
+    resetFiltersBtn.addEventListener('click', () => {
+      filterBrightness.value = 100; filterContrast.value = 100; filterSaturate.value = 100;
+      filterHue.value = 0; filterBlur.value = 0;
+      filterGrayscale.checked = false; filterInvert.checked = false;
+      updateOutputs();
+      if (videoLoaded && !isPlaying) renderFrame();
+      showToast('Filters reset', 'info');
+    });
+
+    // =====================
+    // Trim controls
+    // =====================
+    setTrimStartBtn.addEventListener('click', () => {
+      if (!videoLoaded) return;
+      trimStartTime = hiddenVideo.currentTime;
+      trimStart.value = formatTime(trimStartTime);
+      updateTrimDisplay();
+      showToast('Trim start: ' + formatTime(trimStartTime), 'info');
+    });
+
+    setTrimEndBtn.addEventListener('click', () => {
+      if (!videoLoaded) return;
+      trimEndTime = hiddenVideo.currentTime;
+      trimEnd.value = formatTime(trimEndTime);
+      updateTrimDisplay();
+      showToast('Trim end: ' + formatTime(trimEndTime), 'info');
+    });
+
+    clearTrimBtn.addEventListener('click', () => {
+      trimStartTime = 0; trimEndTime = 0;
+      trimStart.value = '0:00'; trimEnd.value = '';
+      trimInfoDisplay.style.display = 'none';
+      showToast('Trim cleared', 'info');
+    });
+
+    previewTrimBtn.addEventListener('click', () => {
+      if (!videoLoaded) return;
+      hiddenVideo.currentTime = trimStartTime;
+      updateSliderTrack(timeline);
+      if (!isPlaying) renderFrame();
+      showToast('Jumped to trim start', 'info');
+    });
+
+    function updateTrimDisplay() {
+      if (trimEndTime > 0 && trimEndTime > trimStartTime) {
+        trimInfoDisplay.style.display = '';
+        trimDurationBadge.textContent = 'Trim: ' + formatTime(trimEndTime - trimStartTime);
+      } else {
+        trimInfoDisplay.style.display = 'none';
+      }
+    }
+
+    // =====================
+    // Export — frame-accurate capture with audio passthrough
+    // Uses requestVideoFrameCallback (Chrome/Edge) for 1:1 original frame capture,
+    // falls back to setInterval at target fps on other browsers.
+    // Audio track from the original video is passed through to the output.
+    // =====================
+    cancelExportBtn.addEventListener('click', () => { exportCancelled = true; });
+
+    exportBtn.addEventListener('click', async () => {
+      if (!videoLoaded || isExporting) return;
+      isExporting = true;
+      exportCancelled = false;
+      exportBtn.disabled = true;
+      cancelExportBtn.disabled = false;
+      exportProgress.classList.add('active');
+      progressFill.style.width = '0%';
+      progressText.textContent = 'Preparing...';
+
+      try {
+        // Stop any current playback
+        hiddenVideo.pause();
+        isPlaying = false;
+        cancelAnimationFrame(animFrameId);
+        playPauseBtn.textContent = '▶ Play';
+
+        const fmt = exportFormat.value;
+        const quality = Number(exportQuality.value) / 100;
+
+        // Determine target fps — use detected fps if available, otherwise try browser counters
+        let targetFps;
+        if (exportSpeed.value === 'original') {
+          if (detectedFps > 0) {
+            // Use the detected frame rate from the Detect button
+            targetFps = Math.max(1, Math.round(detectedFps));
+            progressText.textContent = 'Original fps: ' + targetFps + ' (detected)';
+          } else {
+            // Try browser frame counters as fallback
+            let nativeFps = 0;
+            if (hiddenVideo.duration && hiddenVideo.webkitDecodedFrameCount) {
+              nativeFps = hiddenVideo.webkitDecodedFrameCount / hiddenVideo.duration;
+            } else if (hiddenVideo.duration && hiddenVideo.mozDecodedFrames) {
+              nativeFps = hiddenVideo.mozDecodedFrames / hiddenVideo.duration;
+            }
+            // Default to 30fps if we can't detect
+            targetFps = Math.max(1, Math.round(nativeFps || 30));
+            progressText.textContent = 'Original fps: ' + targetFps + ' (auto, click Detect for accuracy)';
+          }
+        } else {
+          targetFps = Number(exportSpeed.value);
+        }
+
+        const w = previewCanvas.width;
+        const h = previewCanvas.height;
+
+        let mimeType = '';
+        if (fmt === 'webm') {
+          if (MediaRecorder.isTypeSupported('video/webm;codecs=vp9')) mimeType = 'video/webm;codecs=vp9';
+          else if (MediaRecorder.isTypeSupported('video/webm;codecs=vp8')) mimeType = 'video/webm;codecs=vp8';
+          else mimeType = 'video/webm';
+        } else {
+          if (MediaRecorder.isTypeSupported('video/mp4')) mimeType = 'video/mp4';
+          else mimeType = 'video/webm';
+        }
+
+        // Bitrate: use original video's bitrate as base so output ≈ same size
+        // Falls back to resolution-based estimate if original bitrate unknown
+        let targetBitrate;
+        if (originalBitrate > 0) {
+          // quality slider = percentage of original bitrate (100% = same size, 80% = smaller)
+          targetBitrate = Math.round(originalBitrate * quality);
+        } else {
+          // Fallback: resolution-based estimate
+          const pixels = w * h;
+          const baseBitrate = (pixels / (1280 * 720)) * 1500000;
+          targetBitrate = Math.round(baseBitrate * (0.3 + quality * 0.7));
+        }
+        // Ensure minimum bitrate to avoid unwatchable quality
+        targetBitrate = Math.max(200000, targetBitrate);
+
+        // Use captureStream(0) + requestFrame() on Chrome/Edge (pushes each frame explicitly)
+        // Fallback to captureStream(targetFps) on Firefox (auto-captures at target rate)
+        let stream, useManualFrame = false;
+        stream = previewCanvas.captureStream(0);
+        const videoTrack = stream.getVideoTracks()[0];
+        if (videoTrack && typeof videoTrack.requestFrame === 'function') {
+          useManualFrame = true;
+        } else {
+          // Firefox: use captureStream with target fps for auto-capture
+          stream = previewCanvas.captureStream(targetFps);
+        }
+
+        // Add audio track from the original video (passthrough)
+        let audioStream = null;
+        try {
+          audioStream = hiddenVideo.captureStream ? hiddenVideo.captureStream() : null;
+          if (audioStream) {
+            const audioTracks = audioStream.getAudioTracks();
+            if (audioTracks.length > 0) {
+              audioTracks.forEach(at => stream.addTrack(at));
+            }
+          }
+        } catch (e) {
+          console.warn('Could not capture audio from video:', e);
+        }
+
+        const recorder = new MediaRecorder(stream, {
+          mimeType: mimeType,
+          videoBitsPerSecond: targetBitrate
+        });
+
+        const chunks = [];
+        recorder.ondataavailable = e => { if (e.data.size > 0) chunks.push(e.data); };
+
+        const ext = mimeType.includes('mp4') ? 'mp4' : 'webm';
+        const outputName = (exportFilename.value || 'watermarked-video') + '.' + ext;
+
+        // Setup save promise BEFORE starting
+        const savePromise = new Promise((resolve) => {
+          recorder.onstop = () => {
+            const blob = new Blob(chunks, { type: mimeType });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = outputName;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            setTimeout(() => URL.revokeObjectURL(url), 5000);
+            resolve();
+          };
+        });
+
+        // Determine export range
+        const exportStart = trimStartTime || 0;
+        const exportEnd = (trimEndTime > 0) ? trimEndTime : hiddenVideo.duration;
+        const duration = exportEnd - exportStart;
+        const totalFrames = Math.ceil(duration * targetFps);
+        const frameInterval = 1 / targetFps; // seconds between captured frames
+
+        recorder.start(500);
+
+        const filterCSS = getFilterCSS();
+        const savedVolume = hiddenVideo.volume;
+        const savedPlaybackRate = hiddenVideo.playbackRate;
+        hiddenVideo.volume = 0;
+        hiddenVideo.muted = true;
+
+        // Seek to start position
+        hiddenVideo.currentTime = exportStart;
+        await new Promise(resolve => { hiddenVideo.onseeked = resolve; });
+
+        let frameCount = 0;
+        let exportDone = false;
+
+        // Capture a frame: draw video + watermarks to preview canvas (visible on screen)
+        function captureFrame() {
+          pCtx.clearRect(0, 0, w, h);
+          if (filterCSS) { try { pCtx.filter = filterCSS; } catch(e) {} }
+          pCtx.drawImage(hiddenVideo, 0, 0, w, h);
+          pCtx.filter = 'none';
+          drawWatermarkOnCtx(pCtx, w, h, false);
+          // Push this frame to the recorder (Chrome/Edge: requestFrame, Firefox: auto-capture)
+          if (useManualFrame) videoTrack.requestFrame();
+          frameCount++;
+        }
+
+        // Play the video at 1x speed and capture each original frame
+        hiddenVideo.playbackRate = 1;
+        hiddenVideo.play();
+
+        // Safety timeout: if export takes longer than 2x the expected time, force-stop
+        const expectedWallMs = duration * 1000;
+        let promiseResolved = false;
+        let resolvePromise;
+        const safetyTimeout = setTimeout(() => {
+          if (!promiseResolved) {
+            hiddenVideo.pause();
+            promiseResolved = true;
+            progressFill.style.width = '100%';
+            progressText.textContent = '100% (' + formatTime(duration) + ' / ' + formatTime(duration) + ')';
+            resolvePromise();
+          }
+        }, expectedWallMs * 2 + 5000);
+
+        // Listen for video ended event
+        const onEnded = () => {
+          if (!promiseResolved) {
+            hiddenVideo.pause();
+            promiseResolved = true;
+            progressFill.style.width = '100%';
+            progressText.textContent = '100% (' + formatTime(duration) + ' / ' + formatTime(duration) + ')';
+            resolvePromise();
+          }
+        };
+        hiddenVideo.addEventListener('ended', onEnded);
+
+        // Frame-accurate capture: use requestVideoFrameCallback if available
+        // This fires once per actual decoded video frame — no duplicates, no skips
+        if (hasRVFC) {
+          let lastMediaTime = -1;
+          function onExportFrame(now, metadata) {
+            if (promiseResolved) return;
+
+            if (exportCancelled || hiddenVideo.currentTime >= exportEnd || hiddenVideo.ended || hiddenVideo.paused) {
+              hiddenVideo.pause();
+              clearTimeout(safetyTimeout);
+              hiddenVideo.removeEventListener('ended', onEnded);
+              promiseResolved = true;
+              progressFill.style.width = '100%';
+              progressText.textContent = '100% (' + formatTime(duration) + ' / ' + formatTime(duration) + ')';
+              resolvePromise();
+              return;
+            }
+
+            // Only capture if this is a new frame (mediaTime changed)
+            if (metadata.mediaTime !== lastMediaTime) {
+              lastMediaTime = metadata.mediaTime;
+              captureFrame();
+              const pct = Math.min(99, Math.round((frameCount / totalFrames) * 100));
+              progressFill.style.width = pct + '%';
+              progressText.textContent = pct + '% (' + formatTime(hiddenVideo.currentTime - exportStart) + ' / ' + formatTime(duration) + ')';
+            }
+
+            rVfcId = hiddenVideo.requestVideoFrameCallback(onExportFrame);
+          }
+          rVfcId = hiddenVideo.requestVideoFrameCallback(onExportFrame);
+        } else {
+          // Fallback: setInterval at target fps for frame capture
+          const captureInterval = setInterval(() => {
+            if (promiseResolved) return;
+
+            if (exportCancelled || hiddenVideo.currentTime >= exportEnd || hiddenVideo.ended || hiddenVideo.paused) {
+              hiddenVideo.pause();
+              clearInterval(captureInterval);
+              clearTimeout(safetyTimeout);
+              hiddenVideo.removeEventListener('ended', onEnded);
+              promiseResolved = true;
+              progressFill.style.width = '100%';
+              progressText.textContent = '100% (' + formatTime(duration) + ' / ' + formatTime(duration) + ')';
+              resolvePromise();
+              return;
+            }
+
+            // Draw current video frame to canvas and push to recorder
+            captureFrame();
+
+            const pct = Math.min(99, Math.round((frameCount / totalFrames) * 100));
+            progressFill.style.width = pct + '%';
+            progressText.textContent = pct + '% (' + formatTime(hiddenVideo.currentTime - exportStart) + ' / ' + formatTime(duration) + ')';
+          }, 1000 / targetFps);
+        }
+
+        await new Promise((resolve) => {
+          resolvePromise = resolve;
+        });
+
+        // Short wait to ensure last frames are flushed to recorder
+        await new Promise(r => setTimeout(r, 300));
+
+        recorder.stop();
+        await savePromise;
+
+        // Restore state
+        hiddenVideo.muted = false;
+        hiddenVideo.volume = savedVolume;
+        hiddenVideo.playbackRate = savedPlaybackRate;
+        hiddenVideo.currentTime = 0;
+        updateSliderTrack(timeline);
+        renderFrame();
+
+        if (exportCancelled) {
+          showToast('Export cancelled', 'error');
+        } else {
+          showToast('Export complete! (' + frameCount + ' frames)', 'success');
+        }
+      } catch (err) {
+        console.error('Export error:', err);
+        showToast('Export error: ' + err.message, 'error');
+      } finally {
+        isExporting = false;
+        exportBtn.disabled = false;
+        cancelExportBtn.disabled = true;
+        exportProgress.classList.remove('active');
+      }
+    });
+
+    // =====================
+    // Reset all
+    // =====================
+    resetBtn.addEventListener('click', () => {
+      if (isExporting) return;
+      // Reset text
+      textEnabled.checked = true;
+      wmText.value = '© BlackAngel';
+      wmPosition.value = 'bottom-right';
+      wmFont.value = 'Arial, sans-serif';
+      isBold = true; isItalic = false;
+      wmBoldBtn.classList.add('is-active');
+      wmItalicBtn.classList.remove('is-active');
+      wmColor.value = '#ffffff';
+      wmOpacity.value = 80; wmSize.value = 48; wmRotation.value = 0;
+      wmStrokeColor.value = '#000000'; wmStrokeWidth.value = 2;
+      wmShadowBlur.value = 4;
+      // Reset tiled pattern
+      textTiled.checked = false; tiledOptions.style.display = 'none';
+      tileSpacing.value = 150; tileAngle.value = -45;
+      tileSpacingOut.textContent = '150px'; tileAngleOut.textContent = '-45°';
+      updateSliderTrack(tileSpacing); updateSliderTrack(tileAngle);
+      // Reset custom text position
+      customTextPos = null; textSelected = false; isDraggingText = false; isRotatingText = false; textBounds = null;
+      // Reset logo
+      logoEnabled.checked = false;
+      logoImg = null; logoReady = false;
+      logoUpload.value = ''; removeLogoBtn.disabled = true;
+      logoPosition.value = 'bottom-right';
+      logoOpacity.value = 60; logoScale.value = 30;
+      // Reset filters
+      filterBrightness.value = 100; filterContrast.value = 100; filterSaturate.value = 100;
+      filterHue.value = 0; filterBlur.value = 0;
+      filterGrayscale.checked = false; filterInvert.checked = false;
+      // Reset trim
+      trimStartTime = 0; trimEndTime = 0;
+      trimStart.value = '0:00'; trimEnd.value = '';
+      trimInfoDisplay.style.display = 'none';
+      // Reset speed
+      playbackSpeed.value = '1';
+      hiddenVideo.playbackRate = 1;
+      $('infoSpeed').textContent = '1x';
+      // Reset video
+      if (videoLoaded) {
+        hiddenVideo.currentTime = 0;
+        isPlaying = false;
+        cancelAnimationFrame(animFrameId);
+        playPauseBtn.textContent = '▶ Play';
+        timeline.value = 0;
+        updateSliderTrack(timeline);
+        renderFrame();
+      }
+      updateOutputs();
+      showToast('All settings reset', 'info');
+    });
+
+    // =====================
+    // Keyboard shortcuts
+    // =====================
+    document.addEventListener('keydown', e => {
+      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT') return;
+      if (e.code === 'Space' && videoLoaded) { e.preventDefault(); playPauseBtn.click(); }
+      if (e.code === 'ArrowLeft' && videoLoaded) { e.preventDefault(); skipBackBtn.click(); }
+      if (e.code === 'ArrowRight' && videoLoaded) { e.preventDefault(); skipFwdBtn.click(); }
+      if (e.code === 'Escape' && isExporting) { exportCancelled = true; }
+    });
+  </script>
+</body>
+</html>
