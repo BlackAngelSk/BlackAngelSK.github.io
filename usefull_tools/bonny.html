@@ -1,0 +1,1204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bunny Jumping in a Forest</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            overflow: hidden;
+            background: #1a2e1a;
+            font-family: 'Georgia', 'Times New Roman', serif;
+            cursor: pointer;
+            user-select: none;
+            -webkit-user-select: none;
+            -webkit-tap-highlight-color: transparent;
+            height: 100vh;
+            width: 100vw;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        canvas {
+            display: block;
+            position: relative;
+        }
+
+        .hint {
+            position: fixed;
+            bottom: 28px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: rgba(255, 255, 255, 0.7);
+            font-size: 14px;
+            letter-spacing: 0.05em;
+            pointer-events: none;
+            animation: fadeHint 3s ease-out forwards;
+            text-align: center;
+            text-shadow: 0 0 10px rgba(0, 0, 0, 0.3);
+        }
+
+        @keyframes fadeHint {
+            0% {
+                opacity: 0;
+            }
+            12% {
+                opacity: 1;
+            }
+            75% {
+                opacity: 1;
+            }
+            100% {
+                opacity: 0;
+            }
+        }
+    </style>
+</head>
+<body>
+    <canvas id="canvas" aria-label="Animated bunny hopping through a forest. Click anywhere to make the bunny jump grandly."></canvas>
+    <div class="hint">✨ click anywhere to make bunny jump grandly ✨</div>
+
+    <script>
+        (function() {
+            // Polyfill for CanvasRenderingContext2D.roundRect (older browsers)
+            if (!CanvasRenderingContext2D.prototype.roundRect) {
+                CanvasRenderingContext2D.prototype.roundRect = function(x, y, w, h, r) {
+                    if (typeof r === 'number') r = [r, r, r, r];
+                    else if (Array.isArray(r) && r.length === 1) r = [r[0], r[0], r[0], r[0]];
+                    else if (Array.isArray(r) && r.length === 2) r = [r[0], r[1], r[0], r[1]];
+                    else if (Array.isArray(r) && r.length === 4) r = r;
+                    else r = [0, 0, 0, 0];
+                    this.beginPath();
+                    this.moveTo(x + r[0], y);
+                    this.lineTo(x + w - r[1], y);
+                    this.quadraticCurveTo(x + w, y, x + w, y + r[1]);
+                    this.lineTo(x + w, y + h - r[2]);
+                    this.quadraticCurveTo(x + w, y + h, x + w - r[2], y + h);
+                    this.lineTo(x + r[3], y + h);
+                    this.quadraticCurveTo(x, y + h, x, y + h - r[3]);
+                    this.lineTo(x, y + r[0]);
+                    this.quadraticCurveTo(x, y, x + r[0], y);
+                    this.closePath();
+                    return this;
+                };
+            }
+
+            const canvas = document.getElementById('canvas');
+            const ctx = canvas.getContext('2d');
+
+            let W = 0,
+                H = 0;
+            let mouseX = -999,
+                mouseY = -999;
+
+            // Offscreen static background
+            const bgCanvas = document.createElement('canvas');
+            const bgCtx = bgCanvas.getContext('2d');
+
+            // Timing
+            let lastTime = performance.now();
+            let frameCount = 0;
+
+            // ─────────────────────────────────
+            // TERRAIN
+            // ─────────────────────────────────
+            function groundY(x) {
+                return H * 0.72 + Math.sin(x * 0.0023) * 22 + Math.sin(x * 0.0067) * 13 + Math.cos(x * 0.0131) * 7;
+            }
+
+            // ─────────────────────────────────
+            // FLORA DATA
+            // ─────────────────────────────────
+            let trees = [];
+            let grassBlades = [];
+            let groundFlowers = [];
+            let groundRocks = [];
+            let floatingPollen = [];
+            let dustParticles = [];
+
+            function generateFlora() {
+                trees = [];
+                grassBlades = [];
+                groundFlowers = [];
+                groundRocks = [];
+
+                // Distant trees (behind everything)
+                for (let i = 0; i < 55; i++) {
+                    const depth = Math.random();
+                    trees.push({
+                        x: Math.random() * W * 1.3 - W * 0.15,
+                        y: H * 0.38 + depth * H * 0.3, // deeper = lower on screen
+                        scale: 0.25 + Math.random() * 0.6,
+                        type: Math.random() > 0.45 ? 'pine' : (Math.random() > 0.5 ? 'round' : 'bushy'),
+                        hue: 160 + Math.random() * 40,
+                        lightness: 22 + Math.random() * 18,
+                        saturation: 25 + Math.random() * 35,
+                        swayPhase: Math.random() * Math.PI * 2,
+                    });
+                }
+                // Sort by Y (further back first)
+                trees.sort((a, b) => a.y - b.y);
+
+                // Grass tufts
+                for (let i = 0; i < 200; i++) {
+                    grassBlades.push({
+                        x: Math.random() * W,
+                        y: groundY(Math.random() * W) + Math.random() * H * 0.28 - H * 0.04,
+                        height: 8 + Math.random() * 35,
+                        swayPhase: Math.random() * Math.PI * 2,
+                        swaySpeed: 0.8 + Math.random() * 2.5,
+                        hue: 90 + Math.random() * 50,
+                        lightness: 22 + Math.random() * 28,
+                        width: 0.8 + Math.random() * 2.8,
+                    });
+                }
+                grassBlades.sort((a, b) => a.y - b.y);
+
+                // Flowers
+                for (let i = 0; i < 100; i++) {
+                    const colors = [
+                        [255, 170, 190],
+                        [255, 215, 80],
+                        [255, 140, 150],
+                        [170, 210, 240],
+                        [255, 245, 210],
+                        [240, 180, 200],
+                        [255, 255, 240],
+                        [230, 190, 210],
+                    ];
+                    const c = colors[Math.floor(Math.random() * colors.length)];
+                    groundFlowers.push({
+                        x: Math.random() * W,
+                        y: groundY(Math.random() * W) + Math.random() * H * 0.28 - H * 0.05,
+                        size: 3 + Math.random() * 10,
+                        petals: [4, 5, 6, 8][Math.floor(Math.random() * 4)],
+                        color: c,
+                        swayPhase: Math.random() * Math.PI * 2,
+                    });
+                }
+                groundFlowers.sort((a, b) => a.y - b.y);
+
+                // Rocks
+                for (let i = 0; i < 30; i++) {
+                    groundRocks.push({
+                        x: Math.random() * W,
+                        y: groundY(Math.random() * W),
+                        r: 4 + Math.random() * 18,
+                        shade: 35 + Math.random() * 20,
+                        hue: 28 + Math.random() * 18,
+                    });
+                }
+                groundRocks.sort((a, b) => a.y - b.y);
+
+                // Floating pollen
+                for (let i = 0; i < 60; i++) {
+                    floatingPollen.push({
+                        x: Math.random() * W,
+                        y: Math.random() * H,
+                        r: 1.2 + Math.random() * 4,
+                        vx: (Math.random() - 0.5) * 12,
+                        vy: -3 - Math.random() * 18,
+                        life: 0,
+                        maxLife: 4 + Math.random() * 12,
+                        hue: 35 + Math.random() * 35,
+                        saturation: 30 + Math.random() * 50,
+                        lightness: 70 + Math.random() * 25,
+                        alpha: 0.2 + Math.random() * 0.5,
+                    });
+                }
+            }
+
+            // ─────────────────────────────────
+            // STATIC BACKGROUND RENDERING
+            // ─────────────────────────────────
+            function drawSkyBackground(targetCtx) {
+                // Sky gradient
+                const skyGrad = targetCtx.createLinearGradient(0, 0, 0, H * 0.72);
+                skyGrad.addColorStop(0, '#b5d3e8');
+                skyGrad.addColorStop(0.35, '#c9e4f5');
+                skyGrad.addColorStop(0.65, '#d8ebd5');
+                skyGrad.addColorStop(0.85, '#d4e2c0');
+                skyGrad.addColorStop(1, '#b8cc9a');
+                targetCtx.fillStyle = skyGrad;
+                targetCtx.fillRect(0, 0, W, H);
+
+                // Warm sun glow in upper right
+                const sunX = W * 0.72;
+                const sunY = H * 0.12;
+                const sunGrad = targetCtx.createRadialGradient(sunX, sunY, 0, sunX, sunY, W * 0.55);
+                sunGrad.addColorStop(0, 'rgba(255, 245, 210, 0.55)');
+                sunGrad.addColorStop(0.3, 'rgba(255, 240, 180, 0.25)');
+                sunGrad.addColorStop(0.6, 'rgba(255, 230, 160, 0.06)');
+                sunGrad.addColorStop(1, 'rgba(255, 220, 140, 0)');
+                targetCtx.fillStyle = sunGrad;
+                targetCtx.fillRect(0, 0, W, H);
+
+                // Subtle light rays from sun
+                targetCtx.save();
+                targetCtx.globalCompositeOperation = 'soft-light';
+                for (let i = 0; i < 7; i++) {
+                    const angle = (Math.PI * 0.2) + (i / 7) * (Math.PI * 0.5);
+                    const rayGrad = targetCtx.createLinearGradient(
+                        sunX, sunY,
+                        sunX + Math.cos(angle) * W * 0.9,
+                        sunY + Math.sin(angle) * H * 1.5
+                    );
+                    rayGrad.addColorStop(0, 'rgba(255, 250, 220, 0.25)');
+                    rayGrad.addColorStop(0.5, 'rgba(255, 245, 200, 0.08)');
+                    rayGrad.addColorStop(1, 'rgba(255, 240, 180, 0)');
+                    targetCtx.fillStyle = rayGrad;
+                    targetCtx.beginPath();
+                    targetCtx.moveTo(sunX, sunY);
+                    const spread = 0.06 + i * 0.015;
+                    targetCtx.lineTo(
+                        sunX + Math.cos(angle - spread) * W * 1.1,
+                        sunY + Math.sin(angle - spread) * H * 2
+                    );
+                    targetCtx.lineTo(
+                        sunX + Math.cos(angle + spread) * W * 1.1,
+                        sunY + Math.sin(angle + spread) * H * 2
+                    );
+                    targetCtx.closePath();
+                    targetCtx.fill();
+                }
+                targetCtx.restore();
+            }
+
+            function drawTree(targetCtx, tree) {
+                const {
+                    x,
+                    y,
+                    scale,
+                    type,
+                    hue,
+                    lightness,
+                    saturation,
+                } = tree;
+                const s = scale;
+                targetCtx.save();
+                targetCtx.translate(x, y);
+
+                // Trunk
+                targetCtx.fillStyle = `hsl(${28 + Math.random() * 10}, 22%, ${28 + lightness * 0.3}%)`;
+                targetCtx.beginPath();
+                targetCtx.roundRect(-4 * s, -25 * s, 8 * s, 30 * s, 3 * s);
+                targetCtx.fill();
+
+                if (type === 'pine') {
+                    // Pine canopy - layered triangles
+                    for (let layer = 0; layer < 3; layer++) {
+                        const layerY = -35 * s - layer * 28 * s;
+                        const layerW = (28 - layer * 7) * s;
+                        const layerH = (38 - layer * 3) * s;
+                        const trunkColor = `hsl(${hue}, ${saturation}%, ${lightness - layer * 4}%)`;
+                        targetCtx.fillStyle = trunkColor;
+                        targetCtx.beginPath();
+                        targetCtx.moveTo(0, layerY - layerH);
+                        targetCtx.lineTo(-layerW, layerY);
+                        targetCtx.lineTo(layerW, layerY);
+                        targetCtx.closePath();
+                        targetCtx.fill();
+
+                        // Highlight on the triangle
+                        const highlight = targetCtx.createLinearGradient(-layerW, layerY, layerW * 0.5, layerY -
+                            layerH);
+                        highlight.addColorStop(0, 'rgba(255,255,255,0)');
+                        highlight.addColorStop(0.5, 'rgba(255,255,255,0.07)');
+                        highlight.addColorStop(1, 'rgba(255,255,255,0)');
+                        targetCtx.fillStyle = highlight;
+                        targetCtx.fill();
+                    }
+                } else if (type === 'round') {
+                    // Deciduous - round canopy on trunk
+                    const canopyY = -50 * s;
+                    const canopyR = 32 * s;
+                    // Main mass
+                    const grad = targetCtx.createRadialGradient(-5 * s, canopyY - 5 * s, canopyR * 0.1, 0, canopyY,
+                        canopyR);
+                    grad.addColorStop(0, `hsla(${hue}, ${saturation + 5}%, ${lightness + 14}%, 0.95)`);
+                    grad.addColorStop(0.5, `hsla(${hue}, ${saturation}%, ${lightness}%, 0.9)`);
+                    grad.addColorStop(0.85, `hsla(${hue - 10}, ${saturation - 5}%, ${lightness - 6}%, 0.85)`);
+                    grad.addColorStop(1, `hsla(${hue - 15}, ${saturation - 10}%, ${lightness - 10}%, 0)`);
+                    targetCtx.fillStyle = grad;
+                    targetCtx.beginPath();
+                    targetCtx.arc(0, canopyY, canopyR, 0, Math.PI * 2);
+                    targetCtx.fill();
+                    // Smaller lobes
+                    const lobeR = canopyR * 0.55;
+                    const lobeOffsets = [
+                        [canopyR * 0.55, canopyY - canopyR * 0.3],
+                        [-canopyR * 0.5, canopyY - canopyR * 0.25],
+                        [0, canopyY - canopyR * 0.65],
+                    ];
+                    lobeOffsets.forEach(([lx, ly]) => {
+                        targetCtx.fillStyle = grad;
+                        targetCtx.beginPath();
+                        targetCtx.arc(lx, ly, lobeR, 0, Math.PI * 2);
+                        targetCtx.fill();
+                    });
+                } else {
+                    // Bushy tree
+                    const bushY = -42 * s;
+                    const bushCount = 3 + Math.floor(Math.random() * 3);
+                    for (let i = 0; i < bushCount; i++) {
+                        const bx = (i - bushCount / 2) * 14 * s + (Math.random() - 0.5) * 6 * s;
+                        const by = bushY + (Math.random() - 0.5) * 16 * s;
+                        const br = 14 * s + Math.random() * 14 * s;
+                        const grd = targetCtx.createRadialGradient(bx, by, br * 0.1, bx, by, br);
+                        grd.addColorStop(0, `hsla(${hue}, ${saturation + 4}%, ${lightness + 10}%, 0.9)`);
+                        grd.addColorStop(0.6, `hsla(${hue}, ${saturation}%, ${lightness}%, 0.85)`);
+                        grd.addColorStop(1, `hsla(${hue - 10}, ${saturation - 5}%, ${lightness - 5}%, 0)`);
+                        targetCtx.fillStyle = grd;
+                        targetCtx.beginPath();
+                        targetCtx.arc(bx, by, br, 0, Math.PI * 2);
+                        targetCtx.fill();
+                    }
+                }
+
+                targetCtx.restore();
+            }
+
+            function drawGrassBlades(targetCtx, windOffset) {
+                grassBlades.forEach((blade) => {
+                    const sway = Math.sin((frameCount + blade.swayPhase) * 0.02 * blade.swaySpeed + windOffset) * 2.5;
+                    const baseY = blade.y;
+                    const tipX = blade.x + sway;
+                    const tipY = baseY - blade.height;
+                    targetCtx.strokeStyle = `hsl(${blade.hue}, 38%, ${blade.lightness}%)`;
+                    targetCtx.lineWidth = blade.width;
+                    targetCtx.lineCap = 'round';
+                    targetCtx.beginPath();
+                    targetCtx.moveTo(blade.x, baseY);
+                    targetCtx.quadraticCurveTo(
+                        blade.x + sway * 0.5,
+                        baseY - blade.height * 0.6,
+                        tipX,
+                        tipY
+                    );
+                    targetCtx.stroke();
+
+                    // lighter tip
+                    if (blade.height > 18) {
+                        targetCtx.strokeStyle = `hsla(${blade.hue + 8}, 45%, ${blade.lightness + 18}%, 0.6)`;
+                        targetCtx.lineWidth = blade.width * 0.5;
+                        targetCtx.beginPath();
+                        targetCtx.moveTo(tipX - 1, tipY + blade.height * 0.2);
+                        targetCtx.lineTo(tipX, tipY);
+                        targetCtx.stroke();
+                    }
+                });
+            }
+
+            function drawFlower(targetCtx, flower) {
+                const { x, y, size, petals, color, swayPhase } = flower;
+                const sway = Math.sin((frameCount + swayPhase) * 0.025) * 2;
+                const tipX = x + sway;
+                const tipY = y;
+
+                // Stem
+                targetCtx.strokeStyle = `hsla(100, 35%, 38%, 0.7)`;
+                targetCtx.lineWidth = size * 0.35;
+                targetCtx.lineCap = 'round';
+                targetCtx.beginPath();
+                targetCtx.moveTo(x, y + size * 2.5);
+                targetCtx.lineTo(tipX, tipY);
+                targetCtx.stroke();
+
+                // Petals
+                for (let i = 0; i < petals; i++) {
+                    const angle = (i / petals) * Math.PI * 2;
+                    targetCtx.fillStyle = `rgba(${color[0]}, ${color[1]}, ${color[2]}, 0.85)`;
+                    targetCtx.beginPath();
+                    targetCtx.ellipse(
+                        tipX + Math.cos(angle) * size * 0.7,
+                        tipY + Math.sin(angle) * size * 0.7,
+                        size * 0.55,
+                        size * 0.3,
+                        angle,
+                        0,
+                        Math.PI * 2
+                    );
+                    targetCtx.fill();
+                }
+                // Center
+                targetCtx.fillStyle = `rgba(255, 240, 180, 0.9)`;
+                targetCtx.beginPath();
+                targetCtx.arc(tipX, tipY, size * 0.32, 0, Math.PI * 2);
+                targetCtx.fill();
+            }
+
+            function drawRock(targetCtx, rock) {
+                const { x, y, r, shade, hue } = rock;
+                const grd = targetCtx.createRadialGradient(x - r * 0.3, y - r * 0.3, r * 0.05, x, y, r);
+                grd.addColorStop(0, `hsl(${hue}, 18%, ${shade + 15}%)`);
+                grd.addColorStop(0.6, `hsl(${hue}, 12%, ${shade}%)`);
+                grd.addColorStop(1, `hsl(${hue}, 8%, ${shade - 8}%)`);
+                targetCtx.fillStyle = grd;
+                targetCtx.beginPath();
+                targetCtx.ellipse(x, y + r * 0.2, r, r * 0.6, 0.05, 0, Math.PI * 2);
+                targetCtx.fill();
+            }
+
+            function generateStaticBackground() {
+                bgCanvas.width = W;
+                bgCanvas.height = H;
+                drawSkyBackground(bgCtx);
+
+                // Draw distant haze layer
+                const hazeGrad = bgCtx.createLinearGradient(0, H * 0.5, 0, H * 0.72);
+                hazeGrad.addColorStop(0, 'rgba(210, 220, 200, 0)');
+                hazeGrad.addColorStop(1, 'rgba(210, 220, 200, 0.35)');
+                bgCtx.fillStyle = hazeGrad;
+                bgCtx.fillRect(0, H * 0.45, W, H * 0.35);
+
+                // Draw trees (static, sorted back to front)
+                trees.forEach((tree) => drawTree(bgCtx, tree));
+
+                // Ground base
+                const groundGrad = bgCtx.createLinearGradient(0, H * 0.67, 0, H);
+                groundGrad.addColorStop(0, '#8a9e78');
+                groundGrad.addColorStop(0.25, '#7d8f68');
+                groundGrad.addColorStop(0.7, '#6f7e5c');
+                groundGrad.addColorStop(1, '#5a6848');
+                bgCtx.fillStyle = groundGrad;
+                bgCtx.beginPath();
+                bgCtx.moveTo(0, H);
+                bgCtx.lineTo(0, H * 0.67);
+                // Create wavy top edge for ground
+                for (let x = 0; x <= W; x += 80) {
+                    const groundAtX = groundY(x);
+                    const divertedGround = groundAtX + Math.sin(x * 0.05) * 3;
+                    bgCtx.lineTo(x, divertedGround);
+                }
+                bgCtx.lineTo(W, H);
+                bgCtx.closePath();
+                bgCtx.fill();
+
+                // Lighter grass patch on top of ground
+                const grassPatchGrad = bgCtx.createLinearGradient(0, H * 0.67, 0, H * 0.85);
+                grassPatchGrad.addColorStop(0, 'rgba(160, 190, 130, 0.35)');
+                grassPatchGrad.addColorStop(1, 'rgba(140, 170, 110, 0)');
+                bgCtx.fillStyle = grassPatchGrad;
+                bgCtx.beginPath();
+                bgCtx.moveTo(0, H);
+                bgCtx.lineTo(0, H * 0.67);
+                for (let x = 0; x <= W; x += 60) {
+                    bgCtx.lineTo(x, groundY(x) + Math.sin(x * 0.05) * 3);
+                }
+                bgCtx.lineTo(W, H);
+                bgCtx.closePath();
+                bgCtx.fill();
+
+                // Draw static flowers & rocks (part of background)
+                groundFlowers.forEach((f) => drawFlower(bgCtx, f));
+                groundRocks.forEach((r) => drawRock(bgCtx, r));
+
+                // Vignette overlay
+                const vignette = bgCtx.createRadialGradient(W / 2, H / 2, Math.min(W, H) * 0.45, W / 2, H / 2, Math.max(W, H) *
+                    0.85);
+                vignette.addColorStop(0, 'rgba(0,0,0,0)');
+                vignette.addColorStop(0.55, 'rgba(0,0,0,0.02)');
+                vignette.addColorStop(0.8, 'rgba(10, 15, 8, 0.18)');
+                vignette.addColorStop(1, 'rgba(8, 12, 6, 0.45)');
+                bgCtx.fillStyle = vignette;
+                bgCtx.fillRect(0, 0, W, H);
+            }
+
+            // ─────────────────────────────────
+            // BUNNY STATE
+            // ─────────────────────────────────
+            const bunny = {
+                // Position
+                x: W / 2,
+                y: 0, // calculated real-time
+                groundY: 0,
+                facingRight: true,
+                scale: 1.35,
+
+                // Hop state machine
+                state: 'landed', // 'landed' | 'crouching' | 'airborne' | 'recovering'
+                hopProgress: 0, // 0 → 1 during airborne
+                hopStartX: 0,
+                hopEndX: 0,
+                hopStartY: 0,
+                hopEndY: 0,
+                hopPeakHeight: 55,
+                hopDuration: 0.42, // seconds
+                hopElapsed: 0,
+                jumpVx: 0,
+                jumpVy: 0,
+
+                // Visual effects
+                squashAmount: 0,
+                earTwitch: 0,
+                noseWiggle: 0,
+                tailFluff: 0,
+
+                // Timers
+                landedTimer: 0,
+                nextCrouchDelay: 1.2,
+                turnCooldown: 0,
+
+                // Walking (slow drift between hops)
+                walkVx: 28,
+            };
+
+            function getGroundAtBunny(x) {
+                return groundY(x);
+            }
+
+            function resetBunnyPosition() {
+                bunny.x = W * 0.3 + Math.random() * W * 0.4;
+                bunny.facingRight = Math.random() > 0.5;
+                bunny.groundY = getGroundAtBunny(bunny.x);
+                bunny.y = bunny.groundY;
+            }
+
+            function startCrouch() {
+                bunny.state = 'crouching';
+                bunny.landedTimer = 0;
+                bunny.squashAmount = 0.25; // initial crouch squash
+            }
+
+            function launchHop() {
+                bunny.state = 'airborne';
+                bunny.hopStartX = bunny.x;
+                bunny.hopStartY = getGroundAtBunny(bunny.x);
+                bunny.groundY = bunny.hopStartY;
+
+                // Determine hop direction (mostly forward, sometimes turn)
+                if (bunny.turnCooldown <= 0 && Math.random() < 0.15) {
+                    bunny.facingRight = !bunny.facingRight;
+                    bunny.turnCooldown = 30;
+                }
+                const direction = bunny.facingRight ? 1 : -1;
+
+                bunny.hopEndX = bunny.x + direction * (40 + Math.random() * 75);
+                // Clamp to screen
+                bunny.hopEndX = Math.max(60, Math.min(W - 60, bunny.hopEndX));
+
+                const dx = bunny.hopEndX - bunny.hopStartX;
+                bunny.jumpVx = dx / bunny.hopDuration;
+                bunny.jumpVy = -(210 + Math.random() * 250); // px/s upward
+                bunny.hopPeakHeight = 40 + Math.random() * 60;
+                bunny.hopDuration = 0.35 + Math.random() * 0.35;
+                bunny.hopElapsed = 0;
+                bunny.hopProgress = 0;
+                bunny.tailFluff = 0;
+                bunny.squashAmount = 0;
+            }
+
+            function landHop() {
+                bunny.state = 'recovering';
+                bunny.x = bunny.hopEndX;
+                bunny.groundY = getGroundAtBunny(bunny.x);
+                bunny.y = bunny.groundY;
+                bunny.hopProgress = 1;
+                bunny.jumpVx = 0;
+                bunny.jumpVy = 0;
+                bunny.squashAmount = 1.0;
+                bunny.landedTimer = 0;
+                bunny.tailFluff = 1;
+
+                // Spawn dust particles
+                spawnDustParticles(bunny.x, bunny.groundY);
+
+                // Schedule next hop
+                bunny.nextCrouchDelay = 0.8 + Math.random() * 2.5;
+            }
+
+            function grandJump(mouseTargetX) {
+                if (bunny.state === 'airborne') return;
+
+                bunny.state = 'crouching';
+                bunny.landedTimer = 0;
+                bunny.squashAmount = 0.45;
+                bunny.hopPeakHeight = 90 + Math.random() * 70;
+
+                const direction = mouseTargetX > bunny.x ? 1 : -1;
+                bunny.facingRight = direction === 1;
+                bunny.hopEndX = mouseTargetX + (Math.random() - 0.5) * 60;
+                bunny.hopEndX = Math.max(60, Math.min(W - 60, bunny.hopEndX));
+                bunny.hopDuration = 0.5 + Math.random() * 0.5;
+                bunny.hopElapsed = 0;
+                bunny.hopStartX = bunny.x;
+                bunny.hopStartY = getGroundAtBunny(bunny.x);
+                bunny.groundY = bunny.hopStartY;
+                bunny.jumpVx = (bunny.hopEndX - bunny.hopStartX) / bunny.hopDuration;
+                bunny.jumpVy = -(260 + Math.random() * 220);
+                bunny.squashAmount = 0.6;
+                bunny.tailFluff = 0.3;
+                bunny.nextCrouchDelay = 2 + Math.random() * 4;
+
+                // Brief delay then launch
+                setTimeout(() => {
+                    if (bunny.state === 'crouching') {
+                        bunny.state = 'airborne';
+                        bunny.squashAmount = 0;
+                    }
+                }, 180);
+            }
+
+            // ─────────────────────────────────
+            // DUST PARTICLES
+            // ─────────────────────────────────
+            function spawnDustParticles(x, y) {
+                const count = 10 + Math.floor(Math.random() * 10);
+                for (let i = 0; i < count; i++) {
+                    const angle = -Math.PI / 2 + (Math.random() - 0.5) * Math.PI * 1.4;
+                    const speed = 40 + Math.random() * 150;
+                    dustParticles.push({
+                        x,
+                        y,
+                        vx: Math.cos(angle) * speed + (Math.random() - 0.5) * 40,
+                        vy: Math.sin(angle) * speed - 20 - Math.random() * 80,
+                        life: 0.35 + Math.random() * 0.55,
+                        maxLife: 0.35 + Math.random() * 0.55,
+                        size: 1.5 + Math.random() * 4,
+                        color: [
+                            `rgba(${200 + Math.floor(Math.random() * 40)}, ${180 + Math.floor(Math.random() * 50)}, ${150 + Math.floor(Math.random() * 40)}, `,
+                            `rgba(${170 + Math.floor(Math.random() * 40)}, ${155 + Math.floor(Math.random() * 40)}, ${130 + Math.floor(Math.random() * 40)}, `,
+                        ][Math.floor(Math.random() * 2)],
+                    });
+                }
+            }
+
+            function updateDustParticles(dt) {
+                for (let i = dustParticles.length - 1; i >= 0; i--) {
+                    const p = dustParticles[i];
+                    p.x += p.vx * dt;
+                    p.y += p.vy * dt;
+                    p.vy += 350 * dt;
+                    p.life -= dt;
+                    if (p.life <= 0) {
+                        dustParticles.splice(i, 1);
+                    }
+                }
+            }
+
+            function drawDustParticles(targetCtx) {
+                dustParticles.forEach((p) => {
+                    const alpha = Math.max(0, p.life / p.maxLife);
+                    const size = p.size * (1 + (1 - alpha) * 1.5);
+                    targetCtx.fillStyle = p.color + (alpha * 0.75).toFixed(3) + ')';
+                    targetCtx.beginPath();
+                    targetCtx.arc(p.x, p.y, size, 0, Math.PI * 2);
+                    targetCtx.fill();
+                });
+            }
+
+            // ─────────────────────────────────
+            // DRAW BUNNY
+            // ─────────────────────────────────
+            function drawBunny(targetCtx, bunnyData) {
+                const {
+                    x,
+                    y,
+                    facingRight,
+                    scale,
+                    squashAmount,
+                    earTwitch,
+                    noseWiggle,
+                    tailFluff,
+                    hopProgress,
+                    state,
+                } = bunnyData;
+
+                targetCtx.save();
+                targetCtx.translate(x, y);
+
+                const isFacingRight = facingRight;
+                targetCtx.scale(isFacingRight ? 1 : -1, 1);
+
+                // Squash & stretch
+                const sx = 1 + squashAmount * 0.28;
+                const sy = 1 - squashAmount * 0.18;
+                targetCtx.scale(sx, sy);
+
+                // Ear angle varies with earTwitch (slight animation)
+                const earAngle = Math.sin(Date.now() * 0.004) * 0.08 + earTwitch * 0.2;
+                const tailSize = 1 + tailFluff * 0.3;
+
+                // ─── TAIL (behind body) ───
+                targetCtx.fillStyle = '#fefcf8';
+                targetCtx.beginPath();
+                targetCtx.arc(-20, -4 + tailFluff * 3, 8 * tailSize, 0, Math.PI * 2);
+                targetCtx.fill();
+                // shadow of tail
+                targetCtx.fillStyle = 'rgba(0,0,0,0.05)';
+                targetCtx.beginPath();
+                targetCtx.arc(-20, -4 + tailFluff * 3 + 2, 6 * tailSize, 0, Math.PI * 2);
+                targetCtx.fill();
+
+                // ─── BACK LEG ───
+                const legCrouch = state === 'crouching' ? 6 : 0;
+                targetCtx.fillStyle = '#ede8dd';
+                targetCtx.beginPath();
+                targetCtx.ellipse(-7, 8 + legCrouch, 10, 5, -0.2, 0, Math.PI * 2);
+                targetCtx.fill();
+                // paw
+                targetCtx.fillStyle = '#ffc0c0';
+                targetCtx.beginPath();
+                targetCtx.arc(-12, 9 + legCrouch, 5, 0, Math.PI * 2);
+                targetCtx.fill();
+
+                // ─── BODY ───
+                const bodyGrad = targetCtx.createRadialGradient(-3, -3, 8, 0, 0, 26);
+                bodyGrad.addColorStop(0, '#fefcf9');
+                bodyGrad.addColorStop(0.5, '#faf7f1');
+                bodyGrad.addColorStop(1, '#e8e2d5');
+                targetCtx.fillStyle = bodyGrad;
+                targetCtx.beginPath();
+                targetCtx.ellipse(0, 0, 22, 25, 0, 0, Math.PI * 2);
+                targetCtx.fill();
+
+                // ─── FRONT LEG ───
+                targetCtx.fillStyle = '#ede8dd';
+                targetCtx.beginPath();
+                targetCtx.ellipse(8, 10 + legCrouch, 8, 5.5, 0.15, 0, Math.PI * 2);
+                targetCtx.fill();
+                // paw
+                targetCtx.fillStyle = '#ffc0c0';
+                targetCtx.beginPath();
+                targetCtx.arc(13, 11 + legCrouch, 5, 0, Math.PI * 2);
+                targetCtx.fill();
+
+                // ─── HEAD ───
+                const headGrad = targetCtx.createRadialGradient(10, -16, 5, 12, -18, 17);
+                headGrad.addColorStop(0, '#fefcf9');
+                headGrad.addColorStop(0.6, '#faf7f1');
+                headGrad.addColorStop(1, '#e8e2d5');
+                targetCtx.fillStyle = headGrad;
+                targetCtx.beginPath();
+                targetCtx.arc(10, -18, 15, 0, Math.PI * 2);
+                targetCtx.fill();
+
+                // ─── EARS ───
+                // Left ear (slightly behind)
+                targetCtx.save();
+                targetCtx.translate(5, -30);
+                targetCtx.rotate(-0.18 + earAngle * 0.6);
+                targetCtx.fillStyle = '#f5f0e8';
+                targetCtx.beginPath();
+                targetCtx.ellipse(0, -16, 6.5, 20, 0, 0, Math.PI * 2);
+                targetCtx.fill();
+                targetCtx.fillStyle = '#ffb8be';
+                targetCtx.beginPath();
+                targetCtx.ellipse(0, -14, 4, 13, 0, 0, Math.PI * 2);
+                targetCtx.fill();
+                targetCtx.restore();
+
+                // Right ear (prominent)
+                targetCtx.save();
+                targetCtx.translate(14, -32);
+                targetCtx.rotate(0.08 + earAngle);
+                targetCtx.fillStyle = '#faf7f2';
+                targetCtx.beginPath();
+                targetCtx.ellipse(0, -18, 7.5, 22, 0, 0, Math.PI * 2);
+                targetCtx.fill();
+                targetCtx.fillStyle = '#ffc0c7';
+                targetCtx.beginPath();
+                targetCtx.ellipse(0, -15, 4.5, 14, 0, 0, Math.PI * 2);
+                targetCtx.fill();
+                targetCtx.restore();
+
+                // ─── EYE ───
+                const eyeX = 19;
+                const eyeY = -21;
+                // Outer
+                targetCtx.fillStyle = '#1a100e';
+                targetCtx.beginPath();
+                targetCtx.arc(eyeX, eyeY, 4.5, 0, Math.PI * 2);
+                targetCtx.fill();
+                // Highlight
+                targetCtx.fillStyle = '#fff';
+                targetCtx.beginPath();
+                targetCtx.arc(eyeX + 2.2, eyeY - 2.2, 2.2, 0, Math.PI * 2);
+                targetCtx.fill();
+                // Tiny highlight
+                targetCtx.fillStyle = '#fff';
+                targetCtx.beginPath();
+                targetCtx.arc(eyeX - 0.8, eyeY + 1.5, 1, 0, Math.PI * 2);
+                targetCtx.fill();
+
+                // ─── NOSE ───
+                const noseX = 23;
+                const noseY = -15;
+                targetCtx.fillStyle = '#ffb8be';
+                targetCtx.beginPath();
+                targetCtx.arc(noseX, noseY, 2.8, 0, Math.PI * 2);
+                targetCtx.fill();
+                // Nose highlight
+                targetCtx.fillStyle = 'rgba(255,255,255,0.5)';
+                targetCtx.beginPath();
+                targetCtx.arc(noseX + 0.8, noseY - 1, 1, 0, Math.PI * 2);
+                targetCtx.fill();
+
+                // ─── WHISKERS ───
+                targetCtx.strokeStyle = 'rgba(60,40,30,0.2)';
+                targetCtx.lineWidth = 0.9;
+                for (let i = -1; i <= 1; i++) {
+                    targetCtx.beginPath();
+                    targetCtx.moveTo(noseX, noseY + 1);
+                    targetCtx.lineTo(28 + i * 5, -16 + i * 6);
+                    targetCtx.stroke();
+                }
+
+                // ─── CHEEK BLUSH ───
+                targetCtx.fillStyle = 'rgba(255, 160, 165, 0.28)';
+                targetCtx.beginPath();
+                targetCtx.arc(14, -10, 4.5, 0, Math.PI * 2);
+                targetCtx.fill();
+                targetCtx.beginPath();
+                targetCtx.arc(19, -7, 3, 0, Math.PI * 2);
+                targetCtx.fill();
+
+                // ─── FOREHEAD TUFT ───
+                targetCtx.fillStyle = '#f5f0e8';
+                targetCtx.beginPath();
+                targetCtx.moveTo(10, -31);
+                targetCtx.quadraticCurveTo(16, -38, 10, -32);
+                targetCtx.quadraticCurveTo(5, -37, 10, -31);
+                targetCtx.fill();
+
+                targetCtx.restore();
+            }
+
+            function drawBunnyShadow(targetCtx, bunnyData) {
+                const { x, y, groundY, state, scale, squashAmount } = bunnyData;
+                if (state === 'airborne' || state === 'crouching') {
+                    // Shadow on ground
+                    const heightAboveGround = groundY - y;
+                    const maxShadowSize = 30 * scale;
+                    const minShadowSize = 8 * scale;
+                    const shadowScale = Math.max(minShadowSize / maxShadowSize, 1 - heightAboveGround / 300);
+                    const shadowAlpha = Math.max(0.08, 0.4 - heightAboveGround / 200);
+                    const shadowWidth = maxShadowSize * shadowScale;
+                    const shadowHeight = shadowWidth * 0.35;
+
+                    targetCtx.fillStyle = `rgba(30, 40, 20, ${shadowAlpha})`;
+                    targetCtx.beginPath();
+                    targetCtx.ellipse(x, groundY + 2, shadowWidth / 2, shadowHeight / 2, 0, 0, Math.PI * 2);
+                    targetCtx.fill();
+
+                    // Soft blur of shadow
+                    targetCtx.fillStyle = `rgba(40, 50, 30, ${shadowAlpha * 0.4})`;
+                    targetCtx.beginPath();
+                    targetCtx.ellipse(x, groundY + 1, shadowWidth / 2 + 4, shadowHeight / 2 + 2, 0, 0, Math.PI * 2);
+                    targetCtx.fill();
+                } else {
+                    // On ground: full shadow
+                    const sw = 24 * scale * (1 - squashAmount * 0.2);
+                    const sh = 8 * scale * (1 + squashAmount * 0.3);
+                    targetCtx.fillStyle = 'rgba(30, 40, 20, 0.3)';
+                    targetCtx.beginPath();
+                    targetCtx.ellipse(x, groundY + 3, sw / 2, sh / 2, 0, 0, Math.PI * 2);
+                    targetCtx.fill();
+                }
+            }
+
+            // ─────────────────────────────────
+            // DRAW FOREGROUND GRASS (smooth blades)
+            // ─────────────────────────────────
+            function drawForegroundGrass(targetCtx) {
+                grassBlades.forEach((blade) => {
+                    const shouldDrawInForeground = blade.height > 20 && blade.y > H * 0.7;
+                    if (!shouldDrawInForeground) return;
+                    const sway = Math.sin((frameCount + blade.swayPhase) * 0.022 * blade.swaySpeed) * 3;
+                    const baseY = blade.y;
+                    const tipX = blade.x + sway;
+                    const tipY = baseY - blade.height;
+
+                    targetCtx.strokeStyle = `hsl(${blade.hue}, 40%, ${blade.lightness + 5}%)`;
+                    targetCtx.lineWidth = blade.width * 1.1;
+                    targetCtx.lineCap = 'round';
+                    targetCtx.beginPath();
+                    targetCtx.moveTo(blade.x, baseY);
+                    targetCtx.quadraticCurveTo(
+                        blade.x + sway * 0.5,
+                        baseY - blade.height * 0.6,
+                        tipX,
+                        tipY
+                    );
+                    targetCtx.stroke();
+                });
+            }
+
+            // ─────────────────────────────────
+            // FLOATING POLLEN
+            // ─────────────────────────────────
+            function spawnPollen() {
+                if (floatingPollen.length < 80 && Math.random() < 0.3) {
+                    floatingPollen.push({
+                        x: Math.random() * W,
+                        y: -10 + Math.random() * H * 0.2,
+                        r: 1 + Math.random() * 5,
+                        vx: (Math.random() - 0.5) * 10,
+                        vy: 2 + Math.random() * 16,
+                        life: 0,
+                        maxLife: 5 + Math.random() * 15,
+                        hue: 32 + Math.random() * 40,
+                        saturation: 35 + Math.random() * 55,
+                        lightness: 72 + Math.random() * 24,
+                        alpha: 0.2 + Math.random() * 0.5,
+                    });
+                }
+            }
+
+            function updatePollen(dt) {
+                spawnPollen();
+                for (let i = floatingPollen.length - 1; i >= 0; i--) {
+                    const p = floatingPollen[i];
+                    p.x += p.vx * dt;
+                    p.y += p.vy * dt;
+                    p.life += dt;
+                    // Gentle drift
+                    p.vx += (Math.random() - 0.5) * 8 * dt;
+                    p.vy += (Math.random() - 0.3) * 5 * dt;
+                    p.vy = Math.max(p.vy, 0);
+                    if (p.life >= p.maxLife || p.y > H + 20 || p.x < -20 || p.x > W + 20) {
+                        floatingPollen.splice(i, 1);
+                    }
+                }
+            }
+
+            function drawPollen(targetCtx) {
+                floatingPollen.forEach((p) => {
+                    const lifeRatio = p.life / p.maxLife;
+                    const fadeIn = Math.min(1, p.life / 0.3);
+                    const fadeOut = Math.max(0, 1 - Math.max(0, (lifeRatio - 0.75)) / 0.25);
+                    const alpha = p.alpha * fadeIn * fadeOut;
+                    if (alpha < 0.01) return;
+
+                    const grd = targetCtx.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.r);
+                    grd.addColorStop(0, `hsla(${p.hue}, ${p.saturation}%, ${p.lightness}%, ${alpha})`);
+                    grd.addColorStop(0.5, `hsla(${p.hue}, ${p.saturation - 5}%, ${p.lightness - 8}%, ${alpha * 0.6})`);
+                    grd.addColorStop(1, `hsla(${p.hue}, ${p.saturation - 10}%, ${p.lightness - 15}%, 0)`);
+                    targetCtx.fillStyle = grd;
+                    targetCtx.beginPath();
+                    targetCtx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+                    targetCtx.fill();
+                });
+            }
+
+            // ─────────────────────────────────
+            // MAIN ANIMATION LOOP
+            // ─────────────────────────────────
+            function update(dt) {
+                // Clamp dt
+                if (dt > 0.1) dt = 0.1;
+                if (dt <= 0) dt = 0.016;
+
+                frameCount++;
+                const time = performance.now() * 0.001;
+
+                // ─── BUNNY STATE MACHINE ───
+                const bunnyLocal = bunny;
+
+                switch (bunnyLocal.state) {
+                    case 'landed':
+                        bunnyLocal.landedTimer += dt;
+                        bunnyLocal.groundY = getGroundAtBunny(bunnyLocal.x);
+                        bunnyLocal.y = bunnyLocal.groundY;
+                        bunnyLocal.squashAmount *= 0.88;
+                        if (bunnyLocal.squashAmount < 0.01) bunnyLocal.squashAmount = 0;
+                        bunnyLocal.earTwitch *= 0.9;
+                        bunnyLocal.tailFluff *= 0.9;
+                        bunnyLocal.noseWiggle *= 0.85;
+
+                        // Slow drift (walking)
+                        const walkDrift = bunnyLocal.walkVx * dt;
+                        const dir = bunnyLocal.facingRight ? 1 : -1;
+                        const newX = bunnyLocal.x + walkDrift * dir;
+                        if (newX < 40 || newX > W - 40) {
+                            bunnyLocal.facingRight = !bunnyLocal.facingRight;
+                            bunnyLocal.turnCooldown = 20;
+                        } else {
+                            bunnyLocal.x = newX;
+                        }
+                        bunnyLocal.turnCooldown = Math.max(0, bunnyLocal.turnCooldown - dt * 60);
+
+                        // Swing ears gently
+                        bunnyLocal.earTwitch = Math.sin(time * 3.5) * 0.5;
+                        // Occasional nose twitch
+                        if (Math.random() < 0.02) bunnyLocal.noseWiggle = 1;
+
+                        if (bunnyLocal.landedTimer >= bunnyLocal.nextCrouchDelay) {
+                            startCrouch();
+                        }
+                        break;
+
+                    case 'crouching':
+                        bunnyLocal.groundY = getGroundAtBunny(bunnyLocal.x);
+                        bunnyLocal.y = bunnyLocal.groundY;
+                        bunnyLocal.squashAmount = Math.min(0.7, bunnyLocal.squashAmount + dt * 8);
+                        bunnyLocal.landedTimer += dt;
+                        bunnyLocal.earTwitch = -0.4;
+                        bunnyLocal.tailFluff = bunnyLocal.squashAmount * 0.5;
+                        if (bunnyLocal.landedTimer >= 0.12) {
+                            launchHop();
+                        }
+                        break;
+
+                    case 'airborne':
+                        bunnyLocal.hopElapsed += dt;
+                        bunnyLocal.hopProgress = Math.min(1, bunnyLocal.hopElapsed / bunnyLocal.hopDuration);
+
+                        // Interpolate x
+                        bunnyLocal.x = bunnyLocal.hopStartX +
+                            (bunnyLocal.hopEndX - bunnyLocal.hopStartX) * bunnyLocal.hopProgress;
+                        bunnyLocal.x = Math.max(30, Math.min(W - 30, bunnyLocal.x));
+
+                        // Parabolic height
+                        const arcHeight = bunnyLocal.hopPeakHeight * 4 * bunnyLocal.hopProgress * (1 - bunnyLocal.hopProgress);
+                        bunnyLocal.groundY = getGroundAtBunny(bunnyLocal.x);
+                        bunnyLocal.y = bunnyLocal.groundY - arcHeight;
+
+                        bunnyLocal.squashAmount = Math.max(0, bunnyLocal.squashAmount - dt * 3);
+                        bunnyLocal.earTwitch = Math.sin(bunnyLocal.hopProgress * Math.PI * 4) * 0.6;
+                        bunnyLocal.tailFluff = bunnyLocal.hopProgress * 0.6;
+
+                        if (bunnyLocal.hopProgress >= 1) {
+                            landHop();
+                        }
+                        break;
+
+                    case 'recovering':
+                        bunnyLocal.landedTimer += dt;
+                        bunnyLocal.groundY = getGroundAtBunny(bunnyLocal.x);
+                        bunnyLocal.y = bunnyLocal.groundY;
+                        bunnyLocal.squashAmount *= 0.87;
+                        if (bunnyLocal.squashAmount < 0.015) bunnyLocal.squashAmount = 0;
+                        bunnyLocal.earTwitch *= 0.92;
+                        bunnyLocal.tailFluff *= 0.9;
+                        bunnyLocal.noseWiggle *= 0.85;
+
+                        if (bunnyLocal.squashAmount < 0.02) {
+                            bunnyLocal.state = 'landed';
+                            bunnyLocal.squashAmount = 0;
+                            bunnyLocal.landedTimer = 0;
+                            bunnyLocal.nextCrouchDelay = 0.8 + Math.random() * 2.5;
+                        }
+                        break;
+                }
+
+                // ─── UPDATE PARTICLES ───
+                updateDustParticles(dt);
+
+                // ─── UPDATE POLLEN ───
+                updatePollen(dt);
+            }
+
+            function drawScene() {
+                // Clear
+                ctx.clearRect(0, 0, W, H);
+
+                // 1. Static background
+                ctx.drawImage(bgCanvas, 0, 0);
+
+                // 2. Dynamic grass blades (foreground)
+                drawForegroundGrass(ctx);
+
+                // 3. Bunny shadow
+                drawBunnyShadow(ctx, bunny);
+
+                // 4. Dust particles (at bunny's feet)
+                drawDustParticles(ctx);
+
+                // 5. The bunny
+                drawBunny(ctx, bunny);
+
+                // 6. Floating pollen (on top for ethereal feel)
+                // But behind bunny? No, pollen is in the air so on top is fine,
+                // but we draw some behind for depth
+                drawPollen(ctx);
+            }
+
+            function loop(timestamp) {
+                const dt = Math.min(0.1, (timestamp - lastTime) / 1000);
+                lastTime = timestamp;
+
+                update(dt);
+                drawScene();
+
+                requestAnimationFrame(loop);
+            }
+
+            // ─────────────────────────────────
+            // RESIZE
+            // ─────────────────────────────────
+            function resize() {
+                W = window.innerWidth;
+                H = window.innerHeight;
+                canvas.width = W;
+                canvas.height = H;
+                generateFlora();
+                generateStaticBackground();
+            }
+
+            // ─────────────────────────────────
+            // EVENT LISTENERS
+            // ─────────────────────────────────
+            function handleResize() {
+                resize();
+                resetBunnyPosition();
+                if (bunny.state === 'landed') {
+                    bunny.y = bunny.groundY;
+                }
+            }
+
+            window.addEventListener('resize', handleResize);
+
+            canvas.addEventListener('mousemove', (e) => {
+                mouseX = e.clientX;
+                mouseY = e.clientY;
+            });
+
+            canvas.addEventListener('click', (e) => {
+                grandJump(e.clientX);
+            });
+
+            canvas.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                if (e.touches.length > 0) {
+                    grandJump(e.touches[0].clientX);
+                }
+            }, { passive: false });
+
+            canvas.addEventListener('touchend', (e) => {
+                e.preventDefault();
+            }, { passive: false });
+
+            // ─────────────────────────────────
+            // INIT
+            // ─────────────────────────────────
+            function init() {
+                resize();
+                resetBunnyPosition();
+                bunny.y = bunny.groundY;
+                bunny.state = 'landed';
+                bunny.squashAmount = 0;
+                bunny.landedTimer = 0.5;
+                bunny.nextCrouchDelay = 1.0;
+                lastTime = performance.now();
+                frameCount = 0;
+            }
+
+            init();
+            requestAnimationFrame(loop);
+
+            console.log('🌲🐰 Bunny is hopping through the forest!');
+            console.log('   Click anywhere to make the bunny jump grandly.');
+            console.log('   Watch for dust when bunny lands.');
+            console.log('   Floating pollen floats in the warm light.');
+        })();
+    </script>
+</body>
+</html>
