@@ -34,6 +34,7 @@
     .group[data-section="text"] { border-left-color:rgba(251,191,36,.25); }
     .group[data-section="logo"] { border-left-color:rgba(244,114,182,.25); }
     .group[data-section="export"] { border-left-color:rgba(52,211,153,.25); }
+    .group[data-section="presets"] { border-left-color:rgba(236,72,153,.25); }
     .group:hover { border-left-color:rgba(96,165,250,.5); }
     .group-header { display:flex; align-items:center; gap:8px; padding:8px 10px; cursor:pointer; user-select:none; border-radius:10px; transition:background .15s; font-size:.85rem; font-weight:600; color:var(--group-header-color); }
     .group-header:hover { background:var(--hover); }
@@ -125,7 +126,7 @@
     <aside class="panel">
       <div class="panel-header">
         <h1>🎬 Video Watermark</h1>
-        <span class="ver">v1.3</span>
+        <span class="ver">v2.0</span>
         <select id="themeSelect" style="margin-left:auto;width:auto;min-width:90px;padding:3px 6px;font-size:.7rem;border-radius:6px;">
           <option value="night">🌙 Night</option><option value="dark">⬛ Dark</option><option value="light">☀️ Light</option><option value="midnight">🔮 Midnight</option><option value="ocean">🌊 Ocean</option><option value="forest">🌲 Forest</option><option value="sunset">🌅 Sunset</option><option value="purple">💜 Purple</option>
         </select>
@@ -187,7 +188,7 @@
           </div>
           <div class="btn-row" style="margin-top:6px;">
             <button id="setTrimStartBtn" class="secondary" disabled>Set Start ◀</button>
-            <button id="setTrimEndBtn" class="secondary" disabled">Set End ▶</button>
+            <button id="setTrimEndBtn" class="secondary" disabled>Set End ▶</button>
           </div>
           <div class="btn-row" style="margin-top:4px;">
             <button id="clearTrimBtn" class="warn" disabled>Clear Trim</button>
@@ -250,6 +251,18 @@
           <div class="range-line"><input id="wmStrokeWidth" type="range" min="0" max="20" value="2" /><output id="wmStrokeWidthOut">2px</output></div>
           <label style="margin-top:8px;">Shadow blur</label>
           <div class="range-line"><input id="wmShadowBlur" type="range" min="0" max="50" value="4" /><output id="wmShadowBlurOut">4</output></div>
+          <label style="margin-top:8px;">Animation</label>
+          <select id="wmAnimation">
+            <option value="none">None</option>
+            <option value="pulse">Pulse</option>
+            <option value="fade">Fade In-Out</option>
+            <option value="bounce">Bounce</option>
+            <option value="slide">Slide</option>
+          </select>
+          <label style="margin-top:8px;">Animation Speed</label>
+          <div class="range-line"><input id="wmAnimSpeed" type="range" min="1" max="20" value="5" /><output id="wmAnimSpeedOut">5x</output></div>
+          <label>Animation Amplitude</label>
+          <div class="range-line"><input id="wmAnimAmplitude" type="range" min="1" max="100" value="50" /><output id="wmAnimAmplitudeOut">50%</output></div>
         </div>
       </div>
 
@@ -268,11 +281,34 @@
             <option value="top-right">Top right</option>
             <option value="top-left">Top left</option>
             <option value="center">Center</option>
+            <option value="custom">🎯 Custom (drag on canvas)</option>
           </select>
           <label style="margin-top:8px;">Opacity</label>
           <div class="range-line"><input id="logoOpacity" type="range" min="0" max="100" value="60" /><output id="logoOpacityOut">60%</output></div>
           <label>Scale</label>
           <div class="range-line"><input id="logoScale" type="range" min="5" max="200" value="30" /><output id="logoScaleOut">30%</output></div>
+          <label>Rotation</label>
+          <div class="range-line"><input id="logoRotation" type="range" min="-180" max="180" value="0" /><output id="logoRotationOut">0°</output></div>
+        </div>
+      </div>
+
+      <!-- Watermark Presets -->
+      <div class="group" data-section="presets">
+        <div class="group-header" onclick="this.parentElement.classList.toggle('collapsed')"><span class="icon">💎</span> Presets <span class="arrow">▼</span></div>
+        <div class="group-body">
+          <p class="small" style="margin-bottom:6px;">Quick watermark configurations</p>
+          <div class="btn-row" style="margin-bottom:6px;">
+            <button id="presetCornerBadge" class="secondary" style="font-size:.75rem;">Corner Badge</button>
+            <button id="presetCenterOverlay" class="secondary" style="font-size:.75rem;">Center Overlay</button>
+          </div>
+          <div class="btn-row" style="margin-bottom:6px;">
+            <button id="presetDiagTiled" class="secondary" style="font-size:.75rem;">Diagonal Tiled</button>
+            <button id="presetSubtle" class="secondary" style="font-size:.75rem;">Subtle Corner</button>
+          </div>
+          <div class="btn-row">
+            <button id="presetAnimatedPulse" class="secondary" style="font-size:.75rem;">🔄 Animated Pulse</button>
+            <button id="presetAnimatedBounce" class="secondary" style="font-size:.75rem;">🔄 Animated Bounce</button>
+          </div>
         </div>
       </div>
 
@@ -290,15 +326,15 @@
           <label style="margin-top:8px;">Quality (% of original bitrate)</label>
           <div class="range-line"><input id="exportQuality" type="range" min="1" max="100" value="80" /><output id="exportQualityOut">80%</output></div>
           <p class="small" style="margin-top:2px;">100% = same size as original, 80% = smaller, lower = much smaller</p>
-          <label style="margin-top:8px;">Framerate</label>
-          <select id="exportSpeed">
-            <option value="original" selected>Original fps (from video)</option>
-            <option value="30">30 fps (smooth, slower export)</option>
-            <option value="24">24 fps (balanced)</option>
-            <option value="15">15 fps (fast export)</option>
-            <option value="10">10 fps (fastest)</option>
+          <p class="small" style="margin-top:2px;">Exports at the video's original frame rate. Every frame is captured.</p>
+          <label style="margin-top:8px;">Export Speed</label>
+          <select id="exportPlaybackSpeed">
+            <option value="1">1x (normal)</option>
+            <option value="2" selected>2x (faster)</option>
+            <option value="4">4x (very fast)</option>
+            <option value="8">8x (fastest)</option>
           </select>
-          <p class="small" style="margin-top:2px;">"Original fps" keeps the source video's frame rate. Lower fps = faster export.</p>
+          <p class="small" style="margin-top:2px;">Faster speed = shorter wait. Output duration is always correct.</p>
           <div class="btn-row" style="margin-top:10px;">
             <button id="exportBtn" disabled>⬇ Export Video</button>
             <button id="cancelExportBtn" class="warn" disabled>✕ Cancel</button>
@@ -346,7 +382,9 @@
         </div>
         <div class="playback-row">
           <button id="skipBackBtn" class="secondary">⏮ -5s</button>
+          <button id="prevFrameBtn" class="secondary" style="font-size:.75rem;padding:6px 10px;">◀ Frame</button>
           <button id="playPauseBtn">▶ Play</button>
+          <button id="nextFrameBtn" class="secondary" style="font-size:.75rem;padding:6px 10px;">Frame ▶</button>
           <button id="skipFwdBtn" class="secondary">⏭ +5s</button>
           <button id="stopBtn" class="secondary">⏹ Stop</button>
           <select id="playbackSpeed" title="Playback speed">
@@ -488,6 +526,13 @@
     const wmStrokeWidthOut = $('wmStrokeWidthOut');
     const wmShadowBlurOut = $('wmShadowBlurOut');
 
+    // Animation controls
+    const wmAnimation = $('wmAnimation');
+    const wmAnimSpeed = $('wmAnimSpeed');
+    const wmAnimAmplitude = $('wmAnimAmplitude');
+    const wmAnimSpeedOut = $('wmAnimSpeedOut');
+    const wmAnimAmplitudeOut = $('wmAnimAmplitudeOut');
+
     // Tiled pattern controls
     const textTiled = $('textTiled');
     const tiledOptions = $('tiledOptions');
@@ -505,12 +550,18 @@
     const logoScale = $('logoScale');
     const logoOpacityOut = $('logoOpacityOut');
     const logoScaleOut = $('logoScaleOut');
+    const logoRotation = $('logoRotation');
+    const logoRotationOut = $('logoRotationOut');
+
+    // Frame-by-frame buttons
+    const prevFrameBtn = $('prevFrameBtn');
+    const nextFrameBtn = $('nextFrameBtn');
 
     const exportFilename = $('exportFilename');
     const exportFormat = $('exportFormat');
     const exportQuality = $('exportQuality');
     const exportQualityOut = $('exportQualityOut');
-    const exportSpeed = $('exportSpeed');
+    const exportPlaybackSpeed = $('exportPlaybackSpeed');
 
     // =====================
     // State
@@ -539,6 +590,19 @@
     let rotateStartAngle = 0;
     let rotateStartValue = 0;
 
+    // Logo drag & rotate
+    let customLogoPos = null;
+    let isDraggingLogo = false;
+    let isRotatingLogo = false;
+    let logoSelected = false;
+    let logoBounds = null;
+    let logoDragOffset = {x: 0, y: 0};
+    let logoRotateStartAngle = 0;
+    let logoRotateStartValue = 0;
+
+    // Animation state
+    let animActiveMode = 'none';
+
     // =====================
     // Frame rate detection state
     // =====================
@@ -561,8 +625,11 @@
       wmRotationOut.textContent = wmRotation.value + '°';
       wmStrokeWidthOut.textContent = wmStrokeWidth.value + 'px';
       wmShadowBlurOut.textContent = wmShadowBlur.value;
+      wmAnimSpeedOut.textContent = wmAnimSpeed.value + 'x';
+      wmAnimAmplitudeOut.textContent = wmAnimAmplitude.value + '%';
       logoOpacityOut.textContent = logoOpacity.value + '%';
       logoScaleOut.textContent = logoScale.value + '%';
+      logoRotationOut.textContent = logoRotation.value + '°';
       exportQualityOut.textContent = exportQuality.value + '%';
       // Filter outputs
       $('filterBrightnessOut').textContent = filterBrightness.value + '%';
@@ -571,7 +638,7 @@
       $('filterHueOut').textContent = filterHue.value + '°';
       $('filterBlurOut').textContent = filterBlur.value + 'px';
       // Update all slider tracks
-      [wmOpacity, wmSize, wmRotation, wmStrokeWidth, wmShadowBlur, logoOpacity, logoScale, exportQuality, volumeSlider,
+      [wmOpacity, wmSize, wmRotation, wmStrokeWidth, wmShadowBlur, wmAnimSpeed, wmAnimAmplitude, logoOpacity, logoScale, logoRotation, exportQuality, volumeSlider,
        filterBrightness, filterContrast, filterSaturate, filterHue, filterBlur, timeline].forEach(updateSliderTrack);
     }
     updateOutputs();
@@ -579,6 +646,12 @@
     // Text-related sliders -> render even without video
     [wmOpacity, wmSize, wmRotation, wmStrokeWidth, wmShadowBlur].forEach(el => {
       el.addEventListener('input', () => { updateOutputs(); if (!isPlaying) renderFrame(); });
+    });
+    [wmAnimation].forEach(el => {
+      el.addEventListener('change', () => { if (!isPlaying) renderFrame(); });
+    });
+    [wmAnimSpeed, wmAnimAmplitude, logoRotation].forEach(el => {
+      el.addEventListener('input', () => { updateOutputs(); if (videoLoaded && !isPlaying) renderFrame(); });
     });
     // Video-related sliders -> require video loaded
     [logoOpacity, logoScale, exportQuality, volumeSlider,
@@ -774,7 +847,24 @@
       return Math.abs(lx) <= rw / 2 && Math.abs(ly) <= rh / 2;
     }
 
+    function getAnimationOffsets(time) {
+      const mode = wmAnimation.value;
+      if (mode === 'none') return { opacity: 0, offsetX: 0, offsetY: 0, scale: 1 };
+      const speed = Number(wmAnimSpeed.value);
+      const amp = Number(wmAnimAmplitude.value) / 100;
+      const sinT = Math.sin(time * speed * Math.PI);
+      const cosT = Math.cos(time * speed * Math.PI);
+      switch (mode) {
+        case 'pulse': return { opacity: amp * 0.4 * sinT, offsetX: 0, offsetY: 0, scale: 1 + amp * 0.15 * sinT };
+        case 'fade': return { opacity: amp * 0.5 * sinT, offsetX: 0, offsetY: 0, scale: 1 };
+        case 'bounce': return { opacity: 0, offsetX: amp * 30 * sinT, offsetY: amp * 15 * Math.abs(cosT), scale: 1 };
+        case 'slide': return { opacity: 0, offsetX: amp * 50 * sinT, offsetY: 0, scale: 1 };
+        default: return { opacity: 0, offsetX: 0, offsetY: 0, scale: 1 };
+      }
+    }
+
     function drawWatermarkOnCtx(ctx, w, h, showHandles) {
+      const animOffsets = getAnimationOffsets(performance.now() / 1000);
       // Text watermark
       if (textEnabled.checked && wmText.value.trim()) {
         const size = Number(wmSize.value);
@@ -785,13 +875,17 @@
         const textW = metrics.width;
         const textH = size;
 
-        // Determine position
+        // Determine position — scale custom position for export canvas size
         let pos;
         if (wmPosition.value === 'custom' && customTextPos) {
-          pos = { x: customTextPos.x, y: customTextPos.y };
+          const scX = w / previewCanvas.width;
+          const scY = h / previewCanvas.height;
+          pos = { x: customTextPos.x * scX, y: customTextPos.y * scY };
         } else {
           pos = getPosCoords(wmPosition.value, w, h, textW, textH);
         }
+        pos.x += animOffsets.offsetX;
+        pos.y += animOffsets.offsetY;
 
         // Rotation around center of text
         const rot = Number(wmRotation.value);
@@ -840,7 +934,7 @@
         }
 
         // Draw text
-        ctx.globalAlpha = Number(wmOpacity.value) / 100;
+        ctx.globalAlpha = Math.max(0, Math.min(1, Number(wmOpacity.value) / 100 + animOffsets.opacity));
         const sBlur = Number(wmShadowBlur.value);
         if (sBlur > 0) { ctx.shadowColor = 'rgba(0,0,0,0.6)'; ctx.shadowBlur = sBlur; ctx.shadowOffsetX = 2; ctx.shadowOffsetY = 2; }
         const strokeW = Number(wmStrokeWidth.value);
@@ -893,10 +987,47 @@
         const scale = Number(logoScale.value) / 100;
         const lw = logoImg.naturalWidth * scale;
         const lh = logoImg.naturalHeight * scale;
-        const pos = getLogoPosCoords(logoPosition.value, w, h, lw, lh);
+        let logoPos;
+        if (logoPosition.value === 'custom' && customLogoPos) {
+          const scX = w / previewCanvas.width;
+          const scY = h / previewCanvas.height;
+          logoPos = { x: customLogoPos.x * scX - lw / 2, y: customLogoPos.y * scY - lh / 2 };
+        } else {
+          logoPos = getLogoPosCoords(logoPosition.value, w, h, lw, lh);
+        }
+        const logoRot = Number(logoRotation.value);
+        logoBounds = { x: logoPos.x + lw / 2, y: logoPos.y + lh / 2, w: lw, h: lh, rot: logoRot };
         ctx.save();
         ctx.globalAlpha = Number(logoOpacity.value) / 100;
-        ctx.drawImage(logoImg, pos.x, pos.y, lw, lh);
+        ctx.translate(logoPos.x + lw / 2, logoPos.y + lh / 2);
+        if (logoRot !== 0) ctx.rotate(logoRot * Math.PI / 180);
+        ctx.drawImage(logoImg, -lw / 2, -lh / 2, lw, lh);
+        if (showHandles && (logoPosition.value === 'custom' || logoSelected)) {
+          ctx.strokeStyle = logoSelected ? '#22c55e' : '#f472b6';
+          ctx.lineWidth = 2;
+          ctx.setLineDash([6, 4]);
+          ctx.strokeRect(-lw / 2 - 4, -lh / 2 - 4, lw + 8, lh + 8);
+          ctx.setLineDash([]);
+          const lhY = -lh / 2 - 30;
+          ctx.beginPath();
+          ctx.moveTo(0, -lh / 2 - 4);
+          ctx.lineTo(0, lhY);
+          ctx.strokeStyle = '#f472b6';
+          ctx.lineWidth = 2;
+          ctx.stroke();
+          ctx.beginPath();
+          ctx.arc(0, lhY, 8, 0, Math.PI * 2);
+          ctx.fillStyle = 'rgba(244,114,182,.25)';
+          ctx.fill();
+          ctx.strokeStyle = '#f472b6';
+          ctx.lineWidth = 2;
+          ctx.stroke();
+          ctx.fillStyle = '#f472b6';
+          ctx.font = '10px sans-serif';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillText('↻', 0, lhY);
+        }
         ctx.restore();
       }
     }
@@ -943,15 +1074,49 @@
       };
     }
 
+    function getLogoRotationHandlePos() {
+      if (!logoBounds) return null;
+      const cx = logoBounds.x, cy = logoBounds.y;
+      const rot = logoBounds.rot;
+      const handleLocalY = -logoBounds.h / 2 - 30;
+      const rad = rot * Math.PI / 180;
+      const cos = Math.cos(rad), sin = Math.sin(rad);
+      return { x: cx + (0 * cos - handleLocalY * sin), y: cy + (0 * sin + handleLocalY * cos) };
+    }
+
     function handleCanvasMouseDown(e) {
       if (!videoLoaded || isPlaying || isExporting) return;
-      if (!textEnabled.checked || !wmText.value.trim()) return;
       e.preventDefault();
       const pos = getCanvasMousePos(e);
 
-      // Ensure textBounds is populated by rendering once
-      if (!textBounds) { renderFrame(); }
+      // Logo custom drag/rotate
+      if (logoEnabled.checked && logoReady && logoImg && (logoPosition.value === 'custom' || logoSelected)) {
+        if (!logoBounds) renderFrame();
+        const lhPos = getLogoRotationHandlePos();
+        if (lhPos) {
+          const dx = pos.x - lhPos.x, dy = pos.y - lhPos.y;
+          if (Math.sqrt(dx * dx + dy * dy) < 25) {
+            logoSelected = true; isRotatingLogo = true;
+            logoRotateStartAngle = Math.atan2(pos.y - logoBounds.y, pos.x - logoBounds.x);
+            logoRotateStartValue = Number(logoRotation.value);
+            renderFrame(); return;
+          }
+        }
+        if (logoBounds) {
+          const hit = isPointInRotatedRect(pos.x, pos.y, logoBounds.x, logoBounds.y, logoBounds.w + 20, logoBounds.h + 20, logoBounds.rot);
+          if (hit) {
+            isDraggingLogo = true; logoSelected = true;
+            if (logoPosition.value !== 'custom') { logoPosition.value = 'custom'; if (!customLogoPos) customLogoPos = { x: logoBounds.x, y: logoBounds.y }; }
+            if (!customLogoPos) customLogoPos = { x: logoBounds.x, y: logoBounds.y };
+            logoDragOffset.x = pos.x - logoBounds.x; logoDragOffset.y = pos.y - logoBounds.y;
+            renderFrame(); return;
+          }
+        }
+      }
 
+      // Text drag/rotate
+      if (!textEnabled.checked || !wmText.value.trim()) return;
+      if (!textBounds) { renderFrame(); }
       const handlePos = getRotationHandlePos();
 
       // Check rotation handle first (works even if text not yet selected)
@@ -992,7 +1157,7 @@
       }
 
       // Click on empty area - deselect
-      textSelected = false;
+      textSelected = false; logoSelected = false;
       renderFrame();
     }
 
@@ -1000,6 +1165,24 @@
       if (!videoLoaded || isPlaying) return;
       e.preventDefault();
       const pos = getCanvasMousePos(e);
+
+      if (isDraggingLogo && customLogoPos) {
+        customLogoPos.x = pos.x - logoDragOffset.x + (logoBounds ? logoBounds.w / 2 : 0);
+        customLogoPos.y = pos.y - logoDragOffset.y + (logoBounds ? logoBounds.h / 2 : 0);
+        renderFrame();
+        return;
+      }
+      if (isRotatingLogo && logoBounds) {
+        const angle = Math.atan2(pos.y - logoBounds.y, pos.x - logoBounds.x);
+        const delta = (angle - logoRotateStartAngle) * 180 / Math.PI;
+        let newRot = Math.round(logoRotateStartValue + delta);
+        while (newRot > 180) newRot -= 360;
+        while (newRot < -180) newRot += 360;
+        logoRotation.value = newRot;
+        updateOutputs();
+        renderFrame();
+        return;
+      }
 
       if (isDraggingText && customTextPos) {
         customTextPos.x = pos.x - dragOffset.x + (textBounds ? textBounds.w / 2 : 0);
@@ -1021,7 +1204,20 @@
         return;
       }
 
-      // Hover detection for cursor
+      // Hover cursor
+      previewCanvas.style.cursor = 'default';
+      if (logoEnabled.checked && logoReady && logoImg && (logoPosition.value === 'custom' || logoSelected)) {
+        const lhPos = getLogoRotationHandlePos();
+        if (lhPos && logoSelected) {
+          const dx = pos.x - lhPos.x, dy = pos.y - lhPos.y;
+          if (Math.sqrt(dx * dx + dy * dy) < 18) { previewCanvas.style.cursor = 'crosshair'; return; }
+        }
+        if (logoBounds) {
+          const hit = isPointInRotatedRect(pos.x, pos.y, logoBounds.x, logoBounds.y, logoBounds.w + 20, logoBounds.h + 20, logoBounds.rot);
+          if (hit) { previewCanvas.style.cursor = 'move'; return; }
+        }
+      }
+      // Text hover detection for cursor
       if (textBounds && textEnabled.checked) {
         const handlePos = getRotationHandlePos();
         if (handlePos && textSelected) {
@@ -1041,14 +1237,9 @@
     }
 
     function handleCanvasMouseUp(e) {
-      if (isDraggingText) {
-        isDraggingText = false;
-        renderFrame();
-      }
-      if (isRotatingText) {
-        isRotatingText = false;
-        renderFrame();
-      }
+      isDraggingText = false; isRotatingText = false;
+      isDraggingLogo = false; isRotatingLogo = false;
+      renderFrame();
     }
 
     // Mouse events
@@ -1063,8 +1254,8 @@
 
     // Click outside canvas deselects
     document.addEventListener('mousedown', e => {
-      if (!previewCanvas.contains(e.target) && textSelected) {
-        textSelected = false;
+      if (!previewCanvas.contains(e.target) && (textSelected || logoSelected)) {
+        textSelected = false; logoSelected = false;
         if (videoLoaded && !isPlaying) renderFrame();
       }
     });
@@ -1288,6 +1479,22 @@
     skipBackBtn.addEventListener('click', () => { if (!videoLoaded) return; hiddenVideo.currentTime = Math.max(0, hiddenVideo.currentTime - 5); updateSliderTrack(timeline); if (!isPlaying) renderFrame(); });
     skipFwdBtn.addEventListener('click', () => { if (!videoLoaded) return; hiddenVideo.currentTime = Math.min(hiddenVideo.duration, hiddenVideo.currentTime + 5); updateSliderTrack(timeline); if (!isPlaying) renderFrame(); });
 
+    // Frame-by-frame navigation
+    function stepFrame(direction) {
+      if (!videoLoaded) return;
+      if (isPlaying) { hiddenVideo.pause(); isPlaying = false; cancelAnimationFrame(animFrameId); playPauseBtn.textContent = '▶ Play'; }
+      const fps = detectedFps > 0 ? detectedFps : 30;
+      const frameDuration = 1 / fps;
+      const newTime = Math.min(hiddenVideo.duration, Math.max(0, hiddenVideo.currentTime + direction * frameDuration));
+      hiddenVideo.currentTime = newTime;
+      timeline.value = Math.floor(newTime * 1000);
+      updateSliderTrack(timeline);
+      timeDisplay.textContent = formatTime(newTime) + ' / ' + formatTime(hiddenVideo.duration);
+      renderFrame();
+    }
+    prevFrameBtn.addEventListener('click', () => stepFrame(-1));
+    nextFrameBtn.addEventListener('click', () => stepFrame(1));
+
     timeline.addEventListener('input', () => {
       if (!videoLoaded) return;
       hiddenVideo.currentTime = Number(timeline.value) / 1000;
@@ -1379,14 +1586,99 @@
     }
 
     // =====================
-    // Export — frame-accurate capture with audio passthrough
-    // Uses requestVideoFrameCallback (Chrome/Edge) for 1:1 original frame capture,
-    // falls back to setInterval at target fps on other browsers.
-    // Audio track from the original video is passed through to the output.
+    // Export — Maximum performance, every frame captured, GPU-accelerated encoding
     // =====================
     cancelExportBtn.addEventListener('click', () => { exportCancelled = true; });
 
-    exportBtn.addEventListener('click', async () => {
+    // ---- Minimal WebM/EBML muxer for WebCodecs output ----
+    function _ebmlVint(value) {
+      if (value < 0x7F) return new Uint8Array([value | 0x80]);
+      if (value < 0x3FFF) return new Uint8Array([((value >> 8) | 0x40), value & 0xFF]);
+      if (value < 0x1FFFFF) return new Uint8Array([((value >> 16) | 0x20), (value >> 8) & 0xFF, value & 0xFF]);
+      return new Uint8Array([((value >> 24) | 0x10), (value >> 16) & 0xFF, (value >> 8) & 0xFF, value & 0xFF]);
+    }
+    function _ebmlConcat() {
+      let total = 0; for (const a of arguments) total += a.byteLength;
+      const r = new Uint8Array(total); let o = 0;
+      for (const a of arguments) { r.set(a, o); o += a.byteLength; }
+      return r;
+    }
+    function _ebmlEl(id, data) {
+      return _ebmlConcat(_ebmlVint(id), _ebmlVint(data.byteLength), data);
+    }
+    function _ebmlUInt(id, value) {
+      if (value === 0) return _ebmlEl(id, new Uint8Array([0]));
+      const b = []; let v = value;
+      while (v > 0) { b.unshift(v & 0xFF); v >>= 8; }
+      return _ebmlEl(id, new Uint8Array(b));
+    }
+    function _ebmlStr(id, str) {
+      const b = new Uint8Array(str.length);
+      for (let i = 0; i < str.length; i++) b[i] = str.charCodeAt(i);
+      return _ebmlEl(id, b);
+    }
+    function _ebmlFloat(id, value) {
+      const buf = new ArrayBuffer(4);
+      new DataView(buf).setFloat32(0, value, false);
+      return _ebmlEl(id, new Uint8Array(buf));
+    }
+    function buildWebMFromChunks(encodedChunks, width, height, fps) {
+      const timecodeScale = 1000000; // 1ms
+      const durationMs = encodedChunks.length > 0
+        ? Math.round(encodedChunks[encodedChunks.length - 1].timestamp / 1000000)
+        : 0;
+
+      // EBML Header
+      const ebmlHeader = _ebmlEl(0x1A45DFA3, _ebmlConcat(
+        _ebmlUInt(0x4286, 1), _ebmlUInt(0x42F7, 1), _ebmlUInt(0x42F2, 4), _ebmlUInt(0x42F3, 8),
+        _ebmlStr(0x4282, 'webm'), _ebmlUInt(0x4287, 4), _ebmlUInt(0x4285, 4)
+      ));
+
+      // Video track
+      const videoTrack = _ebmlEl(0xAE, _ebmlConcat(
+        _ebmlUInt(0xD7, 1), _ebmlUInt(0x73C5, 1), _ebmlUInt(0x83, 1),
+        _ebmlStr(0x86, 'V_VP8'),
+        _ebmlEl(0xE0, _ebmlConcat(
+          _ebmlUInt(0xB0, width), _ebmlUInt(0xBA, height),
+          _ebmlFloat(0x54B0, 1), _ebmlFloat(0x54BA, 1)
+        ))
+      ));
+
+      // Info
+      const info = _ebmlEl(0x1549A966, _ebmlConcat(
+        _ebmlUInt(0x2AD7B1, timecodeScale),
+        _ebmlStr(0x4D80, 'BlackAngel'),
+        _ebmlUInt(0x4461, durationMs)
+      ));
+
+      // Tracks
+      const tracks = _ebmlEl(0x1654AE6B, videoTrack);
+
+      // Build clusters (batch frames into ~1s clusters)
+      const framesPerCluster = Math.max(1, Math.round(fps));
+      const clusters = [];
+      for (let ci = 0; ci < encodedChunks.length; ci += framesPerCluster) {
+        const clusterChunks = encodedChunks.slice(ci, ci + framesPerCluster);
+        const clusterTimecodeMs = Math.round(clusterChunks[0].timestamp / 1000000);
+        const simpleBlocks = [];
+        for (const c of clusterChunks) {
+          const relMs = Math.round(c.timestamp / 1000000) - clusterTimecodeMs;
+          const trackNum = _ebmlVint(1);
+          const tc = new Uint8Array(2);
+          tc[0] = (relMs >> 8) & 0xFF; tc[1] = relMs & 0xFF;
+          const flags = new Uint8Array([c.type === 'key' ? 0x80 : 0x00]);
+          simpleBlocks.push(_ebmlEl(0xA3, _ebmlConcat(trackNum, tc, flags, c.data)));
+        }
+        const clusterData = _ebmlConcat(_ebmlUInt(0xE7, clusterTimecodeMs), ...simpleBlocks);
+        clusters.push(_ebmlEl(0x1F43B675, clusterData));
+      }
+
+      const segmentData = _ebmlConcat(info, tracks, ...clusters);
+      return new Blob([ebmlHeader, _ebmlEl(0x18538067, segmentData)], { type: 'video/webm' });
+    }
+
+    // ---- Main export function ----
+    async function runExport(overrides) {
       if (!videoLoaded || isExporting) return;
       isExporting = true;
       exportCancelled = false;
@@ -1396,128 +1688,59 @@
       progressFill.style.width = '0%';
       progressText.textContent = 'Preparing...';
 
+      const qualityOverride = (overrides && overrides.quality != null) ? overrides.quality : Number(exportQuality.value) / 100;
+      const playbackSpeedVal = Number(exportPlaybackSpeed.value);
+
       try {
-        // Stop any current playback
         hiddenVideo.pause();
         isPlaying = false;
         cancelAnimationFrame(animFrameId);
         playPauseBtn.textContent = '▶ Play';
 
         const fmt = exportFormat.value;
-        const quality = Number(exportQuality.value) / 100;
+        const quality = qualityOverride;
 
-        // Determine target fps — use detected fps if available, otherwise try browser counters
+        // Always use original video fps — no frame skipping
         let targetFps;
-        if (exportSpeed.value === 'original') {
-          if (detectedFps > 0) {
-            // Use the detected frame rate from the Detect button
-            targetFps = Math.max(1, Math.round(detectedFps));
-            progressText.textContent = 'Original fps: ' + targetFps + ' (detected)';
-          } else {
-            // Try browser frame counters as fallback
-            let nativeFps = 0;
-            if (hiddenVideo.duration && hiddenVideo.webkitDecodedFrameCount) {
-              nativeFps = hiddenVideo.webkitDecodedFrameCount / hiddenVideo.duration;
-            } else if (hiddenVideo.duration && hiddenVideo.mozDecodedFrames) {
-              nativeFps = hiddenVideo.mozDecodedFrames / hiddenVideo.duration;
-            }
-            // Default to 30fps if we can't detect
-            targetFps = Math.max(1, Math.round(nativeFps || 30));
-            progressText.textContent = 'Original fps: ' + targetFps + ' (auto, click Detect for accuracy)';
+        if (detectedFps > 0) {
+          targetFps = Math.max(1, Math.round(detectedFps));
+        } else {
+          let nativeFps = 0;
+          if (hiddenVideo.duration && hiddenVideo.webkitDecodedFrameCount) {
+            nativeFps = hiddenVideo.webkitDecodedFrameCount / hiddenVideo.duration;
+          } else if (hiddenVideo.duration && hiddenVideo.mozDecodedFrames) {
+            nativeFps = hiddenVideo.mozDecodedFrames / hiddenVideo.duration;
           }
-        } else {
-          targetFps = Number(exportSpeed.value);
+          targetFps = Math.max(1, Math.round(nativeFps || 30));
         }
 
-        const w = previewCanvas.width;
-        const h = previewCanvas.height;
+        // Always use full resolution — no downscaling
+        const origW = previewCanvas.width;
+        const origH = previewCanvas.height;
+        const outW = origW;
+        const outH = origH;
 
-        let mimeType = '';
-        if (fmt === 'webm') {
-          if (MediaRecorder.isTypeSupported('video/webm;codecs=vp9')) mimeType = 'video/webm;codecs=vp9';
-          else if (MediaRecorder.isTypeSupported('video/webm;codecs=vp8')) mimeType = 'video/webm;codecs=vp8';
-          else mimeType = 'video/webm';
-        } else {
-          if (MediaRecorder.isTypeSupported('video/mp4')) mimeType = 'video/mp4';
-          else mimeType = 'video/webm';
-        }
+        const offCanvas = document.createElement('canvas');
+        offCanvas.width = outW;
+        offCanvas.height = outH;
+        const offCtx = offCanvas.getContext('2d');
 
-        // Bitrate: use original video's bitrate as base so output ≈ same size
-        // Falls back to resolution-based estimate if original bitrate unknown
+        // Bitrate calculation
+        const pixels = outW * outH;
+        const origPixels = origW * origH;
         let targetBitrate;
         if (originalBitrate > 0) {
-          // quality slider = percentage of original bitrate (100% = same size, 80% = smaller)
-          targetBitrate = Math.round(originalBitrate * quality);
+          targetBitrate = Math.round(originalBitrate * quality * (pixels / origPixels));
         } else {
-          // Fallback: resolution-based estimate
-          const pixels = w * h;
-          const baseBitrate = (pixels / (1280 * 720)) * 1500000;
+          const baseBitrate = (pixels / (1280 * 720)) * 2500000;
           targetBitrate = Math.round(baseBitrate * (0.3 + quality * 0.7));
         }
-        // Ensure minimum bitrate to avoid unwatchable quality
-        targetBitrate = Math.max(200000, targetBitrate);
+        targetBitrate = Math.max(500000, targetBitrate);
 
-        // Use captureStream(0) + requestFrame() on Chrome/Edge (pushes each frame explicitly)
-        // Fallback to captureStream(targetFps) on Firefox (auto-captures at target rate)
-        let stream, useManualFrame = false;
-        stream = previewCanvas.captureStream(0);
-        const videoTrack = stream.getVideoTracks()[0];
-        if (videoTrack && typeof videoTrack.requestFrame === 'function') {
-          useManualFrame = true;
-        } else {
-          // Firefox: use captureStream with target fps for auto-capture
-          stream = previewCanvas.captureStream(targetFps);
-        }
-
-        // Add audio track from the original video (passthrough)
-        let audioStream = null;
-        try {
-          audioStream = hiddenVideo.captureStream ? hiddenVideo.captureStream() : null;
-          if (audioStream) {
-            const audioTracks = audioStream.getAudioTracks();
-            if (audioTracks.length > 0) {
-              audioTracks.forEach(at => stream.addTrack(at));
-            }
-          }
-        } catch (e) {
-          console.warn('Could not capture audio from video:', e);
-        }
-
-        const recorder = new MediaRecorder(stream, {
-          mimeType: mimeType,
-          videoBitsPerSecond: targetBitrate
-        });
-
-        const chunks = [];
-        recorder.ondataavailable = e => { if (e.data.size > 0) chunks.push(e.data); };
-
-        const ext = mimeType.includes('mp4') ? 'mp4' : 'webm';
-        const outputName = (exportFilename.value || 'watermarked-video') + '.' + ext;
-
-        // Setup save promise BEFORE starting
-        const savePromise = new Promise((resolve) => {
-          recorder.onstop = () => {
-            const blob = new Blob(chunks, { type: mimeType });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = outputName;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            setTimeout(() => URL.revokeObjectURL(url), 5000);
-            resolve();
-          };
-        });
-
-        // Determine export range
         const exportStart = trimStartTime || 0;
         const exportEnd = (trimEndTime > 0) ? trimEndTime : hiddenVideo.duration;
         const duration = exportEnd - exportStart;
         const totalFrames = Math.ceil(duration * targetFps);
-        const frameInterval = 1 / targetFps; // seconds between captured frames
-
-        recorder.start(500);
 
         const filterCSS = getFilterCSS();
         const savedVolume = hiddenVideo.volume;
@@ -1525,120 +1748,166 @@
         hiddenVideo.volume = 0;
         hiddenVideo.muted = true;
 
-        // Seek to start position
         hiddenVideo.currentTime = exportStart;
         await new Promise(resolve => { hiddenVideo.onseeked = resolve; });
 
         let frameCount = 0;
-        let exportDone = false;
 
-        // Capture a frame: draw video + watermarks to preview canvas (visible on screen)
+        // Capture a frame to offscreen canvas
         function captureFrame() {
-          pCtx.clearRect(0, 0, w, h);
-          if (filterCSS) { try { pCtx.filter = filterCSS; } catch(e) {} }
-          pCtx.drawImage(hiddenVideo, 0, 0, w, h);
-          pCtx.filter = 'none';
-          drawWatermarkOnCtx(pCtx, w, h, false);
-          // Push this frame to the recorder (Chrome/Edge: requestFrame, Firefox: auto-capture)
-          if (useManualFrame) videoTrack.requestFrame();
+          offCtx.clearRect(0, 0, outW, outH);
+          if (filterCSS) { try { offCtx.filter = filterCSS; } catch(e) {} }
+          offCtx.drawImage(hiddenVideo, 0, 0, outW, outH);
+          offCtx.filter = 'none';
+          drawWatermarkOnCtx(offCtx, outW, outH, false);
           frameCount++;
         }
 
-        // Play the video at 1x speed and capture each original frame
-        hiddenVideo.playbackRate = 1;
-        hiddenVideo.play();
-
-        // Safety timeout: if export takes longer than 2x the expected time, force-stop
-        const expectedWallMs = duration * 1000;
-        let promiseResolved = false;
-        let resolvePromise;
-        const safetyTimeout = setTimeout(() => {
-          if (!promiseResolved) {
-            hiddenVideo.pause();
-            promiseResolved = true;
-            progressFill.style.width = '100%';
-            progressText.textContent = '100% (' + formatTime(duration) + ' / ' + formatTime(duration) + ')';
-            resolvePromise();
-          }
-        }, expectedWallMs * 2 + 5000);
-
-        // Listen for video ended event
-        const onEnded = () => {
-          if (!promiseResolved) {
-            hiddenVideo.pause();
-            promiseResolved = true;
-            progressFill.style.width = '100%';
-            progressText.textContent = '100% (' + formatTime(duration) + ' / ' + formatTime(duration) + ')';
-            resolvePromise();
-          }
-        };
-        hiddenVideo.addEventListener('ended', onEnded);
-
-        // Frame-accurate capture: use requestVideoFrameCallback if available
-        // This fires once per actual decoded video frame — no duplicates, no skips
-        if (hasRVFC) {
-          let lastMediaTime = -1;
-          function onExportFrame(now, metadata) {
-            if (promiseResolved) return;
-
-            if (exportCancelled || hiddenVideo.currentTime >= exportEnd || hiddenVideo.ended || hiddenVideo.paused) {
-              hiddenVideo.pause();
-              clearTimeout(safetyTimeout);
-              hiddenVideo.removeEventListener('ended', onEnded);
-              promiseResolved = true;
-              progressFill.style.width = '100%';
-              progressText.textContent = '100% (' + formatTime(duration) + ' / ' + formatTime(duration) + ')';
-              resolvePromise();
-              return;
-            }
-
-            // Only capture if this is a new frame (mediaTime changed)
-            if (metadata.mediaTime !== lastMediaTime) {
-              lastMediaTime = metadata.mediaTime;
-              captureFrame();
-              const pct = Math.min(99, Math.round((frameCount / totalFrames) * 100));
-              progressFill.style.width = pct + '%';
-              progressText.textContent = pct + '% (' + formatTime(hiddenVideo.currentTime - exportStart) + ' / ' + formatTime(duration) + ')';
-            }
-
-            rVfcId = hiddenVideo.requestVideoFrameCallback(onExportFrame);
-          }
-          rVfcId = hiddenVideo.requestVideoFrameCallback(onExportFrame);
-        } else {
-          // Fallback: setInterval at target fps for frame capture
-          const captureInterval = setInterval(() => {
-            if (promiseResolved) return;
-
-            if (exportCancelled || hiddenVideo.currentTime >= exportEnd || hiddenVideo.ended || hiddenVideo.paused) {
-              hiddenVideo.pause();
-              clearInterval(captureInterval);
-              clearTimeout(safetyTimeout);
-              hiddenVideo.removeEventListener('ended', onEnded);
-              promiseResolved = true;
-              progressFill.style.width = '100%';
-              progressText.textContent = '100% (' + formatTime(duration) + ' / ' + formatTime(duration) + ')';
-              resolvePromise();
-              return;
-            }
-
-            // Draw current video frame to canvas and push to recorder
-            captureFrame();
-
-            const pct = Math.min(99, Math.round((frameCount / totalFrames) * 100));
-            progressFill.style.width = pct + '%';
-            progressText.textContent = pct + '% (' + formatTime(hiddenVideo.currentTime - exportStart) + ' / ' + formatTime(duration) + ')';
-          }, 1000 / targetFps);
+        const startTime = performance.now();
+        function updateProgress(frameNum) {
+          const pct = Math.min(99, Math.round((frameNum / totalFrames) * 100));
+          progressFill.style.width = pct + '%';
+          const elapsed = (performance.now() - startTime) / 1000;
+          const eta = (frameNum > 0) ? Math.round((elapsed / frameNum) * (totalFrames - frameNum)) : 0;
+      progressText.textContent = pct + '% (' + formatTime(frameNum / targetFps) + ' / ' + formatTime(duration) + ')' + (eta > 0 ? ' ETA: ' + formatTime(eta) : '');
         }
 
-        await new Promise((resolve) => {
-          resolvePromise = resolve;
-        });
+        const ext = (fmt === 'webm') ? 'webm' : 'webm';
+        const outputName = (exportFilename.value || 'watermarked-video') + '.' + ext;
 
-        // Short wait to ensure last frames are flushed to recorder
-        await new Promise(r => setTimeout(r, 300));
+        // ======= WebCodecs path (GPU-accelerated, maximum performance) =======
+        if (typeof VideoEncoder !== 'undefined' && typeof VideoFrame !== 'undefined' && fmt === 'webm') {
+          progressText.textContent = 'Using GPU-accelerated encoding (WebCodecs)...';
+          showToast('Using GPU-accelerated WebCodecs encoder', 'info');
 
-        recorder.stop();
-        await savePromise;
+          const encodedChunks = [];
+          const encoder = new VideoEncoder({
+            output: (chunk, meta) => {
+              const data = new Uint8Array(chunk.byteLength);
+              chunk.copyTo(data);
+              encodedChunks.push({ data, type: chunk.type, timestamp: chunk.timestamp });
+            },
+            error: (e) => { console.error('VideoEncoder error:', e); }
+          });
+
+          encoder.configure({
+            codec: 'vp8',
+            width: outW,
+            height: outH,
+            bitrate: targetBitrate,
+            framerate: targetFps
+          });
+
+          // Use interval-based capture for faster export — frame-count timestamps ensure correct output speed
+          await new Promise((resolve) => {
+            const captureInterval = 1000 / (targetFps * playbackSpeedVal);
+            hiddenVideo.playbackRate = playbackSpeedVal;
+            hiddenVideo.play();
+
+            const interval = setInterval(() => {
+              if (exportCancelled || hiddenVideo.currentTime >= exportEnd || hiddenVideo.ended || hiddenVideo.paused) {
+                clearInterval(interval); hiddenVideo.pause(); resolve(); return;
+              }
+              captureFrame();
+              const timestamp = Math.round((frameCount - 1) / targetFps * 1000000);
+              const isKey = (frameCount % Math.max(1, Math.round(targetFps)) === 1);
+              const vf = new VideoFrame(offCanvas, { timestamp: timestamp });
+              encoder.encode(vf, { keyFrame: isKey });
+              vf.close();
+              updateProgress(frameCount);
+            }, Math.max(1, captureInterval));
+          });
+
+          await encoder.flush();
+          const webmBlob = buildWebMFromChunks(encodedChunks, outW, outH, targetFps);
+          const url = URL.createObjectURL(webmBlob);
+          const a = document.createElement('a');
+          a.href = url; a.download = outputName;
+          document.body.appendChild(a); a.click(); document.body.removeChild(a);
+          setTimeout(() => URL.revokeObjectURL(url), 5000);
+
+        // ======= MediaRecorder fallback path =======
+        } else {
+          let mimeType = '';
+          if (fmt === 'webm') {
+            if (MediaRecorder.isTypeSupported('video/webm;codecs=vp8')) mimeType = 'video/webm;codecs=vp8';
+            else if (MediaRecorder.isTypeSupported('video/webm;codecs=vp9')) mimeType = 'video/webm;codecs=vp9';
+            else mimeType = 'video/webm';
+          } else {
+            if (MediaRecorder.isTypeSupported('video/mp4')) mimeType = 'video/mp4';
+            else mimeType = 'video/webm';
+          }
+
+          let stream, useManualFrame = false;
+          stream = offCanvas.captureStream(0);
+          const videoTrack = stream.getVideoTracks()[0];
+          if (videoTrack && typeof videoTrack.requestFrame === 'function') {
+            useManualFrame = true;
+          } else {
+            stream = offCanvas.captureStream(targetFps);
+          }
+
+          // Add audio
+          try {
+            const audioStream = hiddenVideo.captureStream ? hiddenVideo.captureStream() : null;
+            if (audioStream) {
+              audioStream.getAudioTracks().forEach(at => stream.addTrack(at));
+            }
+          } catch (e) { console.warn('Audio capture failed:', e); }
+
+          const recorder = new MediaRecorder(stream, { mimeType, videoBitsPerSecond: targetBitrate });
+          const chunks = [];
+          recorder.ondataavailable = e => { if (e.data.size > 0) chunks.push(e.data); };
+
+          const recOutputName = (exportFilename.value || 'watermarked-video') + '.' + (mimeType.includes('mp4') ? 'mp4' : 'webm');
+          const savePromise = new Promise(resolve => {
+            recorder.onstop = () => {
+              const blob = new Blob(chunks, { type: mimeType });
+              const url = URL.createObjectURL(blob);
+              const a = document.createElement('a');
+              a.href = url; a.download = recOutputName;
+              document.body.appendChild(a); a.click(); document.body.removeChild(a);
+              setTimeout(() => URL.revokeObjectURL(url), 5000);
+              resolve();
+            };
+          });
+
+          recorder.start(500);
+
+          let promiseResolved = false;
+          let resolvePromise;
+
+          const expectedWallMs = duration / playbackSpeedVal * 1000 + 30000;
+          const safetyTimeout = setTimeout(() => {
+            if (!promiseResolved) { hiddenVideo.pause(); promiseResolved = true; progressFill.style.width = '100%'; resolvePromise(); }
+          }, expectedWallMs * 2 + 10000);
+
+          const onEnded = () => {
+            if (!promiseResolved) { hiddenVideo.pause(); promiseResolved = true; progressFill.style.width = '100%'; resolvePromise(); }
+          };
+          hiddenVideo.addEventListener('ended', onEnded);
+
+          hiddenVideo.playbackRate = playbackSpeedVal;
+          hiddenVideo.play();
+
+          // Use interval-based capture for faster export
+          const captureInterval = 1000 / (targetFps * playbackSpeedVal);
+          const interval = setInterval(() => {
+            if (promiseResolved) return;
+            if (exportCancelled || hiddenVideo.currentTime >= exportEnd || hiddenVideo.ended || hiddenVideo.paused) {
+              hiddenVideo.pause(); clearInterval(interval); clearTimeout(safetyTimeout);
+              hiddenVideo.removeEventListener('ended', onEnded); promiseResolved = true;
+              progressFill.style.width = '100%'; resolvePromise(); return;
+            }
+            captureFrame(); if (useManualFrame) videoTrack.requestFrame();
+            updateProgress(frameCount);
+          }, Math.max(1, captureInterval));
+
+          await new Promise(resolve => { resolvePromise = resolve; });
+          await new Promise(r => setTimeout(r, 300));
+          recorder.stop();
+          await savePromise;
+        }
 
         // Restore state
         hiddenVideo.muted = false;
@@ -1651,7 +1920,7 @@
         if (exportCancelled) {
           showToast('Export cancelled', 'error');
         } else {
-          showToast('Export complete! (' + frameCount + ' frames)', 'success');
+          showToast('Export complete! (' + frameCount + ' frames, every frame captured)', 'success');
         }
       } catch (err) {
         console.error('Export error:', err);
@@ -1662,7 +1931,9 @@
         cancelExportBtn.disabled = true;
         exportProgress.classList.remove('active');
       }
-    });
+    }
+
+    exportBtn.addEventListener('click', () => runExport());
 
     // =====================
     // Reset all
@@ -1693,7 +1964,10 @@
       logoImg = null; logoReady = false;
       logoUpload.value = ''; removeLogoBtn.disabled = true;
       logoPosition.value = 'bottom-right';
-      logoOpacity.value = 60; logoScale.value = 30;
+      logoOpacity.value = 60; logoScale.value = 30; logoRotation.value = 0;
+      customLogoPos = null; logoSelected = false; isDraggingLogo = false; isRotatingLogo = false; logoBounds = null;
+      wmAnimation.value = 'none';
+      wmAnimSpeed.value = 5; wmAnimAmplitude.value = 50;
       // Reset filters
       filterBrightness.value = 100; filterContrast.value = 100; filterSaturate.value = 100;
       filterHue.value = 0; filterBlur.value = 0;
@@ -1729,7 +2003,87 @@
       if (e.code === 'ArrowLeft' && videoLoaded) { e.preventDefault(); skipBackBtn.click(); }
       if (e.code === 'ArrowRight' && videoLoaded) { e.preventDefault(); skipFwdBtn.click(); }
       if (e.code === 'Escape' && isExporting) { exportCancelled = true; }
+      if (e.code === 'ArrowUp' && videoLoaded) { e.preventDefault(); prevFrameBtn.click(); }
+      if (e.code === 'ArrowDown' && videoLoaded) { e.preventDefault(); nextFrameBtn.click(); }
     });
+
+    // =====================
+    // Presets
+    // =====================
+    function applyPreset(p) {
+      textEnabled.checked = p.textEnabled;
+      wmText.value = p.wmText || '© BlackAngel';
+      wmPosition.value = p.wmPosition;
+      wmFont.value = p.wmFont || 'Arial, sans-serif';
+      isBold = p.isBold; isItalic = p.isItalic;
+      wmBoldBtn.classList.toggle('is-active', isBold);
+      wmItalicBtn.classList.toggle('is-active', isItalic);
+      wmColor.value = p.wmColor || '#ffffff';
+      wmOpacity.value = p.wmOpacity;
+      wmSize.value = p.wmSize;
+      wmRotation.value = p.wmRotation || 0;
+      wmStrokeColor.value = p.wmStrokeColor || '#000000';
+      wmStrokeWidth.value = p.wmStrokeWidth || 2;
+      wmShadowBlur.value = p.wmShadowBlur || 4;
+      textTiled.checked = !!p.tiled;
+      tiledOptions.style.display = textTiled.checked ? '' : 'none';
+      if (p.tileSpacing != null) tileSpacing.value = p.tileSpacing;
+      if (p.tileAngle != null) tileAngle.value = p.tileAngle;
+      tileSpacingOut.textContent = tileSpacing.value + 'px';
+      tileAngleOut.textContent = tileAngle.value + '°';
+      updateSliderTrack(tileSpacing); updateSliderTrack(tileAngle);
+      customTextPos = null; textSelected = false; isDraggingText = false; isRotatingText = false; textBounds = null;
+      customLogoPos = null; logoSelected = false; isDraggingLogo = false; isRotatingLogo = false; logoBounds = null;
+      wmAnimation.value = p.animation || 'none';
+      wmAnimSpeed.value = p.animSpeed || 5;
+      wmAnimAmplitude.value = p.animAmplitude || 50;
+      wmAnimSpeedOut.textContent = wmAnimSpeed.value + 'x';
+      wmAnimAmplitudeOut.textContent = wmAnimAmplitude.value + '%';
+      updateSliderTrack(wmAnimSpeed); updateSliderTrack(wmAnimAmplitude);
+      updateOutputs();
+      if (videoLoaded && !isPlaying) renderFrame();
+      showToast('Preset applied: ' + (p.label || 'Unknown'), 'info');
+    }
+
+    $('presetCornerBadge').addEventListener('click', () => applyPreset({
+      label: 'Corner Badge', textEnabled: true, wmText: '© BlackAngel',
+      wmPosition: 'bottom-right', wmFont: 'Arial, sans-serif', isBold: true, isItalic: false,
+      wmColor: '#ffffff', wmOpacity: 80, wmSize: 48, wmRotation: 0,
+      wmStrokeColor: '#000000', wmStrokeWidth: 2, wmShadowBlur: 4
+    }));
+    $('presetCenterOverlay').addEventListener('click', () => applyPreset({
+      label: 'Center Overlay', textEnabled: true, wmText: 'WATERMARK',
+      wmPosition: 'center', wmFont: 'Impact, sans-serif', isBold: true, isItalic: false,
+      wmColor: '#ffffff', wmOpacity: 30, wmSize: 120, wmRotation: -15,
+      wmStrokeColor: '#000000', wmStrokeWidth: 3, wmShadowBlur: 0
+    }));
+    $('presetDiagTiled').addEventListener('click', () => applyPreset({
+      label: 'Diagonal Tiled', textEnabled: true, wmText: 'CONFIDENTIAL',
+      wmPosition: 'center', wmFont: 'Arial, sans-serif', isBold: true, isItalic: false,
+      wmColor: '#ffffff', wmOpacity: 25, wmSize: 36, wmRotation: 0,
+      wmStrokeColor: '#000000', wmStrokeWidth: 1, wmShadowBlur: 0,
+      tiled: true, tileSpacing: 200, tileAngle: -45
+    }));
+    $('presetSubtle').addEventListener('click', () => applyPreset({
+      label: 'Subtle Corner', textEnabled: true, wmText: '© BlackAngel',
+      wmPosition: 'bottom-right', wmFont: 'Georgia, serif', isBold: false, isItalic: true,
+      wmColor: '#ffffff', wmOpacity: 40, wmSize: 24, wmRotation: 0,
+      wmStrokeColor: '#000000', wmStrokeWidth: 0, wmShadowBlur: 2
+    }));
+    $('presetAnimatedPulse').addEventListener('click', () => applyPreset({
+      label: 'Animated Pulse', textEnabled: true, wmText: '© BlackAngel',
+      wmPosition: 'bottom-right', wmFont: 'Arial, sans-serif', isBold: true, isItalic: false,
+      wmColor: '#ffffff', wmOpacity: 80, wmSize: 48, wmRotation: 0,
+      wmStrokeColor: '#000000', wmStrokeWidth: 2, wmShadowBlur: 4,
+      animation: 'pulse', animSpeed: 5, animAmplitude: 60
+    }));
+    $('presetAnimatedBounce').addEventListener('click', () => applyPreset({
+      label: 'Animated Bounce', textEnabled: true, wmText: '© BlackAngel',
+      wmPosition: 'bottom-right', wmFont: 'Arial, sans-serif', isBold: true, isItalic: false,
+      wmColor: '#ffffff', wmOpacity: 80, wmSize: 48, wmRotation: 0,
+      wmStrokeColor: '#000000', wmStrokeWidth: 2, wmShadowBlur: 4,
+      animation: 'bounce', animSpeed: 6, animAmplitude: 50
+    }));
   </script>
 </body>
 </html>
