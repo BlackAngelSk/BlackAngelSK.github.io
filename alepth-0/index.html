@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="Aleph-0 — Interactive 3D visualization of countable infinity (ℵ₀). Explore Number Spirals, Hilbert's Hotel, One-to-One Correspondences, Menger Sponge, and more.">
+<title>Aleph Null - Visualizing Countable Infinity</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='80' font-size='80'>ℵ</text></svg>">
+<style>
+/* ===== CSS Variables for theming ===== */
+:root {
+  --bg-primary: #000;
+  --bg-panel: rgba(8, 8, 24, .88);
+  --bg-panel-light: rgba(10, 10, 30, .8);
+  --border-glow: rgba(100, 160, 255, .15);
+  --border-glow-hover: rgba(100, 160, 255, .4);
+  --border-glow-active: rgba(100, 160, 255, .6);
+  --text-primary: #e0e0e0;
+  --text-secondary: #b0b8cc;
+  --text-muted: #707a90;
+  --accent-blue: #64b5f6;
+  --accent-blue-light: #8ab4f0;
+  --accent-blue-glow: rgba(100, 180, 255, .8);
+  --accent-red: #ff5252;
+  --accent-orange: #ff7043;
+  --panel-blur: 12px;
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+  --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+  --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
+  --transition-fast: 0.2s ease;
+  --transition-normal: 0.3s ease;
+  --transition-slow: 0.5s ease;
+}
+@media (prefers-color-scheme: light) {
+  /* Keep dark theme always for this project */
+}
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&family=JetBrains+Mono:wght@400;700&display=swap');
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:var(--bg-primary);color:var(--text-primary);font-family:var(--font-sans);overflow:hidden;width:100vw;height:100vh;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale}
+#canvas-container{position:fixed;top:0;left:0;width:100%;height:100%;z-index:1}
+canvas{display:block}
+
+/* ===== Top Bar ===== */
+#top-bar{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:center;justify-content:center;padding:14px 24px;background:linear-gradient(180deg,rgba(0,0,0,.85) 0%,rgba(0,0,0,0) 100%);pointer-events:none}
+#top-bar h1{font-family:var(--font-mono);font-size:1.5rem;font-weight:700;letter-spacing:2px;color:#fff;text-shadow:0 0 30px rgba(100,160,255,.5)}
+#top-bar h1 .aleph{font-size:2rem;color:var(--accent-blue);text-shadow:0 0 20px var(--accent-blue-glow)}
+
+/* ===== Mode Switcher ===== */
+#mode-switcher{position:fixed;top:60px;left:50%;transform:translateX(-50%);z-index:100;display:flex;flex-wrap:wrap;justify-content:center;gap:6px;padding:6px 8px;background:var(--bg-panel-light);border:1px solid var(--border-glow);border-radius:var(--radius-lg);backdrop-filter:blur(var(--panel-blur));-webkit-backdrop-filter:blur(var(--panel-blur))}
+.mode-btn{padding:8px 16px;border:1px solid var(--border-glow);border-radius:var(--radius-md);background:transparent;color:var(--accent-blue-light);font-family:var(--font-sans);font-size:.82rem;font-weight:600;cursor:pointer;transition:all var(--transition-normal);white-space:nowrap;-webkit-user-select:none;user-select:none}
+.mode-btn:hover{background:rgba(100,160,255,.1);border-color:var(--border-glow-hover);color:#fff}
+.mode-btn.active{background:rgba(100,160,255,.2);border-color:var(--border-glow-active);color:#fff;box-shadow:0 0 15px rgba(100,160,255,.3)}
+.mode-btn:focus-visible{outline:2px solid var(--accent-blue);outline-offset:2px}
+
+/* ===== Counter ===== */
+#counter-display{position:fixed;top:100px;right:24px;z-index:100;font-family:var(--font-mono);font-size:.85rem;color:var(--accent-blue);background:var(--bg-panel);border:1px solid var(--border-glow);border-radius:var(--radius-md);padding:10px 16px;backdrop-filter:blur(var(--panel-blur));-webkit-backdrop-filter:blur(var(--panel-blur));text-align:right;line-height:1.6}
+#counter-display .count-num{font-size:1.4rem;font-weight:700;color:#fff}
+
+/* ===== Info Panel ===== */
+#info-panel{position:fixed;bottom:24px;left:24px;z-index:100;max-width:420px;background:var(--bg-panel);border:1px solid var(--border-glow);border-radius:var(--radius-xl);padding:20px 24px;backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);transition:opacity var(--transition-slow);overflow-y:auto;max-height:calc(100vh - 120px)}
+#info-panel h2{font-family:var(--font-mono);font-size:1.05rem;font-weight:700;color:var(--accent-blue);margin-bottom:8px;letter-spacing:1px}
+#info-panel p{font-size:.85rem;line-height:1.6;color:var(--text-secondary)}
+.math-formula{display:inline-block;font-family:var(--font-mono);font-size:.8rem;background:rgba(100,160,255,.08);border:1px solid rgba(100,160,255,.12);border-radius:var(--radius-sm);padding:2px 8px;color:var(--accent-blue-light);margin:4px 2px}
+
+/* ===== Controls Bar ===== */
+#controls-bar{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);z-index:100;display:flex;gap:8px;align-items:center;background:var(--bg-panel-light);border:1px solid var(--border-glow);border-radius:var(--radius-lg);padding:8px 16px;backdrop-filter:blur(var(--panel-blur));-webkit-backdrop-filter:blur(var(--panel-blur))}
+.ctrl-btn{padding:6px 16px;border:1px solid var(--border-glow);border-radius:var(--radius-md);background:rgba(100,160,255,.08);color:var(--accent-blue-light);font-family:var(--font-sans);font-size:.8rem;font-weight:600;cursor:pointer;transition:all var(--transition-normal)}
+.ctrl-btn:hover{background:rgba(100,160,255,.15);color:#fff;border-color:var(--border-glow-hover)}
+.ctrl-btn.active{background:rgba(100,160,255,.25);color:#fff;border-color:var(--border-glow-active)}
+.ctrl-btn:focus-visible{outline:2px solid var(--accent-blue);outline-offset:2px}
+.speed-display{color:var(--text-muted);font-size:.75rem;font-family:var(--font-mono)}
+
+/* ===== Keyboard Help ===== */
+#keyboard-help{position:fixed;bottom:24px;right:24px;z-index:100;background:rgba(8,8,24,.75);border:1px solid rgba(100,160,255,.12);border-radius:var(--radius-lg);padding:14px 18px;backdrop-filter:blur(var(--panel-blur));-webkit-backdrop-filter:blur(var(--panel-blur));font-size:.75rem;color:var(--text-muted);line-height:1.7}
+#keyboard-help kbd{display:inline-block;background:rgba(100,160,255,.1);border:1px solid rgba(100,160,255,.15);border-radius:4px;padding:1px 6px;color:var(--accent-blue-light);font-family:var(--font-mono);font-size:.7rem;margin:0 2px}
+
+/* ===== Fullscreen Button ===== */
+#fullscreen-btn{position:fixed;top:20px;right:24px;z-index:101;padding:6px 12px;border:1px solid var(--border-glow);border-radius:var(--radius-md);background:rgba(8,8,24,.7);color:var(--accent-blue-light);font-family:var(--font-sans);font-size:.8rem;cursor:pointer;transition:all var(--transition-normal);backdrop-filter:blur(var(--panel-blur));-webkit-backdrop-filter:blur(var(--panel-blur))}
+#fullscreen-btn:hover{background:rgba(100,160,255,.15);color:#fff;border-color:var(--border-glow-hover)}
+#fullscreen-btn:focus-visible{outline:2px solid var(--accent-blue);outline-offset:2px}
+
+/* ===== Loading Screen ===== */
+#loading-screen{position:fixed;top:0;left:0;width:100%;height:100%;z-index:999;background:#000;display:flex;flex-direction:column;align-items:center;justify-content:center;transition:opacity .8s ease}
+#loading-screen .aleph-symbol{font-size:5rem;color:var(--accent-blue);text-shadow:0 0 60px rgba(100,180,255,.6);animation:pulse 1.5s ease-in-out infinite}
+#loading-screen p{margin-top:20px;font-size:.9rem;color:var(--text-muted);font-family:var(--font-mono)}
+@keyframes pulse{0%,100%{transform:scale(1);opacity:.7}50%{transform:scale(1.1);opacity:1}}
+
+/* ===== Error Display ===== */
+#error-display{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:9999;color:var(--accent-red);font-family:monospace;text-align:center;padding:20px;max-width:80%}
+
+/* ===== Responsive ===== */
+@media(max-width:1024px){
+  #info-panel{max-width:340px;padding:16px 18px}
+  .mode-btn{padding:6px 14px;font-size:.78rem}
+  #counter-display{top:80px;right:16px}
+}
+@media(max-width:768px){
+  #info-panel{max-width:300px;padding:14px 16px;bottom:80px;left:12px}
+  .mode-btn{padding:6px 12px;font-size:.72rem}
+  #keyboard-help{display:none}
+  #counter-display{position:fixed;bottom:80px;right:12px;top:auto}
+  #controls-bar{bottom:12px;padding:6px 12px;gap:5px}
+  .ctrl-btn{padding:5px 12px;font-size:.75rem}
+  #mode-switcher{top:52px;max-width:90vw}
+  #top-bar h1{font-size:1.2rem}
+  #top-bar h1 .aleph{font-size:1.6rem}
+  #top-bar{padding:10px 16px}
+}
+@media(max-width:480px){
+  #info-panel{max-width:260px;padding:10px 14px;font-size:.8rem}
+  #mode-switcher{gap:4px;padding:4px 6px}
+  .mode-btn{padding:4px 10px;font-size:.68rem}
+  #controls-bar{flex-wrap:wrap;justify-content:center}
+}
+
+/* ===== Accessibility ===== */
+button:focus-visible{outline:2px solid var(--accent-blue);outline-offset:2px}
+.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);border:0}
+</style>
+</head>
+<body>
+<!-- Loading Screen -->
+<div id="loading-screen" role="status" aria-live="polite">
+  <div class="aleph-symbol">&#8501;0</div>
+  <p>Initializing visualization...</p>
+</div>
+
+<!-- Screen Reader Only -->
+<h1 class="sr-only">Aleph Null — Visualizing Countable Infinity</h1>
+
+<!-- Top Bar -->
+<div id="top-bar" role="banner">
+  <h1><span class="aleph">&#8501;0</span>&nbsp;&mdash;&nbsp;ALEPH NULL</h1>
+</div>
+
+<!-- Mode Switcher -->
+<nav id="mode-switcher" role="tablist" aria-label="Visualization modes">
+  <button class="mode-btn active" data-mode="spiral" role="tab" aria-selected="true" aria-controls="canvas-container" id="tab-spiral">Number Spiral</button>
+  <button class="mode-btn" data-mode="hotel" role="tab" aria-selected="false" aria-controls="canvas-container" id="tab-hotel">Hilbert's Hotel</button>
+  <button class="mode-btn" data-mode="corr" role="tab" aria-selected="false" aria-controls="canvas-container" id="tab-corr">One-to-One</button>
+  <button class="mode-btn" data-mode="menger" role="tab" aria-selected="false" aria-controls="canvas-container" id="tab-menger">Menger Sponge</button>
+  <button class="mode-btn" data-mode="cantor" role="tab" aria-selected="false" aria-controls="canvas-container" id="tab-cantor">Cantor's Diagonal</button>
+  <button class="mode-btn" data-mode="rationals" role="tab" aria-selected="false" aria-controls="canvas-container" id="tab-rationals">Rationals &#8474;</button>
+</nav>
+
+<!-- Counter -->
+<div id="counter-display" role="status" aria-live="polite">
+  <div>Elements Visible</div>
+  <div class="count-num" id="counter-number">0</div>
+</div>
+
+<!-- 3D Canvas -->
+<div id="canvas-container" aria-label="3D visualization canvas"></div>
+
+<!-- Info Panel -->
+<div id="info-panel" role="complementary" aria-label="Mode information">
+  <h2 id="info-title">Number Spiral</h2>
+  <p id="info-text"></p>
+</div>
+
+<!-- Controls Bar -->
+<div id="controls-bar" role="toolbar" aria-label="Animation controls">
+  <button class="ctrl-btn active" id="btn-play" aria-label="Play animation" aria-pressed="true">&#9654; Play</button>
+  <button class="ctrl-btn" id="btn-pause" aria-label="Pause animation" aria-pressed="false">&#9654;&#9654; Pause</button>
+  <button class="ctrl-btn" id="btn-reset" aria-label="Reset animation">&#8634; Reset</button>
+  <span class="speed-display" id="speed-label">Speed</span>
+  <button class="ctrl-btn" id="btn-slower" aria-label="Decrease speed">&minus;</button>
+  <button class="ctrl-btn" id="btn-faster" aria-label="Increase speed">+</button>
+</div>
+
+<!-- Fullscreen Button -->
+<button id="fullscreen-btn" aria-label="Toggle fullscreen mode">&#x26F6; Fullscreen</button>
+
+<!-- Keyboard Help -->
+<div id="keyboard-help" aria-label="Keyboard shortcuts">
+  <kbd>Left-drag</kbd> Rotate<br>
+  <kbd>Right-drag</kbd> Pan<br>
+  <kbd>Scroll</kbd> Zoom<br>
+  <kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd> <kbd>4</kbd> <kbd>5</kbd> <kbd>6</kbd> Switch modes<br>
+  <kbd>Space</kbd> Play/Pause<br>
+  <kbd>F</kbd> Fullscreen<br>
+  <kbd>R</kbd> Reset
+</div>
+
+<script src="three.min.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

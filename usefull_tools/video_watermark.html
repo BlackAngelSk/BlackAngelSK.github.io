@@ -320,8 +320,8 @@
           <input id="exportFilename" type="text" value="watermarked-video" placeholder="filename" />
           <label for="exportFormat" style="margin-top:8px;">Format</label>
           <select id="exportFormat">
-            <option value="webm">WebM (fastest)</option>
-            <option value="mp4">MP4 (if supported)</option>
+            <option value="mp4">MP4</option>
+            <option value="webm">WebM</option>
           </select>
           <label style="margin-top:8px;">Quality (% of original bitrate)</label>
           <div class="range-line"><input id="exportQuality" type="range" min="1" max="100" value="80" /><output id="exportQualityOut">80%</output></div>
@@ -329,12 +329,11 @@
           <p class="small" style="margin-top:2px;">Exports at the video's original frame rate. Every frame is captured.</p>
           <label style="margin-top:8px;">Export Speed</label>
           <select id="exportPlaybackSpeed">
-            <option value="1">1x (normal)</option>
-            <option value="2" selected>2x (faster)</option>
+            <option value="1" selected>1x (normal)</option>
+            <option value="2">2x (faster)</option>
             <option value="4">4x (very fast)</option>
-            <option value="8">8x (fastest)</option>
           </select>
-          <p class="small" style="margin-top:2px;">Faster speed = shorter wait. Output duration is always correct.</p>
+          <p class="small" style="margin-top:2px;">Export speed (output duration always matches original).</p>
           <div class="btn-row" style="margin-top:10px;">
             <button id="exportBtn" disabled>⬇ Export Video</button>
             <button id="cancelExportBtn" class="warn" disabled>✕ Cancel</button>
