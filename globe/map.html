@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive Map — BlackAngelSK</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="icon" href="../unnamed.png">
+    <link rel="stylesheet" href="map.css">
+</head>
+<body>
+    <div id="map"></div>
+
+    <a href="index.html" id="back-link" title="Back to Globe">← Globe</a>
+
+    <!-- Drawing Toolbar (left) -->
+    <div id="toolbar">
+        <button class="tool-btn active" data-tool="pan" title="Pan & Navigate (1)">
+            <span class="tool-icon">✋</span><span class="tool-label">Pan</span>
+        </button>
+        <button class="tool-btn" data-tool="freehand" title="Freehand Drawing (2)">
+            <span class="tool-icon">✏️</span><span class="tool-label">Draw</span>
+        </button>
+        <button class="tool-btn" data-tool="polyline" title="Polyline Tool (3)">
+            <span class="tool-icon">📐</span><span class="tool-label">Line</span>
+        </button>
+        <button class="tool-btn" data-tool="marker" title="Drop Pin (5)">
+            <span class="tool-icon">📌</span><span class="tool-label">Pin</span>
+        </button>
+        <button class="tool-btn" data-tool="label" title="Text Label (6)">
+            <span class="tool-icon">🏷️</span><span class="tool-label">Label</span>
+        </button>
+        <button class="tool-btn" data-tool="measure" title="Distance Measure (7)">
+            <span class="tool-icon">📏</span><span class="tool-label">Measure</span>
+        </button>
+        <button class="tool-btn" data-tool="eraser" title="Eraser (8)">
+            <span class="tool-icon">🧹</span><span class="tool-label">Erase</span>
+        </button>
+    </div>
+
+    <!-- Label Text Input Popup -->
+    <div id="label-input-wrap" class="hidden">
+        <input type="text" id="label-text-input" placeholder="Enter label text…" maxlength="80" autocomplete="off" spellcheck="false">
+        <button id="label-ok" title="Place label (Enter)">✓</button>
+        <button id="label-cancel" title="Cancel (Esc)">✕</button>
+    </div>
+
+    <!-- Style Controls (right) -->
+    <div id="style-panel">
+        <div class="panel-title">🎨 Style</div>
+        <div class="panel-group">
+            <label>Color</label>
+            <div id="color-grid"></div>
+            <div class="hex-row">
+                <span>#</span>
+                <input type="text" id="hex-input" maxlength="6" value="ff0000" spellcheck="false" autocomplete="off">
+            </div>
+        </div>
+        <div class="panel-group">
+            <label>Width: <strong id="weight-val">3</strong>px</label>
+            <input type="range" id="weight-slider" min="1" max="10" value="3">
+        </div>
+        <div class="panel-group">
+            <label>Line Style</label>
+            <div id="style-btns">
+                <button class="style-btn active" data-style="solid" title="Solid line">━</button>
+                <button class="style-btn" data-style="dashed" title="Dashed line">┅</button>
+                <button class="style-btn" data-style="dotted" title="Dotted line">┈</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Finish Button (shown when polyline tool active) -->
+    <button id="btn-finish" class="hidden" title="Finish polyline (Enter)">✓ Finish</button>
+
+    <!-- Bottom Bar -->
+    <div id="bottom-bar">
+        <button id="btn-undo" class="bar-btn" title="Undo (Ctrl+Z)">↩ Undo</button>
+        <button id="btn-redo" class="bar-btn" title="Redo (Ctrl+Y)">↪ Redo</button>
+        <div class="bar-sep"></div>
+        <button id="btn-import" class="bar-btn" title="Import GeoJSON">📂 Import</button>
+        <input type="file" id="file-input" accept=".geojson,.json" class="hidden">
+        <button id="btn-clear" class="bar-btn" title="Clear all annotations">🗑️ Clear</button>
+        <div class="bar-sep"></div>
+        <button id="btn-png" class="bar-btn" title="Export view as PNG">📷 PNG</button>
+        <button id="btn-geojson" class="bar-btn" title="Export annotations as GeoJSON">📦 GeoJSON</button>
+        <span id="ann-count">0 annotations</span>
+        <span id="zoom-display">Zoom: 6</span>
+    </div>
+
+    <!-- Status Bar -->
+    <div id="status-bar">
+        <span id="status-icon">📍</span>
+        <span id="status-text">Ready — Pan mode</span>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="map.js"></script>
+</body>
+</html>

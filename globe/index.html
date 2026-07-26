@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Earth Globe</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div id="loading">
+        <div id="loading-content">
+            <div class="spinner"></div>
+            <span>Loading Earth textures and cities...</span>
+            <div id="loading-progress"></div>
+        </div>
+    </div>
+    <div id="header">
+        <h1>🌍 Earth Globe</h1>
+        <p>Drag to rotate · Scroll to zoom · Click a country to zoom in</p>
+        <div id="search-wrap">
+            <input type="text" id="search" placeholder="Search city or country..." autocomplete="off" />
+            <div id="search-results" class="hidden"></div>
+        </div>
+    </div>
+    <div id="country-panel" class="hidden">
+        <button id="close-country" title="Close">&times;</button>
+        <h2 id="country-name"></h2>
+        <p id="country-info"></p>
+    </div>
+    <div id="globe-container"></div>
+    <div id="controls">
+        <button id="btn-rotate" class="active" title="Toggle auto-rotation">⟳ Rotate</button>
+        <button id="btn-clouds" class="active" title="Toggle clouds">☁ Clouds</button>
+        <button id="btn-atmosphere" class="active" title="Toggle atmosphere">🌐 Atmo</button>
+        <button id="btn-night" title="Toggle day/night">🌙 Night</button>
+        <button id="btn-cities" class="active" title="Toggle cities">🏙 Cities</button>
+        <a href="map.html" style="text-decoration:none;background:rgba(20,40,80,0.7);border:1px solid rgba(100,160,255,0.3);color:#c0d8ff;padding:8px 16px;border-radius:8px;cursor:pointer;font-size:0.85rem;letter-spacing:0.5px;transition:all 0.3s ease;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);" title="Open Interactive Map with Annotations">🗺 Map</a>
+    </div>
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+            "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+        }
+    }
+    </script>
+    <script type="module" src="app.js"></script>
+</body>
+</html>
