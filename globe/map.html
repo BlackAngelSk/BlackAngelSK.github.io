@@ -73,13 +73,84 @@
     <!-- Finish Button (shown when polyline tool active) -->
     <button id="btn-finish" class="hidden" title="Finish polyline (Enter)">✓ Finish</button>
 
+    <!-- Save Modal -->
+    <div id="save-modal" class="hidden">
+        <div class="save-modal-content">
+            <h3>💾 Save Map Annotations</h3>
+            <label for="save-name-input">Map Name</label>
+            <input type="text" id="save-name-input" placeholder="e.g. Eastern Front War Lines" maxlength="60" autocomplete="off" spellcheck="false">
+            <div class="save-modal-actions">
+                <button id="save-cancel-btn" class="import-action-btn import-btn-secondary">Cancel</button>
+                <button id="save-confirm-btn" class="import-action-btn import-btn-primary">Save</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Import Modal -->
+    <div id="import-modal" class="hidden">
+        <div id="import-modal-content">
+            <div class="import-header">
+                <h3>📂 Import Map Annotations</h3>
+                <button id="import-modal-close" title="Close (Esc)">✕</button>
+            </div>
+            <div class="import-tabs">
+                <button class="import-tab active" data-tab="file">📁 File</button>
+                <button class="import-tab" data-tab="url">🔗 URL</button>
+                <button class="import-tab" data-tab="preset">🗺️ Presets</button>
+            </div>
+            <!-- File Tab -->
+            <div class="import-tab-content active" id="import-tab-file">
+                <div id="import-dropzone">
+                    <span class="dropzone-icon">📄</span>
+                    <p>Drop a GeoJSON or KML file here</p>
+                    <p class="dropzone-sub">or</p>
+                    <button id="import-browse-btn" class="import-action-btn">Browse Files</button>
+                    <input type="file" id="file-input" accept=".geojson,.json,.kml,.kmz" class="hidden">
+                </div>
+            </div>
+            <!-- URL Tab -->
+            <div class="import-tab-content" id="import-tab-url">
+                <div class="import-url-wrap">
+                    <label>Paste a URL:</label>
+                    <input type="text" id="import-url-input" placeholder="Google Maps URL or GeoJSON URL" autocomplete="off" spellcheck="false">
+                    <button id="import-url-btn" class="import-action-btn">Fetch & Import</button>
+                    <p class="import-url-hint">Supports GeoJSON URLs. For Google Maps: download the KML file (three dots → Download KML) and import via the File tab instead.</p>
+                </div>
+            </div>
+            <!-- Presets Tab -->
+            <div class="import-tab-content" id="import-tab-preset">
+                <p class="preset-desc">Import saved maps or built-in annotation presets:</p>
+                <div id="preset-list"></div>
+                <div id="preset-saved-section" class="hidden">
+                    <div class="preset-section-title">💾 Your Saved Maps</div>
+                    <div id="preset-saved-list"></div>
+                </div>
+                <div class="preset-section-title">📦 Built-in Presets</div>
+                <div id="preset-built-in-list"></div>
+            </div>
+            <!-- Preview -->
+            <div id="import-preview" class="hidden">
+                <div class="import-preview-header">
+                    <span id="import-preview-count">0 features found</span>
+                    <label class="import-select-all"><input type="checkbox" id="import-select-all" checked> Select All</label>
+                </div>
+                <div id="import-preview-list"></div>
+            </div>
+            <!-- Actions -->
+            <div id="import-actions" class="hidden">
+                <button id="import-cancel-btn" class="import-action-btn import-btn-secondary">Cancel</button>
+                <button id="import-confirm-btn" class="import-action-btn import-btn-primary">Import Selected</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Bottom Bar -->
     <div id="bottom-bar">
         <button id="btn-undo" class="bar-btn" title="Undo (Ctrl+Z)">↩ Undo</button>
         <button id="btn-redo" class="bar-btn" title="Redo (Ctrl+Y)">↪ Redo</button>
         <div class="bar-sep"></div>
-        <button id="btn-import" class="bar-btn" title="Import GeoJSON">📂 Import</button>
-        <input type="file" id="file-input" accept=".geojson,.json" class="hidden">
+        <button id="btn-import" class="bar-btn" title="Import GeoJSON (I)">📂 Import</button>
+        <button id="btn-save-map" class="bar-btn" title="Save current annotations">💾 Save</button>
         <button id="btn-clear" class="bar-btn" title="Clear all annotations">🗑️ Clear</button>
         <div class="bar-sep"></div>
         <button id="btn-png" class="bar-btn" title="Export view as PNG">📷 PNG</button>
