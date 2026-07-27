@@ -639,7 +639,6 @@ function exportGeoJSON() {
    Import Modal — State & Helpers
    ===================================================== */
 let importPendingFeatures = [];
-let importParsedData = null;
 
 /* ── Built-in Presets (Part 1) ─────────────────── */
 const BUILT_IN_PRESETS = [
@@ -730,7 +729,6 @@ function deleteSavedMap(name) {
 function openImportModal() {
     $('#import-modal').classList.remove('hidden');
     importPendingFeatures = [];
-    importParsedData = null;
     $('#import-preview').classList.add('hidden');
     $('#import-actions').classList.add('hidden');
     $('#import-url-input').value = '';
@@ -739,7 +737,6 @@ function openImportModal() {
 function closeImportModal() {
     $('#import-modal').classList.add('hidden');
     importPendingFeatures = [];
-    importParsedData = null;
 }
 
 /* ── Expand Multi* geometries ──────────────────── */
@@ -1043,7 +1040,6 @@ function handleFileImport(file) {
     reader.onload = function (ev) {
         const text = ev.target.result;
         if (isKML) {
-            console.log('KML file, length:', text.length);
             try {
                 importPendingFeatures = parseKML(text);
                 if (importPendingFeatures.length === 0) { alert('No compatible features found.'); return; }
@@ -1053,7 +1049,6 @@ function handleFileImport(file) {
                     /* Google My Maps stub — fetch the real KML from the NetworkLink URL */
                     const netUrl = err.url;
                     const mapName = err.mapName || 'Google Maps';
-                    console.log('Fetching real KML from NetworkLink:', netUrl);
                     alert('This KML is a Google Maps shortcut file.\nFetching the full map data…');
                     const proxies = [
                         'http://localhost:8080/kml?url=',
@@ -1131,9 +1126,9 @@ function kmlAlphaToOpacity(kmlColor) {
 }
 
 function buildKmlStyleMap(doc) {
-    const map = {};
-    const styles = doc.getElementsByTagName('Style');
-    Array.from(styles).forEach(s => {
+    const styles = {};
+    const styleEls = doc.getElementsByTagName('Style');
+    Array.from(styleEls).forEach(s => {
         const id = s.getAttribute('id'); if (!id) return;
         const entry = {};
         const lineEl = s.getElementsByTagName('LineStyle')[0];
@@ -1160,7 +1155,7 @@ function buildKmlStyleMap(doc) {
             if (!entry.color) entry.color = entry.fillColor || '#888888';
             if (!entry.type) entry.type = 'poly';
         }
-        map[id] = entry;
+        styles[id] = entry;
     });
     const styleMaps = doc.getElementsByTagName('StyleMap');
     Array.from(styleMaps).forEach(sm => {
@@ -1172,9 +1167,9 @@ function buildKmlStyleMap(doc) {
             const ref = p.getElementsByTagName('styleUrl')[0];
             if (k && ref) pairs[k.textContent.trim()] = ref.textContent.trim().replace(/^#/, '');
         });
-        map[id] = pairs.normal ? (map[pairs.normal] || { normal: pairs.normal }) : pairs;
+        styles[id] = pairs.normal ? (styles[pairs.normal] || { normal: pairs.normal }) : pairs;
     });
-    return map;
+    return styles;
 }
 function parseKmlCoords(text) {
     if (!text) return [];
@@ -1186,7 +1181,6 @@ function parseKmlCoords(text) {
 function extractKmlFeatures(node, styleMap, folderName) {
     const features = [];
     const children = Array.from(node.children || []);
-    console.log('  extractKmlFeatures: folder=' + folderName + ', children=' + children.length + ', tags=[' + children.slice(0, 5).map(c => c.localName).join(',') + '...]');
     children.forEach(el => {
         if (el.localName === 'Placemark') {
             const nameEl = el.querySelector('name');
@@ -1250,7 +1244,6 @@ function parseKML(kmlText) {
             || (netLink.getElementsByTagName('link')[0] && netLink.getElementsByTagName('link')[0].getElementsByTagName('href')[0] || {}).textContent
             || '';
         if (linkHref) {
-            console.log('KML is a NetworkLink stub. URL:', linkHref);
             throw { isNetworkLink: true, url: linkHref.trim(), mapName: docName };
         }
     }
@@ -1496,11 +1489,10 @@ document.addEventListener('keydown', e => {
         case '1': setTool('pan');      break;
         case '2': setTool('freehand'); break;
         case '3': setTool('polyline'); break;
-        case '4': setTool('eraser');   break;
-        case '5': setTool('marker');   break;
-        case '6': setTool('label');    break;
-        case '7': setTool('measure');  break;
-        case '8': setTool('eraser');   break;
+        case '4': setTool('marker');   break;
+        case '5': setTool('label');    break;
+        case '6': setTool('measure');  break;
+        case '7': setTool('eraser');   break;
         case 'i': case 'I': openImportModal(); break;
     }
 });
