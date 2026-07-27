@@ -1491,4 +1491,13 @@ updateUndoRedoUI();
 wireImportModal();
 wireSaveModal();
 setTool('pan');
+
+/* Style panel toggle */
+$('#style-toggle').addEventListener('click', () => {
+    const body = $('#style-panel .panel-body');
+    const arrow = $('#style-toggle .toggle-arrow');
+    body.classList.toggle('hidden');
+    arrow.classList.toggle('open');
+});
+
 console.log('Interactive Map loaded.');

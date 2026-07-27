@@ -11,8 +11,6 @@
 <body>
     <div id="map"></div>
 
-    <a href="index.html" id="back-link" title="Back to Globe">← Globe</a>
-
     <!-- Drawing Toolbar (left) -->
     <div id="toolbar">
         <button class="tool-btn active" data-tool="pan" title="Pan & Navigate (1)">
@@ -45,9 +43,10 @@
         <button id="label-cancel" title="Cancel (Esc)">✕</button>
     </div>
 
-    <!-- Style Controls (right) -->
+    <!-- Style Controls (collapsible, bottom-left) -->
     <div id="style-panel">
-        <div class="panel-title">🎨 Style</div>
+        <div class="panel-title" id="style-toggle">🎨 Style <span class="toggle-arrow">▸</span></div>
+        <div class="panel-body">
         <div class="panel-group">
             <label>Color</label>
             <div id="color-grid"></div>
@@ -67,6 +66,7 @@
                 <button class="style-btn" data-style="dashed" title="Dashed line">┅</button>
                 <button class="style-btn" data-style="dotted" title="Dotted line">┈</button>
             </div>
+        </div>
         </div>
     </div>
 

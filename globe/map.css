@@ -43,8 +43,8 @@ body {
 /* ── Toolbar ─────────────────────────────────────── */
 #toolbar {
     position: fixed;
-    left: 16px; top: 50%;
-    transform: translateY(-50%);
+    left: 16px; top: 186px;
+    transform: none;
     display: flex; flex-direction: column; gap: 6px;
     z-index: 1000;
     background: rgba(10, 20, 50, 0.88);
@@ -74,26 +74,31 @@ body {
 /* ── Style Panel ─────────────────────────────────── */
 #style-panel {
     position: fixed;
-    right: 16px; top: 50%;
-    transform: translateY(-50%);
+    left: 16px; bottom: 60px;
     width: 170px; z-index: 1000;
     background: rgba(10, 20, 50, 0.92);
     border: 1px solid rgba(100, 160, 255, 0.3);
-    border-radius: 12px; padding: 14px;
+    border-radius: 12px; padding: 0;
     backdrop-filter: blur(15px);
     -webkit-backdrop-filter: blur(15px);
-    max-height: 80vh; overflow-y: auto;
-    scrollbar-width: thin;
-    scrollbar-color: rgba(100, 160, 255, 0.3) transparent;
+    overflow: hidden;
 }
+#style-panel .panel-body { padding: 10px 14px 14px; }
+#style-panel .panel-body.hidden { display: none; }
 #style-panel::-webkit-scrollbar { width: 5px; }
 #style-panel::-webkit-scrollbar-track { background: transparent; }
 #style-panel::-webkit-scrollbar-thumb { background: rgba(100, 160, 255, 0.3); border-radius: 4px; }
 
 .panel-title {
-    font-size: 0.9rem; font-weight: 700; color: #8ec8ff;
-    letter-spacing: 1px; margin-bottom: 12px; text-align: center;
+    font-size: 0.85rem; font-weight: 700; color: #8ec8ff;
+    letter-spacing: 1px; padding: 10px 14px; text-align: center;
+    cursor: pointer; user-select: none;
+    display: flex; align-items: center; justify-content: center; gap: 6px;
+    border-bottom: 1px solid rgba(100, 160, 255, 0.15);
 }
+.panel-title:hover { background: rgba(40, 80, 160, 0.3); }
+.toggle-arrow { font-size: 0.7rem; transition: transform 0.2s; }
+.toggle-arrow.open { transform: rotate(90deg); }
 .panel-group { margin-bottom: 14px; }
 .panel-group:last-child { margin-bottom: 0; }
 .panel-group label {
@@ -428,8 +433,8 @@ body.tool-measure #map { cursor: crosshair !important; }
     #label-input-wrap { left: 10px !important; right: 10px; width: auto; }
     #label-text-input { width: 100%; }
     #style-panel {
-        right: 8px; top: 12px; transform: none;
-        width: 150px; padding: 10px; max-height: 45vh;
+        left: 8px; bottom: 140px; transform: none;
+        width: 150px; max-height: 45vh;
     }
     #bottom-bar {
         bottom: 8px; padding: 6px 10px; gap: 5px;
