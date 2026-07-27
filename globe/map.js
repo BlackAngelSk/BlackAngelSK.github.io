@@ -89,6 +89,29 @@ L.control.layers({
     '\u{1F6F0} Satellite': sat
 }, null, { position: 'topright' }).addTo(map);
 
+/* ── Map Label Languages ─────────────────────────── */
+const LANGUAGES = [
+    { code: 'EN', flag: '🇬🇧', url: 'https://{s}.basemaps.cartocdn.com/dark_only_labels/{z}/{x}/{y}{r}.png', max: 19, attr: '© CARTO © OSM' },
+    { code: 'SK', flag: '🇸🇰', url: 'https://{s}.basemaps.cartocdn.com/dark_only_labels/{z}/{x}/{y}{r}.png', max: 19, attr: '© CARTO © OSM' },
+    { code: 'DE', flag: '🇩🇪', url: 'https://{s}.basemaps.cartocdn.com/dark_only_labels/{z}/{x}/{y}{r}.png', max: 19, attr: '© CARTO © OSM' },
+    { code: 'JP', flag: '🇯🇵', url: 'https://{s}.basemaps.cartocdn.com/dark_only_labels/{z}/{x}/{y}{r}.png', max: 19, attr: '© CARTO © OSM' },
+    { code: 'OFF', flag: '🚫', url: '', max: 19, attr: '' }
+];
+let langIdx = 0;
+let langOverlay = null;
+
+function setMapLanguage(idx) {
+    langIdx = idx % LANGUAGES.length;
+    const lang = LANGUAGES[langIdx];
+    if (langOverlay) { map.removeLayer(langOverlay); langOverlay = null; }
+    if (lang.url) {
+        langOverlay = L.tileLayer(lang.url, { maxZoom: lang.max, crossOrigin: true, attribution: lang.attr, pane: 'overlayPane' });
+        langOverlay.addTo(map);
+    }
+    $('#btn-lang').textContent = lang.flag + ' ' + lang.code;
+}
+$('#btn-lang').addEventListener('click', () => setMapLanguage(langIdx + 1));
+
 /* =====================================================
    Tool Management
    ===================================================== */
