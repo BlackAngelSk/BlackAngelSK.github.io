@@ -22,50 +22,69 @@
     <a href="#main-content" class="skip-link">Skip to main content</a>
 
     <header>
-        BlackangelSK.github.io
+        BlackAngelSK.github.io
     </header>
 
     <main id="main-content" class="container">
         <div class="binary-background" aria-hidden="true"></div>
 
-        <h1>Welcome</h1>
-
-        <section>
-            <h2>My GitHub Profile</h2>
-            <a href="https://github.com/BlackAngelSk/BlackAngelSK.github.io" class="link-button">View Source on GitHub</a>
+        <section class="hero">
+<pre class="ascii-title" aria-hidden="true">
+ ___  _  _ ___      ___  ___  ___  ___
+| _ \| \| | __|___ / _ \/ _ \/ _ \| _ \
+|  _/ .` | _|___| (_) | (_) | (_) |   /
+|_| |_\_|___|    \___/ \___/ \___/|_|\
+</pre>
+            <h1>BlackAngelSK</h1>
+            <p class="hero-tagline">TF2 MvM guides &bull; Payday 2 builds &bull; Web tools &bull; School projects &bull; Experiments</p>
+            <a href="https://github.com/BlackAngelSk/BlackAngelSK.github.io" class="link-button link-button--hero">View Source on GitHub</a>
         </section>
 
-        <section>
-            <h2>Team Fortress 2 — Mann vs Machine (Guide)</h2>
-            <a href="ft2/tf2.html" class="link-button">TF2 MvM Buys (in progress)</a>
-        </section>
-
-        <section>
-            <h2>Tools & Scripts</h2>
-            <a href="usefull_tools/tools.html" class="link-button">Useful Tools</a>
-        </section>
-
-        <section>
-            <h2>Map of the globe</h2>
-            <a href="globe/index.html" class="link-button">Map of the globe</a>
-            <a href="globe/map.html" class="link-button">Interactive Map with Annotations</a>
-        </section>
-
-        <section>
-            <h2>Payday 2 Builds</h2>
-            <a href="payday-2/index.html" class="link-button">Payday 2</a>
-        </section>
-
-        <section>
-            <h2>School Projects</h2>
-            <a href="hviezodlavov/index.html" class="link-button">Hviezdoslavov</a>
-            <a href="indexold.html" class="link-button">Old Version of the Site</a>
-        </section>
-
-        <section>
-            <h2>aleph-0</h2>
-            <a href="alepth-0/index.html" class="link-button">aleph-0</a>
-        </section>
+        <div class="card-grid">
+            <article class="card">
+                <span class="card-category">Gaming</span>
+                <h2>Team Fortress 2</h2>
+                <p>Mann vs Machine strategy guide — buy orders, class tips &amp; wave breakdowns.</p>
+                <a href="ft2/tf2.html" class="link-button">MvM Guide</a>
+            </article>
+            <article class="card">
+                <span class="card-category">Gaming</span>
+                <h2>Payday 2</h2>
+                <p>Heist builds, skill trees &amp; loadout ideas for every play-style.</p>
+                <a href="payday-2/index.html" class="link-button">View Builds</a>
+            </article>
+            <article class="card">
+                <span class="card-category">Interactive</span>
+                <h2>Globe Map</h2>
+                <p>3-D globe visualisation of geographic data.</p>
+                <a href="globe/index.html" class="link-button">3-D Globe</a>
+                <a href="globe/map.html" class="link-button">Annotated Map</a>
+            </article>
+            <article class="card">
+                <span class="card-category">Tools</span>
+                <h2>Useful Tools</h2>
+                <p>Browser-based utilities — photo editor, video watermark remover, translator &amp; more.</p>
+                <a href="usefull_tools/tools.html" class="link-button">Open Tools</a>
+            </article>
+            <article class="card">
+                <span class="card-category">School</span>
+                <h2>Hviezdoslavov</h2>
+                <p>School project exploring the life &amp; work of Pavol Országh Hviezdoslav.</p>
+                <a href="hviezodlavov/index.html" class="link-button">View Project</a>
+            </article>
+            <article class="card">
+                <span class="card-category">Math</span>
+                <h2>aleph-0</h2>
+                <p>A look at countable infinity and the smallest transfinite cardinal number.</p>
+                <a href="alepth-0/index.html" class="link-button">Explore</a>
+            </article>
+            <article class="card">
+                <span class="card-category">Legacy</span>
+                <h2>Old Site</h2>
+                <p>The original version of this site, preserved for reference.</p>
+                <a href="indexold.html" class="link-button">Visit Old Site</a>
+            </article>
+        </div>
 
         <noscript>
             <p>JavaScript is disabled — the binary background animation will not play.</p>
@@ -89,15 +108,11 @@
                 bg.style.top = '0px';
                 bg.style.height = height + 'px';
                 bg.style.setProperty('--binary-area-height', height + 'px');
-
-                // populate digits
                 bg.innerHTML = '';
-                // Reduce particle count on small screens
                 const isMobile = window.matchMedia('(max-width: 600px)').matches;
                 const count = isMobile
                     ? Math.max(60, Math.floor(width / 18))
                     : Math.max(200, Math.floor(width / 12));
-
                 for (let i = 0; i < count; i++) {
                     const digit = document.createElement('div');
                     digit.className = 'binary-digit';
@@ -111,7 +126,6 @@
                     bg.appendChild(digit);
                 }
             }
-
             function triggerGlitchBurst() {
                 const digits = bg.querySelectorAll('.binary-digit');
                 if (!digits.length) return;
@@ -128,7 +142,6 @@
                     }, 260);
                 }
             }
-
             function startGlitchLoop() {
                 if (glitchStarted) return;
                 glitchStarted = true;
@@ -139,13 +152,10 @@
                 };
                 setTimeout(loop, 1200);
             }
-
-            // Debounced resize handler — avoids full DOM rebuild on every resize tick
             window.addEventListener('resize', function () {
                 clearTimeout(resizeTimer);
                 resizeTimer = setTimeout(setup, 200);
             });
-
             document.addEventListener('DOMContentLoaded', setup);
             if (document.readyState === 'complete' || document.readyState === 'interactive') setup();
             startGlitchLoop();

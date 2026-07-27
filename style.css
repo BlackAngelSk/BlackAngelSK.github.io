@@ -156,6 +156,98 @@ footer {
     border-top: 2px solid #00ff00;
 }
 
+/* ── Hero Section ──────────────────────────────────── */
+.hero {
+    text-align: center;
+    padding: 30px 0 20px;
+    position: relative;
+    z-index: 1;
+}
+
+.ascii-title {
+    font-family: 'Courier New', monospace;
+    font-size: 10px;
+    line-height: 1.2;
+    color: #00ff00;
+    margin: 0 0 12px;
+    text-align: center;
+    white-space: pre;
+    overflow-x: auto;
+}
+
+.hero-tagline {
+    font-size: 14px;
+    color: #00cc00;
+    margin: 0 0 16px;
+    letter-spacing: 1px;
+}
+
+.link-button--hero {
+    font-size: 16px;
+    padding: 12px 28px;
+    border-width: 2px;
+}
+
+/* ── Card Grid ────────────────────────────────────── */
+.card-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+    width: 100%;
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 10px 0 30px;
+}
+
+.card {
+    background: #111111;
+    border: 1px solid #00ff00;
+    padding: 18px;
+    text-align: left;
+    position: relative;
+    transition: box-shadow 0.25s ease, border-color 0.25s ease, transform 0.25s ease;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.card:hover {
+    box-shadow: 0 0 12px rgba(0, 255, 0, 0.25);
+    border-color: #33ff33;
+    transform: translateY(-2px);
+}
+
+.card h2 {
+    font-size: 16px;
+    text-transform: uppercase;
+    margin: 0;
+}
+
+.card p {
+    font-size: 13px;
+    color: #00cc00;
+    margin: 0;
+    line-height: 1.4;
+}
+
+.card .link-button {
+    margin: 4px 0 0;
+    padding: 6px 14px;
+    font-size: 13px;
+    align-self: flex-start;
+}
+
+.card-category {
+    display: inline-block;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    color: #000;
+    background: #00ff00;
+    padding: 2px 8px;
+    margin-bottom: 4px;
+}
+
 /* ── Responsive ───────────────────────────────────── */
 @media (max-width: 600px) {
     header {
@@ -175,6 +267,33 @@ footer {
         padding: 8px 14px;
         font-size: 14px;
     }
+
+    .ascii-title {
+        font-size: 6px;
+    }
+
+    .card-grid {
+        grid-template-columns: 1fr;
+        gap: 12px;
+    }
+
+    .card {
+        padding: 14px;
+    }
+
+    .hero-tagline {
+        font-size: 12px;
+    }
+}
+
+@media (min-width: 601px) and (max-width: 860px) {
+    .card-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .ascii-title {
+        font-size: 8px;
+    }
 }
 
 /* ── Reduced Motion ───────────────────────────────── */
@@ -189,6 +308,10 @@ footer {
     }
 
     .link-button {
+        transition: none;
+    }
+
+    .card {
         transition: none;
     }
 }

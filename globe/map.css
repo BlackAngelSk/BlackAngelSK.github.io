@@ -417,7 +417,6 @@ body.tool-measure #map { cursor: crosshair !important; }
 .import-tooltip::before {
     border-top-color: rgba(100, 180, 255, 0.5);
 }
-
 /* ── Label Overlay Enhancement ──────────────────── */
 .leaflet-overlay-pane img {
     filter: brightness(1.6) contrast(1.4);
