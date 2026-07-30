@@ -71,6 +71,135 @@ body {
 .tool-icon { font-size: 1.3rem; line-height: 1; }
 .tool-label { font-size: 0.65rem; letter-spacing: 0.5px; text-transform: uppercase; }
 
+/* ── Drag Handles (hidden by default, shown in layout-editing mode) */
+.drag-handle, .drag-grip {
+    display: none;
+    cursor: grab; user-select: none; -webkit-user-select: none;
+    font-size: 1rem; color: rgba(100, 180, 255, 0.4);
+    padding: 2px 0 4px; letter-spacing: 2px;
+    transition: color 0.2s;
+}
+.drag-handle:hover, .drag-grip:hover { color: rgba(100, 180, 255, 0.8); }
+.drag-handle:active, .drag-grip:active { cursor: grabbing; }
+.drag-grip { padding: 0; flex-shrink: 0; }
+
+.bar-grip {
+    display: none;
+    font-size: 1.1rem; padding: 0 2px;
+    line-height: 1;
+}
+
+/* Show drag handles + outline when settings popup is open */
+body.layout-editing .drag-handle,
+body.layout-editing .drag-grip,
+body.layout-editing .bar-grip { display: flex; }
+body.layout-editing #toolbar,
+body.layout-editing #style-panel,
+body.layout-editing #bottom-bar {
+    outline: 1px dashed rgba(100, 180, 255, 0.35);
+    outline-offset: 3px;
+}
+
+.draggable { user-select: none; -webkit-user-select: none; }
+.draggable.dragging {
+    opacity: 0.85;
+    box-shadow: 0 0 20px rgba(100, 180, 255, 0.4);
+    border-color: rgba(100, 180, 255, 0.6);
+    transition: none;
+}
+.draggable.dragging .drag-handle,
+.draggable.dragging .drag-grip { cursor: grabbing; }
+
+/* ── Settings Popup ─────────────────────────────── */
+#settings-panel {
+    position: fixed; bottom: 68px; left: 50%;
+    transform: translateX(-50%);
+    width: 260px; max-height: 60vh; overflow-y: auto;
+    background: rgba(10, 20, 50, 0.95);
+    border: 1px solid rgba(100, 160, 255, 0.35);
+    border-radius: 12px; padding: 12px 14px;
+    z-index: 1100;
+    backdrop-filter: blur(15px);
+    -webkit-backdrop-filter: blur(15px);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+    transition: opacity 0.2s ease, transform 0.2s ease;
+}
+#settings-panel.hidden {
+    opacity: 0; pointer-events: none;
+    transform: translateX(-50%) translateY(8px);
+}
+#settings-panel::-webkit-scrollbar { width: 4px; }
+#settings-panel::-webkit-scrollbar-thumb { background: rgba(100, 160, 255, 0.3); border-radius: 3px; }
+.settings-row { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; }
+.settings-check {
+    display: flex; align-items: center; gap: 4px;
+    font-size: 0.75rem; color: rgba(180, 210, 255, 0.7);
+    cursor: pointer; white-space: nowrap;
+}
+.settings-check input[type="checkbox"] {
+    accent-color: #4a9eff; cursor: pointer;
+}
+.settings-sm-btn {
+    background: rgba(30, 80, 180, 0.7);
+    border: 1px solid rgba(100, 180, 255, 0.4);
+    color: #c0d8ff; padding: 4px 8px;
+    border-radius: 6px; cursor: pointer;
+    font-size: 0.8rem; transition: all 0.2s;
+    flex-shrink: 0;
+}
+.settings-sm-btn:hover { background: rgba(40, 100, 220, 0.9); color: #fff; }
+#preset-name-input {
+    background: rgba(5, 10, 30, 0.6);
+    border: 1px solid rgba(100, 160, 255, 0.25);
+    border-radius: 6px; padding: 4px 8px;
+    color: #c0d8ff; font-size: 0.78rem;
+    outline: none; flex: 1; min-width: 0;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+#preset-name-input::placeholder { color: rgba(160, 190, 255, 0.3); }
+#preset-name-input:focus { border-color: rgba(100, 180, 255, 0.6); }
+
+#preset-list-settings {
+    display: flex; flex-direction: column; gap: 4px;
+    max-height: 120px; overflow-y: auto;
+}
+#preset-list-settings::-webkit-scrollbar { width: 4px; }
+#preset-list-settings::-webkit-scrollbar-thumb { background: rgba(100, 160, 255, 0.3); border-radius: 3px; }
+.preset-item {
+    display: flex; align-items: center; gap: 4px;
+    padding: 4px 6px; border-radius: 6px;
+    background: rgba(5, 10, 30, 0.5);
+    border: 1px solid rgba(100, 160, 255, 0.15);
+}
+.preset-item-name {
+    flex: 1; font-size: 0.75rem; color: #a0c4ff;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    cursor: pointer;
+}
+.preset-item-name:hover { color: #fff; }
+.preset-item-del {
+    background: none; border: none; color: rgba(200, 100, 100, 0.5);
+    font-size: 0.7rem; cursor: pointer; padding: 2px 4px;
+    border-radius: 4px; transition: all 0.2s;
+}
+.preset-item-del:hover { color: #ff6666; background: rgba(200, 60, 60, 0.2); }
+.preset-empty {
+    font-size: 0.72rem; color: rgba(140, 180, 255, 0.35);
+    font-style: italic; padding: 2px 0;
+}
+.settings-action-btn {
+    width: 100%; padding: 6px 0;
+    background: rgba(120, 40, 40, 0.5);
+    border: 1px solid rgba(200, 100, 100, 0.3);
+    color: #ffaaaa; border-radius: 6px;
+    cursor: pointer; font-size: 0.78rem;
+    transition: all 0.2s;
+}
+.settings-action-btn:hover {
+    background: rgba(160, 50, 50, 0.7);
+    border-color: rgba(255, 100, 100, 0.5); color: #fff;
+}
+
 /* ── Style Panel ─────────────────────────────────── */
 #style-panel {
     position: fixed;
@@ -259,12 +388,21 @@ body {
 }
 .leaflet-control-layers {
     border: 1px solid rgba(100, 160, 255, 0.3) !important;
-    border-radius: 8px !important; overflow: hidden;
+    border-radius: 8px !important;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4) !important;
+}
+.leaflet-control-layers-expanded {
+    border-radius: 8px !important;
+    background: rgba(10, 20, 50, 0.95) !important;
 }
 .leaflet-control-layers-toggle {
     background-color: rgba(10, 20, 50, 0.9) !important;
     border: none !important;
+    border-radius: 8px !important;
+    filter: invert(1) opacity(0.8);
+}
+.leaflet-control-layers-toggle:hover {
+    filter: invert(1) opacity(1);
 }
 .leaflet-control-layers label { color: #a0c4ff !important; }
 .leaflet-control-layers-separator { border-color: rgba(100, 160, 255, 0.2) !important; }

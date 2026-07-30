@@ -1783,6 +1783,254 @@ document.addEventListener('fullscreenchange', function () { updateFullscreenBtn(
 document.addEventListener('webkitfullscreenchange', function () { updateFullscreenBtn(); setTimeout(function () { map.invalidateSize(); }, 350); });
 
 /* =====================================================
+   Draggable Panels
+   ===================================================== */
+const DRAG_STORAGE_KEY = 'map-panel-layout';
+const SETTINGS_STORAGE_KEY = 'map-layout-settings';
+const PRESETS_STORAGE_KEY = 'map-layout-presets';
+const SNAP_THRESHOLD = 12;
+
+let cfgSnapEdge = true;
+
+function makeDraggable(el, handleEl, id) {
+    let isDragging = false, startX, startY, origLeft, origTop;
+    el.classList.add('draggable');
+
+    function startDrag(e) {
+        if (e.button && e.button !== 0) return;
+        e.preventDefault(); e.stopPropagation();
+        isDragging = true;
+        const rect = el.getBoundingClientRect();
+        const cx = e.touches ? e.touches[0].clientX : e.clientX;
+        const cy = e.touches ? e.touches[0].clientY : e.clientY;
+        startX = cx; startY = cy;
+        origLeft = rect.left; origTop = rect.top;
+        /* switch from CSS anchoring to absolute top/left */
+        el.style.left = origLeft + 'px';
+        el.style.top  = origTop + 'px';
+        el.style.bottom = 'auto';
+        el.style.right  = 'auto';
+        el.style.transform = 'none';
+        el.classList.add('dragging');
+        document.addEventListener('mousemove', onMove);
+        document.addEventListener('mouseup', endDrag);
+        document.addEventListener('touchmove', onMove, { passive: false });
+        document.addEventListener('touchend', endDrag);
+    }
+
+    function onMove(e) {
+        if (!isDragging) return;
+        e.preventDefault();
+        const cx = e.touches ? e.touches[0].clientX : e.clientX;
+        const cy = e.touches ? e.touches[0].clientY : e.clientY;
+        let nl = origLeft + (cx - startX);
+        let nt = origTop  + (cy - startY);
+        /* clamp to viewport */
+        nl = Math.max(0, Math.min(window.innerWidth  - el.offsetWidth,  nl));
+        nt = Math.max(0, Math.min(window.innerHeight - el.offsetHeight, nt));
+        /* snap to edges */
+        if (cfgSnapEdge) {
+            if (nl < SNAP_THRESHOLD) nl = 0;
+            if (nt < SNAP_THRESHOLD) nt = 0;
+            if (nl + el.offsetWidth  > window.innerWidth  - SNAP_THRESHOLD) nl = window.innerWidth  - el.offsetWidth;
+            if (nt + el.offsetHeight > window.innerHeight - SNAP_THRESHOLD) nt = window.innerHeight - el.offsetHeight;
+        }
+        el.style.left = nl + 'px';
+        el.style.top  = nt + 'px';
+    }
+
+    function endDrag() {
+        if (!isDragging) return;
+        isDragging = false;
+        el.classList.remove('dragging');
+        document.removeEventListener('mousemove', onMove);
+        document.removeEventListener('mouseup', endDrag);
+        document.removeEventListener('touchmove', onMove);
+        document.removeEventListener('touchend', endDrag);
+        saveLayout();
+    }
+
+    handleEl.addEventListener('mousedown', startDrag);
+    handleEl.addEventListener('touchstart', startDrag, { passive: false });
+}
+
+function saveLayout() {
+    const pos = {};
+    document.querySelectorAll('[data-draggable]').forEach(el => {
+        const id = el.dataset.draggable;
+        if (el.style.left || el.style.top) {
+            pos[id] = { left: parseInt(el.style.left) || 0, top: parseInt(el.style.top) || 0 };
+        }
+    });
+    localStorage.setItem(DRAG_STORAGE_KEY, JSON.stringify(pos));
+}
+
+function loadLayout() {
+    const raw = localStorage.getItem(DRAG_STORAGE_KEY);
+    if (!raw) return;
+    try {
+        const pos = JSON.parse(raw);
+        document.querySelectorAll('[data-draggable]').forEach(el => {
+            const p = pos[el.dataset.draggable];
+            if (!p) return;
+            el.style.left      = p.left + 'px';
+            el.style.top       = p.top  + 'px';
+            el.style.bottom    = 'auto';
+            el.style.right     = 'auto';
+            el.style.transform = 'none';
+        });
+    } catch (_) { /* ignore corrupt data */ }
+}
+
+function resetLayout() {
+    document.querySelectorAll('[data-draggable]').forEach(el => {
+        el.style.left = el.style.top = el.style.bottom = el.style.right = el.style.transform = '';
+    });
+    localStorage.removeItem(DRAG_STORAGE_KEY);
+    /* restore checkboxes */
+    $('#cfg-show-toolbar').checked  = true;
+    $('#cfg-show-style').checked    = true;
+    $('#cfg-show-bottombar').checked = true;
+    $('#cfg-snap-edge').checked     = true;
+    cfgSnapEdge = true;
+    applyVisibility();
+    saveSettings();
+}
+
+/* ── Panel Visibility ──────────────────────────── */
+function applyVisibility() {
+    const tb = $('#toolbar'), sp = $('#style-panel'), bb = $('#bottom-bar');
+    if (tb)  tb.style.display  = $('#cfg-show-toolbar').checked  ? '' : 'none';
+    if (sp)  sp.style.display  = $('#cfg-show-style').checked    ? '' : 'none';
+    if (bb)  bb.style.display  = $('#cfg-show-bottombar').checked ? '' : 'none';
+}
+
+function saveSettings() {
+    const s = {
+        showToolbar:   $('#cfg-show-toolbar').checked,
+        showStyle:     $('#cfg-show-style').checked,
+        showBottombar: $('#cfg-show-bottombar').checked,
+        snapEdge:      $('#cfg-snap-edge').checked
+    };
+    localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(s));
+}
+
+function loadSettings() {
+    const raw = localStorage.getItem(SETTINGS_STORAGE_KEY);
+    if (!raw) return;
+    try {
+        const s = JSON.parse(raw);
+        if (s.showToolbar   !== undefined) $('#cfg-show-toolbar').checked   = s.showToolbar;
+        if (s.showStyle     !== undefined) $('#cfg-show-style').checked     = s.showStyle;
+        if (s.showBottombar !== undefined) $('#cfg-show-bottombar').checked = s.showBottombar;
+        if (s.snapEdge      !== undefined) { $('#cfg-snap-edge').checked = s.snapEdge; cfgSnapEdge = s.snapEdge; }
+        applyVisibility();
+    } catch (_) {}
+}
+
+/* ── Layout Presets ────────────────────────────── */
+function getPresets() {
+    try { return JSON.parse(localStorage.getItem(PRESETS_STORAGE_KEY)) || []; }
+    catch (_) { return []; }
+}
+function setPresets(arr) { localStorage.setItem(PRESETS_STORAGE_KEY, JSON.stringify(arr)); }
+
+function captureCurrentLayout() {
+    const pos = {};
+    document.querySelectorAll('[data-draggable]').forEach(el => {
+        const r = el.getBoundingClientRect();
+        pos[el.dataset.draggable] = { left: Math.round(r.left), top: Math.round(r.top) };
+    });
+    return pos;
+}
+
+function applyPresetPosition(pos) {
+    document.querySelectorAll('[data-draggable]').forEach(el => {
+        const p = pos[el.dataset.draggable];
+        if (!p) return;
+        el.style.left      = p.left + 'px';
+        el.style.top       = p.top  + 'px';
+        el.style.bottom    = 'auto';
+        el.style.right     = 'auto';
+        el.style.transform = 'none';
+    });
+    saveLayout();
+}
+
+function renderPresets() {
+    const list = $('#preset-list-settings');
+    const presets = getPresets();
+    if (!list) return;
+    if (presets.length === 0) {
+        list.innerHTML = '<div class="preset-empty">No saved presets</div>';
+        return;
+    }
+    list.innerHTML = '';
+    presets.forEach((pr, i) => {
+        const div = document.createElement('div');
+        div.className = 'preset-item';
+        const name = document.createElement('span');
+        name.className = 'preset-item-name';
+        name.textContent = pr.name;
+        name.title = 'Click to load';
+        name.addEventListener('click', () => {
+            applyPresetPosition(pr.layout);
+            if (pr.visibility) {
+                $('#cfg-show-toolbar').checked   = pr.visibility.showToolbar  !== false;
+                $('#cfg-show-style').checked     = pr.visibility.showStyle    !== false;
+                $('#cfg-show-bottombar').checked = pr.visibility.showBottombar !== false;
+                applyVisibility();
+            }
+        });
+        const del = document.createElement('button');
+        del.className = 'preset-item-del';
+        del.textContent = '✕';
+        del.title = 'Delete preset';
+        del.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const all = getPresets(); all.splice(i, 1); setPresets(all); renderPresets();
+        });
+        div.appendChild(name);
+        div.appendChild(del);
+        list.appendChild(div);
+    });
+}
+
+function savePreset() {
+    const input = $('#preset-name-input');
+    const name = input.value.trim();
+    if (!name) { input.focus(); return; }
+    const all = getPresets();
+    all.push({
+        name: name,
+        layout: captureCurrentLayout(),
+        visibility: {
+            showToolbar:   $('#cfg-show-toolbar').checked,
+            showStyle:     $('#cfg-show-style').checked,
+            showBottombar: $('#cfg-show-bottombar').checked
+        }
+    });
+    setPresets(all);
+    input.value = '';
+    renderPresets();
+}
+
+/* Wire up draggables */
+(function initDraggables () {
+    const toolbar    = document.getElementById('toolbar');
+    const stylePanel = document.getElementById('style-panel');
+    const bottomBar  = document.getElementById('bottom-bar');
+
+    if (toolbar)    makeDraggable(toolbar,    toolbar.querySelector('.drag-handle'),    'toolbar');
+    if (stylePanel) makeDraggable(stylePanel, stylePanel.querySelector('.drag-grip'),   'style-panel');
+    if (bottomBar)  makeDraggable(bottomBar,  bottomBar.querySelector('.bar-grip'),     'bottom-bar');
+
+    loadLayout();
+    loadSettings();
+    renderPresets();
+})();
+
+/* =====================================================
    Init
    ===================================================== */
 $('#zoom-display').textContent = 'Zoom: ' + map.getZoom();
@@ -1793,11 +2041,45 @@ wireSaveModal();
 setTool('pan');
 
 /* Style panel toggle */
-$('#style-toggle').addEventListener('click', () => {
+$('#style-toggle').addEventListener('click', (e) => {
+    if (e.target.closest('.drag-grip')) return; /* don't toggle when dragging */
     const body = $('#style-panel .panel-body');
     const arrow = $('#style-toggle .toggle-arrow');
     body.classList.toggle('hidden');
     arrow.classList.toggle('open');
 });
+
+/* Reset layout button (inside settings popup) */
+
+/* Settings popup toggle */
+$('#btn-settings').addEventListener('click', (e) => {
+    e.stopPropagation();
+    const panel = $('#settings-panel');
+    const isOpening = panel.classList.contains('hidden');
+    panel.classList.toggle('hidden');
+    document.body.classList.toggle('layout-editing', isOpening);
+});
+/* Close settings popup when clicking outside */
+document.addEventListener('click', (e) => {
+    const panel = $('#settings-panel');
+    if (panel.classList.contains('hidden')) return;
+    if (e.target.closest('#settings-panel') || e.target.closest('#btn-settings')) return;
+    panel.classList.add('hidden');
+    document.body.classList.remove('layout-editing');
+});
+
+/* Settings: panel visibility checkboxes */
+['cfg-show-toolbar', 'cfg-show-style', 'cfg-show-bottombar'].forEach(id => {
+    $('#' + id).addEventListener('change', () => { applyVisibility(); saveSettings(); });
+});
+$('#cfg-snap-edge').addEventListener('change', () => {
+    cfgSnapEdge = $('#cfg-snap-edge').checked;
+    saveSettings();
+});
+
+/* Settings: presets */
+$('#btn-preset-save').addEventListener('click', savePreset);
+$('#preset-name-input').addEventListener('keydown', (e) => { if (e.key === 'Enter') savePreset(); });
+$('#btn-reset-layout2').addEventListener('click', resetLayout);
 
 console.log('Interactive Map loaded.');

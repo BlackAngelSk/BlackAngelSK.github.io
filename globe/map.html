@@ -12,7 +12,8 @@
     <div id="map"></div>
 
     <!-- Drawing Toolbar (left) -->
-    <div id="toolbar">
+    <div id="toolbar" data-draggable="toolbar">
+        <div class="drag-handle" title="Drag to reposition">⋮</div>
         <button class="tool-btn active" data-tool="pan" title="Pan & Navigate (1)">
             <span class="tool-icon">✋</span><span class="tool-label">Pan</span>
         </button>
@@ -43,9 +44,38 @@
         <button id="label-cancel" title="Cancel (Esc)">✕</button>
     </div>
 
+    <!-- Layout Settings Popup -->
+    <div id="settings-panel" class="hidden">
+        <div class="panel-group">
+            <label>Panels</label>
+            <div class="settings-row">
+                <label class="settings-check"><input type="checkbox" id="cfg-show-toolbar" checked> Toolbar</label>
+                <label class="settings-check"><input type="checkbox" id="cfg-show-style" checked> Style</label>
+                <label class="settings-check"><input type="checkbox" id="cfg-show-bottombar" checked> Bottom Bar</label>
+            </div>
+        </div>
+        <div class="panel-group">
+            <label>Drag Options</label>
+            <div class="settings-row">
+                <label class="settings-check"><input type="checkbox" id="cfg-snap-edge" checked> Snap to edges</label>
+            </div>
+        </div>
+        <div class="panel-group">
+            <label>Presets</label>
+            <div id="preset-save-row" class="settings-row">
+                <input type="text" id="preset-name-input" placeholder="Preset name…" maxlength="30" autocomplete="off" spellcheck="false">
+                <button id="btn-preset-save" class="settings-sm-btn" title="Save current layout as preset">💾</button>
+            </div>
+            <div id="preset-list-settings"></div>
+        </div>
+        <div class="panel-group">
+            <button id="btn-reset-layout2" class="settings-action-btn">↺ Reset to Defaults</button>
+        </div>
+    </div>
+
     <!-- Style Controls (collapsible, bottom-left) -->
-    <div id="style-panel">
-        <div class="panel-title" id="style-toggle">🎨 Style <span class="toggle-arrow">▸</span></div>
+    <div id="style-panel" data-draggable="style-panel">
+        <div class="panel-title" id="style-toggle"><span class="drag-grip" title="Drag to reposition">⋮</span> 🎨 Style <span class="toggle-arrow">▸</span></div>
         <div class="panel-body">
         <div class="panel-group">
             <label>Color</label>
@@ -145,7 +175,8 @@
     </div>
 
     <!-- Bottom Bar -->
-    <div id="bottom-bar">
+    <div id="bottom-bar" data-draggable="bottom-bar">
+        <span class="drag-grip bar-grip" title="Drag to reposition">⋮</span>
         <button id="btn-undo" class="bar-btn" title="Undo (Ctrl+Z)">↩ Undo</button>
         <button id="btn-redo" class="bar-btn" title="Redo (Ctrl+Y)">↪ Redo</button>
         <div class="bar-sep"></div>
@@ -160,6 +191,8 @@
         <div class="bar-sep"></div>
         <button id="btn-fullscreen" class="bar-btn" title="Toggle fullscreen (F)">⛶ Fullscreen</button>
         <div class="bar-sep"></div>
+        <button id="btn-settings" class="bar-btn" title="Open layout settings">⚙ Layout</button>
+        <div class="bar-sep"></div>
         <span id="ann-count">0 annotations</span>
         <span id="zoom-display">Zoom: 6</span>
     </div>
@@ -172,6 +205,6 @@
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-    <script src="map.js?v=3"></script>
+    <script src="map.js?v=5"></script>
 </body>
 </html>

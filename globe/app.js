@@ -322,6 +322,7 @@ gG.add(new THREE.Mesh(new THREE.SphereGeometry(ER*1.08,SEG,SEG),new THREE.MeshBa
 // Cities
 const ctG=new THREE.Group();gG.add(ctG);
 const mScr={};
+const ctLabels=[]; // store label sprites for dynamic zoom scaling
 CITIES.forEach(c=>{
   if(c[0]==='__origin__')return;
   const[nm,lt,ln,sz,cl]=c;
@@ -333,7 +334,7 @@ CITIES.forEach(c=>{
   lx.clearRect(0,0,256,64);lx.font='bold 18px Arial,sans-serif';lx.fillStyle='rgba(255,255,255,0.9)';
   lx.textAlign='center';lx.textBaseline='middle';lx.fillText(nm,128,32);
   const lm=new THREE.SpriteMaterial({map:new THREE.CanvasTexture(lcv),transparent:true,depthTest:false,depthWrite:false,opacity:0.85});
-  const lb=new THREE.Sprite(lm);lb.scale.set(5,1.25,1);lb.position.copy(latLonToV3(lt,ln,ER*1.04+3));ctG.add(lb);
+  const lb=new THREE.Sprite(lm);lb.scale.set(5,1.25,1);lb.position.copy(latLonToV3(lt,ln,ER*1.04+3));ctG.add(lb);ctLabels.push(lb);
 });
 
 // Stars
@@ -510,6 +511,11 @@ function animate(){
       camera.position.lerpVectors(gsapOrigin,gsapDest,e);
     }
   }
+
+  // Dynamic label scaling: labels grow a bit more when zoomed in
+  const camDist=camera.position.length();
+  const zoomK=Math.min(Math.max(Math.pow(350/camDist,0.3),0.85),1.8);
+  ctLabels.forEach(lb=>{lb.scale.set(5*zoomK,1.25*zoomK,1);});
 
   ctrl.update();renderer.render(scene,camera);
 }
