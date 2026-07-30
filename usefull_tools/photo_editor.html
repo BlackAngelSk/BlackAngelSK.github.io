@@ -363,12 +363,19 @@
       <label>Scale</label><div class="range-line"><input id="layerScale" type="range" min="10" max="300" value="100" /><output id="layerScaleOut">100%</output></div>
       <label>Rotation</label><div class="range-line"><input id="layerRotation" type="range" min="-180" max="180" value="0" /><output id="layerRotationOut">0°</output></div>
       <label for="layerBlend">Blend</label><select id="layerBlend"><option value="source-over">Normal</option><option value="multiply">Multiply</option><option value="screen">Screen</option><option value="overlay">Overlay</option><option value="darken">Darken</option><option value="lighten">Lighten</option></select>
-      <div class="btn-row" style="margin-top:6px;"><button id="centerLayerBtn" class="secondary" disabled>Center</button><button id="pickBgBtn" class="secondary" disabled>Pick BG</button></div>
+      <div class="btn-row" style="margin-top:6px;"><button id="centerLayerBtn" class="secondary" disabled>Center</button><button id="pickBgBtn" class="secondary" disabled>Pick BG</button><button id="autoBgBtn" class="secondary" disabled>Auto BG</button></div>
+      <div class="btn-row" style="margin-top:6px;"><button id="eraseBrushBtn" class="secondary" disabled>🖌️ Erase</button><button id="restoreBrushBtn" class="secondary" disabled>✏️ Restore</button><button id="wandBtn" class="secondary" disabled>🪄 Wand</button></div>
       <div class="btn-row" style="margin-top:6px;"><button id="lockLayerBtn" class="secondary" disabled>🔓 Unlock</button><button id="previewFadeBtn" class="secondary" disabled>▶ Fade</button></div>
       <div class="btn-row" style="margin-top:6px;"><button id="groupLayerBtn" class="secondary" disabled>Group</button><button id="ungroupLayerBtn" class="secondary" disabled>Ungroup</button></div>
-      <label style="margin-top:6px;">BG tolerance</label><div class="range-line"><input id="bgTolerance" type="range" min="0" max="180" value="45" /><output id="bgToleranceOut">45</output></div>
-      <button id="removeBgBtn" class="warn" style="margin-top:4px;" disabled>Remove BG</button>
-      <p id="layerHint" class="small" style="margin-top:4px;">Select layer → Pick BG → Remove BG</p>
+      <label style="margin-top:6px;">Brush size</label><div class="range-line"><input id="brushSize" type="range" min="1" max="200" value="15" /><output id="brushSizeOut">15</output></div>
+      <label style="margin-top:4px;">BG tolerance</label><div class="range-line"><input id="bgTolerance" type="range" min="0" max="180" value="45" /><output id="bgToleranceOut">45</output></div>
+      <label style="margin-top:4px;">Feather</label><div class="range-line"><input id="bgFeather" type="range" min="0" max="20" value="0" /><output id="bgFeatherOut">0px</output></div>
+      <div style="margin-top:4px;display:flex;gap:12px;align-items:center;">
+        <label style="display:flex;align-items:center;gap:4px;margin:0;cursor:pointer;"><input type="checkbox" id="bgFloodFill" /> Flood fill only</label>
+        <label style="display:flex;align-items:center;gap:4px;margin:0;cursor:pointer;"><input type="checkbox" id="bgSoftEdge" /> Soft edge</label>
+      </div>
+      <button id="removeBgBtn" class="warn" style="margin-top:6px;" disabled>⚠ Remove BG</button>
+      <p id="layerHint" class="small" style="margin-top:4px;">Select layer → Auto/Pick BG → Remove BG, or use ✖ Erase brush</p>
     </div></aside>
   </div>
 
@@ -387,10 +394,14 @@
         <li><kbd>Escape</kbd> — Cancel current mode</li>
         <li><kbd>Ctrl+S</kbd> — Download / Export</li>
         <li><kbd>Click hex</kbd> — Copy eyedropper color</li>
+        <li><kbd>Auto BG</kbd> — Auto-detect background color</li>
+        <li><kbd>🪄 Wand</kbd> — Click to erase connected similar-color region</li>
       </ul>
       <button id="closeShortcutsBtn">Close</button>
     </div>
   </div>
+
+  <div id="brushCursor" style="display:none;position:fixed;pointer-events:none;border:2px solid rgba(255,100,100,.8);border-radius:50%;z-index:9999;transform:translate(-50%,-50%);background:rgba(255,100,100,.12);mix-blend-mode:difference;"></div>
 
   <script>
     const byId = id => document.getElementById(id);
@@ -480,7 +491,16 @@
     const layerBlend = byId('layerBlend');
     const bgTolerance = byId('bgTolerance');
     const pickBgBtn = byId('pickBgBtn');
+    const autoBgBtn = byId('autoBgBtn');
     const removeBgBtn = byId('removeBgBtn');
+    const eraseBrushBtn = byId('eraseBrushBtn');
+    const restoreBrushBtn = byId('restoreBrushBtn');
+    const wandBtn = byId('wandBtn');
+    const brushSize = byId('brushSize');
+    const brushCursor = byId('brushCursor');
+    const bgFeather = byId('bgFeather');
+    const bgFloodFill = byId('bgFloodFill');
+    const bgSoftEdge = byId('bgSoftEdge');
     const layerHint = byId('layerHint');
     const nudgeTarget = byId('nudgeTarget');
     const watermarkEditBtn = byId('watermarkEditBtn');
@@ -542,7 +562,7 @@
       textOpacity: byId('textOpacityOut'), textSize: byId('textSizeOut'), textRotate: byId('textRotateOut'), textStrokeWidth: byId('textStrokeWidthOut'), textShadowBlur: byId('textShadowBlurOut'),
       textBgOpacity: byId('textBgOpacityOut'), textBgPadding: byId('textBgPaddingOut'),
       logoOpacity: byId('logoOpacityOut'), logoScale: byId('logoScaleOut'), logoRotate: byId('logoRotateOut'), snapDistance: byId('snapDistanceOut'), exportQuality: byId('exportQualityOut'),
-      layerOpacity: byId('layerOpacityOut'), layerScale: byId('layerScaleOut'), layerRotation: byId('layerRotationOut'), bgTolerance: byId('bgToleranceOut'),
+      layerOpacity: byId('layerOpacityOut'), layerScale: byId('layerScaleOut'), layerRotation: byId('layerRotationOut'), bgTolerance: byId('bgToleranceOut'), bgFeather: byId('bgFeatherOut'), brushSize: byId('brushSizeOut'),
       drawBrushSize: byId('drawBrushSizeOut'), drawBrushOpacity: byId('drawBrushOpacityOut'),
       zoomLevel: byId('zoomLevelOut'),
       sharpen: byId('sharpenOut'), temperature: byId('temperatureOut'), tint: byId('tintOut')
@@ -570,6 +590,10 @@
     let selectedLayerId = null;
     let layerBoundsMap = new Map();
     let pickBgColorMode = false;
+    let eraseMode = false; // 'erase', 'restore', or false
+    let wandMode = false;
+    let isErasing = false;
+    let lastErasePoint = null;
     let activeSnapGuides = [];
     let watermarkEditMode = false;
     let transformDrag = null;
@@ -709,6 +733,8 @@
       outputs.layerScale.textContent = `${layerScale.value}%`;
       if (outputs.layerRotation) outputs.layerRotation.textContent = `${layerRotation.value}°`;
       outputs.bgTolerance.textContent = `${bgTolerance.value}`;
+      if (outputs.bgFeather) outputs.bgFeather.textContent = `${bgFeather.value}px`;
+      if (outputs.brushSize) outputs.brushSize.textContent = brushSize.value;
       outputs.snapDistance.textContent = `${snapDistance.value}px`;
       outputs.exportQuality.textContent = `${exportQuality.value}%`;
       outputs.drawBrushSize.textContent = `${drawBrushSize.value}px`;
@@ -832,7 +858,13 @@
         addMoreGroup.style.display = '';
         downloadBtn.disabled = false; resetBtn.disabled = false; clipboardBtn.disabled = false;
         cropMode = false; isCropping = false; cropRect = null; activeSnapGuides = [];
-        imageLayers = []; selectedLayerId = null; pickBgColorMode = false; refreshLayerControls();
+        // Add the base image as a layer so BG removal tools work on it
+        const baseLayer = {
+          id: 'layer_base', name: 'Base Image', src: dataUrl, img: img,
+          x: canvas.width / 2, y: canvas.height / 2, scale: 100, scaleX: 100, scaleY: 100,
+          opacity: 1, blendMode: 'source-over', bgColor: null, visible: true, locked: false, rotation: 0
+        };
+        imageLayers = [baseLayer]; selectedLayerId = baseLayer.id; pickBgColorMode = false; refreshLayerControls();
         textLayers = [createDefaultTextLayer('txt_default')];
         selectedTextLayerId = textLayers[0].id;
         syncControlsFromTextLayer(); refreshTextLayerSelect();
@@ -993,6 +1025,10 @@
       centerLayerBtn.disabled = !hasLayer;
       layerOpacity.disabled = !hasLayer; layerScale.disabled = !hasLayer; layerBlend.disabled = !hasLayer;
       pickBgBtn.disabled = !hasLayer; removeBgBtn.disabled = !hasLayer;
+      if (autoBgBtn) autoBgBtn.disabled = !hasLayer;
+      if (eraseBrushBtn) eraseBrushBtn.disabled = !hasLayer;
+      if (restoreBrushBtn) restoreBrushBtn.disabled = !hasLayer;
+      if (wandBtn) wandBtn.disabled = !hasLayer;
       // Lock button
       lockLayerBtn.disabled = !hasLayer;
       if (hasLayer) {
@@ -1016,7 +1052,7 @@
       }
       pickBgBtn.textContent = pickBgColorMode ? 'Cancel pick' : 'Pick BG color';
       renderLayersPanel();
-      if (layerHint) layerHint.textContent = pickBgColorMode ? 'Click on selected layer area in canvas to sample color.' : 'Select layer → Pick BG color → click on layer → Remove BG.';
+      if (layerHint) layerHint.textContent = pickBgColorMode ? 'Click on selected layer area in canvas to sample color.' : 'Select layer → Auto/Pick BG → Remove BG';
       updateOutputValues();
     }
 
@@ -1059,6 +1095,11 @@
       const selected = getSelectedLayer();
       imageLayers.forEach((layer, idx) => {
         if (!layer.img?.src || layer.visible === false) return;
+        // Skip base layer drawing — it's already drawn by drawEditedBase()
+        if (layer.id === 'layer_base') {
+          layerBoundsMap.set(layer.id, { left: 0, top: 0, width: canvas.width, height: canvas.height, right: canvas.width, bottom: canvas.height, cx: canvas.width/2, cy: canvas.height/2, angle: 0, rotation: 0 });
+          return;
+        }
         const sx = (layer.scaleX ?? layer.scale ?? 100) / 100;
         const sy = (layer.scaleY ?? layer.scale ?? 100) / 100;
         const w = Math.max(1, layer.img.naturalWidth * sx);
@@ -1071,7 +1112,7 @@
         ctx.globalCompositeOperation = layer.blendMode || 'source-over';
         ctx.translate(cx, cy);
         ctx.rotate(angle);
-        ctx.drawImage(layer.img, -w / 2, -h / 2, w, h);
+        ctx.drawImage((eraseCanvas && eraseLayerId === layer.id) ? eraseCanvas : layer.img, -w / 2, -h / 2, w, h);
         ctx.restore();
         // Store rotation-aware bounds for hit-testing
         layerBoundsMap.set(layer.id, { left, top, width: w, height: h, right: left + w, bottom: top + h, cx, cy, angle, rotation: layer.rotation ?? 0 });
@@ -1168,20 +1209,300 @@
       return [px[0], px[1], px[2]];
     }
 
+    function colorDistance(r1, g1, b1, r2, g2, b2) {
+      const dr = r1 - r2, dg = g1 - g2, db = b1 - b2;
+      return Math.sqrt(dr * dr + dg * dg + db * db);
+    }
+
+    function cancelAllModes() {
+      cancelEraseMode();
+      if (wandMode) {
+        wandMode = false;
+        canvas.style.cursor = 'default';
+        if (wandBtn) { wandBtn.textContent = '🪄 Wand'; wandBtn.classList.remove('is-active'); }
+      }
+    }
+
+    function cancelEraseMode() {
+      if (eraseMode) {
+        eraseMode = false; isErasing = false; lastErasePoint = null;
+        finalizeErase();
+        canvas.style.cursor = 'default';
+        if (brushCursor) brushCursor.style.display = 'none';
+        if (eraseBrushBtn) { eraseBrushBtn.textContent = '🖌️ Erase'; eraseBrushBtn.classList.remove('is-active'); }
+        if (restoreBrushBtn) { restoreBrushBtn.textContent = '✏️ Restore'; restoreBrushBtn.classList.remove('is-active'); }
+      }
+    }
+
+    // Persistent erase canvas for batched brush strokes
+    let eraseCanvas = null, eraseCtx = null, eraseLayerId = null;
+
+    function beginEraseSession(layer) {
+      if (eraseCanvas && eraseLayerId === layer.id) return; // already active
+      finalizeErase();
+      eraseCanvas = document.createElement('canvas');
+      eraseCanvas.width = layer.img.naturalWidth; eraseCanvas.height = layer.img.naturalHeight;
+      eraseCtx = eraseCanvas.getContext('2d', { willReadFrequently: true });
+      eraseCtx.drawImage(layer.img, 0, 0);
+      eraseLayerId = layer.id;
+    }
+
+    function finalizeErase() {
+      if (!eraseCanvas) return;
+      const layer = imageLayers.find(l => l.id === eraseLayerId);
+      if (layer) {
+        const dataUrl = eraseCanvas.toDataURL('image/png');
+        layer.src = dataUrl;
+        // Update the image in-place so drawEditedBase() also sees changes
+        loadImageTo(layer.img, dataUrl).then(() => redraw());
+      }
+      eraseCanvas = null; eraseCtx = null; eraseLayerId = null;
+    }
+
+    function setEraseMode(mode) {
+      if (eraseMode === mode) { cancelEraseMode(); return; }
+      cancelEraseMode(); pickBgColorMode = false;
+      eraseMode = mode;
+      canvas.style.cursor = 'crosshair';
+      if (eraseBrushBtn) {
+        eraseBrushBtn.textContent = mode === 'erase' ? '✖ Erasing...' : '🖌️ Erase';
+        eraseBrushBtn.classList.toggle('is-active', mode === 'erase');
+      }
+      if (restoreBrushBtn) {
+        restoreBrushBtn.textContent = mode === 'restore' ? '✖ Restoring...' : '✏️ Restore';
+        restoreBrushBtn.classList.toggle('is-active', mode === 'restore');
+      }
+      refreshLayerControls();
+    }
+
+    function canvasToImageCoords(canvasX, canvasY, layer) {
+      if (layer.id === 'layer_base') {
+        return { x: canvasX / canvas.width * layer.img.naturalWidth, y: canvasY / canvas.height * layer.img.naturalHeight };
+      }
+      const sx = (layer.scaleX ?? layer.scale ?? 100) / 100;
+      const sy = (layer.scaleY ?? layer.scale ?? 100) / 100;
+      const angle = -((layer.rotation ?? 0) * Math.PI) / 180;
+      const dx = canvasX - layer.x, dy = canvasY - layer.y;
+      const cos = Math.cos(angle), sin = Math.sin(angle);
+      const lx = dx * cos - dy * sin, ly = dx * sin + dy * cos;
+      const w = layer.img.naturalWidth, h = layer.img.naturalHeight;
+      return { x: (lx / sx + w / 2), y: (ly / sy + h / 2) };
+    }
+
+    function eraseAtPoint(layer, imgX, imgY, restore) {
+      const brushR = Math.round(Number(brushSize.value) * (layer.img.naturalWidth / canvas.width)) / 2;
+      eraseCtx.save();
+      eraseCtx.globalCompositeOperation = restore ? 'source-over' : 'destination-out';
+      eraseCtx.beginPath();
+      eraseCtx.arc(imgX, imgY, Math.max(1, brushR), 0, Math.PI * 2);
+      if (restore) { eraseCtx.fillStyle = 'rgba(0,0,0,1)'; }
+      eraseCtx.fill();
+      eraseCtx.restore();
+    }
+
+    function eraseLine(layer, x0, y0, x1, y1, restore) {
+      const dist = Math.hypot(x1 - x0, y1 - y0);
+      const brushR = Math.round(Number(brushSize.value) * (layer.img.naturalWidth / canvas.width)) / 2;
+      const step = Math.max(1, brushR * 0.3);
+      const steps = Math.max(1, Math.ceil(dist / step));
+      for (let i = 0; i <= steps; i++) {
+        const t = i / steps;
+        eraseAtPoint(layer, x0 + (x1 - x0) * t, y0 + (y1 - y0) * t, restore);
+      }
+    }
+
+    function wandEraseAtPoint(layer, canvasX, canvasY) {
+      const tol = Number(bgTolerance.value) || 0;
+      const W = layer.img.naturalWidth, H = layer.img.naturalHeight;
+      const imgCoords = canvasToImageCoords(canvasX, canvasY, layer);
+      const px = Math.round(imgCoords.x), py = Math.round(imgCoords.y);
+      if (px < 0 || px >= W || py < 0 || py >= H) return;
+      const srcC = document.createElement('canvas');
+      srcC.width = W; srcC.height = H;
+      const sctx = srcC.getContext('2d', { willReadFrequently: true });
+      sctx.drawImage(layer.img, 0, 0);
+      const imgData = sctx.getImageData(0, 0, W, H);
+      const d = imgData.data;
+      const si = (py * W + px) * 4;
+      const tr = d[si], tg = d[si + 1], tb = d[si + 2];
+      const visited = new Uint8Array(W * H);
+      const q = [px, py];
+      visited[py * W + px] = 1;
+      const dirs = [-1, 0, 1, 0, -1];
+      let qi = 0;
+      while (qi < q.length) {
+        const cx = q[qi++], cy = q[qi++];
+        const ci = (cy * W + cx) * 4;
+        d[ci + 3] = 0; // erase pixel
+        for (let k = 0; k < 4; k++) {
+          const nx = cx + dirs[k], ny = cy + dirs[k + 1];
+          if (nx < 0 || nx >= W || ny < 0 || ny >= H) continue;
+          const ni = ny * W + nx;
+          if (visited[ni]) continue;
+          const npi = ni * 4;
+          if (colorDistance(d[npi], d[npi + 1], d[npi + 2], tr, tg, tb) <= tol) {
+            visited[ni] = 1;
+            q.push(nx, ny);
+          }
+        }
+      }
+      sctx.putImageData(imgData, 0, 0);
+      layer.src = srcC.toDataURL('image/png');
+      loadImageTo(layer.img, layer.src).then(() => { redraw(); pushHistory(); scheduleAutoSave(); setAutosaveStatus('Wand erase done'); });
+    }
+
+    function autoDetectBgColor(img) {
+      const probe = document.createElement('canvas');
+      probe.width = img.naturalWidth; probe.height = img.naturalHeight;
+      const pctx = probe.getContext('2d', { willReadFrequently: true });
+      pctx.drawImage(img, 0, 0);
+      const w = probe.width, h = probe.height;
+      const sampleSize = Math.max(1, Math.min(Math.round(Math.min(w, h) * 0.02), 20));
+      const samplePoints = [
+        { x: 0, y: 0 }, { x: w - 1, y: 0 }, { x: 0, y: h - 1 }, { x: w - 1, y: h - 1 },
+        { x: Math.floor(w / 2), y: 0 }, { x: Math.floor(w / 2), y: h - 1 },
+        { x: 0, y: Math.floor(h / 2) }, { x: w - 1, y: Math.floor(h / 2) },
+        { x: sampleSize, y: sampleSize }, { x: w - 1 - sampleSize, y: sampleSize },
+        { x: sampleSize, y: h - 1 - sampleSize }, { x: w - 1 - sampleSize, y: h - 1 - sampleSize }
+      ];
+      const colors = [];
+      const tmpCanvas = document.createElement('canvas');
+      tmpCanvas.width = 1; tmpCanvas.height = 1;
+      const tmpCtx = tmpCanvas.getContext('2d', { willReadFrequently: true });
+      for (const pt of samplePoints) {
+        tmpCtx.clearRect(0, 0, 1, 1);
+        tmpCtx.drawImage(img, pt.x, pt.y, 1, 1, 0, 0, 1, 1);
+        const px = tmpCtx.getImageData(0, 0, 1, 1).data;
+        colors.push([px[0], px[1], px[2]]);
+      }
+      let bestColor = colors[0], bestCount = 0;
+      for (let i = 0; i < colors.length; i++) {
+        let count = 0;
+        for (let j = 0; j < colors.length; j++) {
+          if (colorDistance(colors[i][0], colors[i][1], colors[i][2], colors[j][0], colors[j][1], colors[j][2]) < 30) count++;
+        }
+        if (count > bestCount) { bestCount = count; bestColor = colors[i]; }
+      }
+      return bestColor;
+    }
+
     async function removeBackgroundFromLayer(layer) {
       if (!layer?.img?.src) return;
       if (!Array.isArray(layer.bgColor)) { setAutosaveStatus('Pick BG color first', true); return; }
       const tol = Number(bgTolerance.value) || 0;
+      const feather = Number(bgFeather.value) || 0;
+      const useFloodFill = bgFloodFill.checked;
+      const useSoftEdge = bgSoftEdge.checked;
+      const W = layer.img.naturalWidth, H = layer.img.naturalHeight;
       const srcCanvas = document.createElement('canvas');
-      srcCanvas.width = layer.img.naturalWidth; srcCanvas.height = layer.img.naturalHeight;
+      srcCanvas.width = W; srcCanvas.height = H;
       const sctx = srcCanvas.getContext('2d', { willReadFrequently: true });
       sctx.drawImage(layer.img, 0, 0);
-      const imageData = sctx.getImageData(0, 0, srcCanvas.width, srcCanvas.height);
-      const d = imageData.data; const [tr, tg, tb] = layer.bgColor;
-      for (let i = 0; i < d.length; i += 4) {
-        const dr = d[i] - tr, dg = d[i + 1] - tg, db = d[i + 2] - tb;
-        if (Math.sqrt(dr * dr + dg * dg + db * db) <= tol) d[i + 3] = 0;
+      const imageData = sctx.getImageData(0, 0, W, H);
+      const d = imageData.data;
+      const [tr, tg, tb] = layer.bgColor;
+      const alphaMask = new Uint8Array(W * H);
+
+      if (useFloodFill) {
+        // Flood fill from edge pixels matching BG color inward
+        const visited = new Uint8Array(W * H);
+        const q = [];
+        const checkEdge = (x, y) => {
+          const pi = (y * W + x) * 4;
+          return colorDistance(d[pi], d[pi+1], d[pi+2], tr, tg, tb) <= tol;
+        };
+        for (let x = 0; x < W; x++) {
+          if (checkEdge(x, 0)) { q.push(x, 0); visited[x] = 1; }
+          if (checkEdge(x, H-1)) { q.push(x, H-1); visited[(H-1)*W+x] = 1; }
+        }
+        for (let y = 1; y < H-1; y++) {
+          if (checkEdge(0, y)) { q.push(0, y); visited[y*W] = 1; }
+          if (checkEdge(W-1, y)) { q.push(W-1, y); visited[y*W+W-1] = 1; }
+        }
+        const dirs = [-1, 0, 1, 0, -1];
+        let qi = 0;
+        while (qi < q.length) {
+          const cx = q[qi++], cy = q[qi++];
+          alphaMask[cy * W + cx] = 0;
+          for (let k = 0; k < 4; k++) {
+            const nx = cx + dirs[k], ny = cy + dirs[k+1];
+            if (nx < 0 || nx >= W || ny < 0 || ny >= H) continue;
+            const ni = ny * W + nx;
+            if (visited[ni]) continue;
+            const npi = ni * 4;
+            if (colorDistance(d[npi], d[npi+1], d[npi+2], tr, tg, tb) <= tol) {
+              visited[ni] = 1; q.push(nx, ny);
+            }
+          }
+        }
+        for (let i = 0; i < W*H; i++) { if (alphaMask[i] !== 0) alphaMask[i] = 255; }
+      } else {
+        // Global: remove all matching pixels
+        for (let i = 0; i < W*H; i++) {
+          const pi = i * 4;
+          alphaMask[i] = colorDistance(d[pi], d[pi+1], d[pi+2], tr, tg, tb) <= tol ? 0 : 255;
+        }
       }
+
+      // Soft edge: gradual alpha falloff near boundaries
+      const edgeRadius = Math.max(feather, useSoftEdge ? Math.max(3, Math.round(tol * 0.25)) : 0);
+      if (edgeRadius > 0) {
+        // Compute distance from each bg pixel to nearest fg pixel via BFS
+        const fgDist = new Float32Array(W * H).fill(Infinity);
+        const bfs = [];
+        for (let i = 0; i < W*H; i++) {
+          if (alphaMask[i] === 255) { fgDist[i] = 0; bfs.push(i); }
+        }
+        let qi2 = 0;
+        while (qi2 < bfs.length) {
+          const ci = bfs[qi2++]; const cd = fgDist[ci];
+          if (cd >= edgeRadius) continue;
+          const cx2 = ci % W, cy2 = (ci / W) | 0;
+          const neighbors = [ci-1, ci+1, ci-W, ci+W];
+          for (const ni of neighbors) {
+            if (ni < 0 || ni >= W*H) continue;
+            const nx = ni % W, ny = (ni / W) | 0;
+            if (Math.abs(nx - cx2) + Math.abs(ny - cy2) !== 1) continue;
+            if (fgDist[ni] > cd + 1) { fgDist[ni] = cd + 1; bfs.push(ni); }
+          }
+        }
+        // Apply soft transition for bg pixels near fg boundary
+        for (let i = 0; i < W*H; i++) {
+          if (alphaMask[i] === 0 && fgDist[i] <= edgeRadius) {
+            const t = fgDist[i] / edgeRadius;
+            alphaMask[i] = Math.round(t * t * (3 - 2 * t) * 255); // smoothstep
+          }
+        }
+        // Feather foreground edge: compute distance from each fg pixel to nearest bg pixel via BFS
+        if (feather > 0) {
+          const bgDist = new Float32Array(W * H).fill(Infinity);
+          const bfs2 = [];
+          for (let i = 0; i < W*H; i++) {
+            if (alphaMask[i] === 0) { bgDist[i] = 0; bfs2.push(i); }
+          }
+          let qi3 = 0;
+          while (qi3 < bfs2.length) {
+            const ci = bfs2[qi3++]; const cd = bgDist[ci];
+            if (cd >= feather) continue;
+            const cx2 = ci % W, cy2 = (ci / W) | 0;
+            const neighbors = [ci-1, ci+1, ci-W, ci+W];
+            for (const ni of neighbors) {
+              if (ni < 0 || ni >= W*H) continue;
+              const nx = ni % W, ny = (ni / W) | 0;
+              if (Math.abs(nx - cx2) + Math.abs(ny - cy2) !== 1) continue;
+              if (bgDist[ni] > cd + 1) { bgDist[ni] = cd + 1; bfs2.push(ni); }
+            }
+          }
+          for (let i = 0; i < W*H; i++) {
+            if (alphaMask[i] === 255 && bgDist[i] <= feather) {
+              alphaMask[i] = Math.round((bgDist[i] / feather) * 255);
+            }
+          }
+        }
+      }
+
+      // Apply alpha mask
+      for (let i = 0; i < W*H; i++) { d[i*4+3] = alphaMask[i]; }
       sctx.putImageData(imageData, 0, 0);
       layer.src = srcCanvas.toDataURL('image/png');
       await loadImageTo(layer.img, layer.src);
@@ -1656,7 +1977,9 @@
       if (invertColors.checked) filters.push('invert(100%)');
       if (Number(imgBlurEl.value) > 0) filters.push(`blur(${imgBlurEl.value}px)`);
       ctx.filter = filters.join(' ');
-      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      // Use eraseCanvas for live preview during active erase session on base layer
+      const drawSrc = (eraseCanvas && eraseLayerId === 'layer_base') ? eraseCanvas : img;
+      ctx.drawImage(drawSrc, 0, 0, canvas.width, canvas.height);
       ctx.filter = 'none';
 
       // Sharpen via unsharp mask
@@ -1667,7 +1990,7 @@
         tempC.width = canvas.width; tempC.height = canvas.height;
         const tctx = tempC.getContext('2d');
         tctx.filter = `blur(${1 + strength}px)`;
-        tctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        tctx.drawImage(drawSrc, 0, 0, canvas.width, canvas.height);
         ctx.save();
         ctx.globalCompositeOperation = 'overlay';
         ctx.globalAlpha = strength * 0.4;
@@ -1937,11 +2260,13 @@
       syncControlsFromTextLayer(); refreshTextLayerSelect();
       logoOpacity.value = 60; logoScale.value = 100; logoRotate.value = 0;
       layerOpacity.value = 100; layerScale.value = 100; layerBlend.value = 'source-over'; bgTolerance.value = 45;
+      bgFeather.value = 0; bgFloodFill.checked = false; bgSoftEdge.checked = false;
       showCenterGuides.checked = true; showThirdsGuides.checked = false; enableSnap.checked = true; snapDistance.value = 12;
       exportFormat.value = 'png'; exportQuality.value = 92;
       customTextPos = null; customLogoPos = null; cropMode = false; isCropping = false; cropRect = null; activeSnapGuides = [];
       pickBgColorMode = false; drawToolMode.value = 'none';
       eyedropperMode = false; eyedropperBtn.textContent = 'Eyedropper';
+      cancelAllModes();
       zoomValue = 100; updateCanvasZoom();
       addMoreGroup.style.display = 'none';
       if (drawOverlayCanvas) { drawOverlayCtx.clearRect(0, 0, drawOverlayCanvas.width, drawOverlayCanvas.height); }
@@ -1968,7 +2293,7 @@
           textBgEnabled: textBgEnabled.checked, textBgColor: textBgColor.value, textBgOpacity: textBgOpacity.value, textBgPadding: textBgPadding.value,
           logoOpacity: logoOpacity.value, logoScale: logoScale.value, logoRotate: logoRotate.value,
           showCenterGuides: showCenterGuides.checked, showThirdsGuides: showThirdsGuides.checked, enableSnap: enableSnap.checked, snapDistance: snapDistance.value,
-          nudgeTarget: nudgeTarget.value, exportFormat: exportFormat.value, exportQuality: exportQuality.value, bgTolerance: bgTolerance.value
+          nudgeTarget: nudgeTarget.value, exportFormat: exportFormat.value, exportQuality: exportQuality.value, bgTolerance: bgTolerance.value, bgFeather: bgFeather.value, bgFloodFill: bgFloodFill.checked, bgSoftEdge: bgSoftEdge.checked
         },
         customTextPos: customTextPos ? { ...customTextPos } : null,
         customLogoPos: customLogoPos ? { ...customLogoPos } : null,
@@ -2007,6 +2332,7 @@
       enableSnap.checked = c.enableSnap ?? true; snapDistance.value = c.snapDistance ?? 12;
       nudgeTarget.value = c.nudgeTarget ?? 'text'; exportFormat.value = c.exportFormat ?? 'png'; exportQuality.value = c.exportQuality ?? 92;
       bgTolerance.value = c.bgTolerance ?? 45;
+      bgFeather.value = c.bgFeather ?? 0; bgFloodFill.checked = c.bgFloodFill ?? false; bgSoftEdge.checked = c.bgSoftEdge ?? false;
       customTextPos = snapshot.customTextPos ? { ...snapshot.customTextPos } : null;
       customLogoPos = snapshot.customLogoPos ? { ...snapshot.customLogoPos } : null;
       refreshToggleButtons(); updateOutputValues();
@@ -2346,13 +2672,18 @@
     // Non-text controls
     [previewMode, splitPos, brightness, contrast, saturate, hueRotate, sepiaEl, grayscaleEl, imgBlurEl, vignetteEl,
      sharpenEl, temperatureEl, tintEl,
-     showCenterGuides, showThirdsGuides, enableSnap, snapDistance, exportFormat, exportQuality, nudgeTarget, bgTolerance,
+     showCenterGuides, showThirdsGuides, enableSnap, snapDistance, exportFormat, exportQuality, nudgeTarget, bgTolerance, bgFeather, brushSize,
      logoOpacity, logoScale, logoRotate].forEach(el => {
       el.addEventListener('input', () => { updateOutputValues(); redraw(); scheduleAutoSave(); });
       el.addEventListener('change', () => { redraw(); pushHistory(); scheduleAutoSave(); });
     });
 
     invertColors.addEventListener('change', () => { redraw(); pushHistory(); scheduleAutoSave(); });
+
+    // BG removal checkboxes
+    [bgFloodFill, bgSoftEdge].forEach(el => {
+      el.addEventListener('change', () => { scheduleAutoSave(); });
+    });
 
     // Transform buttons
     rotateCwBtn.addEventListener('click', () => rotateImage(90));
@@ -2465,8 +2796,34 @@
 
     pickBgBtn.addEventListener('click', () => {
       if (!getSelectedLayer()) return;
+      cancelAllModes();
       pickBgColorMode = !pickBgColorMode; refreshLayerControls();
       canvas.style.cursor = pickBgColorMode ? 'crosshair' : 'default';
+    });
+
+    autoBgBtn.addEventListener('click', async () => {
+      const selected = getSelectedLayer();
+      if (!selected || !selected.img) return;
+      cancelAllModes();
+      setAutosaveStatus('Auto-detecting background color...');
+      const detected = autoDetectBgColor(selected.img);
+      selected.bgColor = detected;
+      pickBgColorMode = false;
+      refreshLayerControls();
+      setAutosaveStatus(`Auto BG color: rgb(${detected[0]}, ${detected[1]}, ${detected[2]})`);
+      redraw();
+    });
+
+    eraseBrushBtn.addEventListener('click', () => { setEraseMode('erase'); });
+    restoreBrushBtn.addEventListener('click', () => { setEraseMode('restore'); });
+    wandBtn.addEventListener('click', () => {
+      if (wandMode) { cancelAllModes(); return; }
+      cancelAllModes();
+      wandMode = true;
+      canvas.style.cursor = 'crosshair';
+      wandBtn.textContent = '🪄 Wand active';
+      wandBtn.classList.add('is-active');
+      refreshLayerControls();
     });
 
     removeBgBtn.addEventListener('click', async () => {
@@ -2552,6 +2909,25 @@
       // Eyedropper mode
       if (eyedropperMode) {
         eyedropperSample(p); return;
+      }
+
+      // Erase/Restore brush mode
+      if (eraseMode) {
+        const layer = getSelectedLayer();
+        if (!layer || !layer.img) return;
+        beginEraseSession(layer);
+        isErasing = true; lastErasePoint = canvasToImageCoords(p.x, p.y, layer);
+        eraseAtPoint(layer, lastErasePoint.x, lastErasePoint.y, eraseMode === 'restore');
+        canvas.setPointerCapture(evt.pointerId); return;
+      }
+
+      // Wand mode — click to flood-fill erase
+      if (wandMode) {
+        const layer = getSelectedLayer();
+        if (!layer || !layer.img) return;
+        setAutosaveStatus('Wand erasing...');
+        wandEraseAtPoint(layer, p.x, p.y);
+        return;
       }
 
       // Drawing mode
@@ -2722,10 +3098,44 @@
       if (!hasImage) return;
       const p = getCanvasPoint(evt);
 
+      // Update brush cursor position/size
+      if (eraseMode && brushCursor) {
+        const layer = getSelectedLayer();
+        if (layer && layer.img) {
+          brushCursor.style.display = 'block';
+          brushCursor.style.left = evt.clientX + 'px';
+          brushCursor.style.top = evt.clientY + 'px';
+          brushCursor.style.width = brushSize.value + 'px';
+          brushCursor.style.height = brushSize.value + 'px';
+        }
+      } else if (brushCursor) {
+        brushCursor.style.display = 'none';
+      }
+
       // Drawing mode
       if (isDrawing && drawToolMode.value !== 'none') {
         drawBrushStroke(p.x, p.y);
         lastDrawPoint = p; redraw(); return;
+      }
+
+      // Erase/Restore brush drag
+      if (isErasing && eraseMode) {
+        const layer = getSelectedLayer();
+        if (layer && layer.img) {
+          const imgPt = canvasToImageCoords(p.x, p.y, layer);
+          eraseLine(layer, lastErasePoint.x, lastErasePoint.y, imgPt.x, imgPt.y, eraseMode === 'restore');
+          lastErasePoint = imgPt;
+          redraw();
+          // Update brush cursor during drag
+          if (brushCursor) {
+            brushCursor.style.display = 'block';
+            brushCursor.style.left = evt.clientX + 'px';
+            brushCursor.style.top = evt.clientY + 'px';
+            brushCursor.style.width = brushSize.value + 'px';
+            brushCursor.style.height = brushSize.value + 'px';
+          }
+        }
+        return;
       }
 
       if (layerResizeDrag) {
@@ -2943,13 +3353,24 @@
         canvas.style.cursor = 'crosshair';
       } else if (drawToolMode.value !== 'none') {
         canvas.style.cursor = 'crosshair';
+      } else if (eraseMode || wandMode) {
+        canvas.style.cursor = 'crosshair';
       } else {
         canvas.style.cursor = getTopLayerAtPoint(p) ? 'move' : 'default';
       }
       activeSnapGuides = [];
     });
 
+    canvas.addEventListener('pointerleave', () => {
+      if (brushCursor) brushCursor.style.display = 'none';
+    });
+
     const stopPointer = evt => {
+      if (isErasing) {
+        isErasing = false; lastErasePoint = null; finalizeErase();
+        if (evt?.pointerId !== undefined) try { canvas.releasePointerCapture(evt.pointerId); } catch (_) {}
+        pushHistory(); scheduleAutoSave(); redraw(); return;
+      }
       if (isDrawing) {
         isDrawing = false; lastDrawPoint = null;
         if (evt?.pointerId !== undefined) try { canvas.releasePointerCapture(evt.pointerId); } catch (_) {}
@@ -3169,6 +3590,11 @@
       if ((evt.ctrlKey || evt.metaKey) && evt.key === 's') {
         evt.preventDefault();
         if (hasImage) downloadBtn.click();
+      }
+      // Escape cancels current mode
+      if (evt.key === 'Escape') {
+        cancelAllModes();
+        if (pickBgColorMode) { pickBgColorMode = false; refreshLayerControls(); canvas.style.cursor = 'default'; }
       }
     });
 

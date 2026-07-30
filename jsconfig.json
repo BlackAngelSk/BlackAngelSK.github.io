@@ -1,0 +1,10 @@
+{
+    "compilerOptions": {
+        "target": "es2020",
+        "checkJs": false,
+        "lib": ["es2020", "dom", "dom.iterable"],
+        "typeRoots": [],
+        "types": []
+    },
+    "exclude": ["node_modules"]
+}

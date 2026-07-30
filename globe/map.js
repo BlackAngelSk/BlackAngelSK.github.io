@@ -2,6 +2,7 @@
    Interactive Detailed Map with Custom Line Annotations
    ===================================================== */
 // @ts-nocheck
+/* global L, html2canvas */
 'use strict';
 
 /* ── State ────────────────────────────────────────── */
@@ -640,60 +641,290 @@ function exportGeoJSON() {
    ===================================================== */
 let importPendingFeatures = [];
 
-/* ── Built-in Presets (Part 1) ─────────────────── */
+/* ── Built-in Presets ────────────────────────── */
 const BUILT_IN_PRESETS = [
+    /* ── 1. WWI Western Front ──────────────────── */
     {
         name: 'WWI Western Front',
-        desc: 'Major trench lines, 1914-1918',
+        desc: 'Allied & German front lines, Hindenburg Line, key battles 1914-1918',
         geojson:{type:'FeatureCollection',features:[
-            {type:'Feature',properties:{type:'polyline',color:'#ff4444',weight:3,dashStyle:'dashed',text:'Entente Front Line'},geometry:{type:'LineString',coordinates:[[2.59,51.09],[2.7,50.85],[2.95,50.45],[3.15,50.05],[3.5,49.6],[4.2,49.4],[5,49.2],[5.8,49],[6.35,48.95],[7,48.7],[7.2,48.55],[7.5,48.1],[7,47.7],[6.8,47.55],[6.2,47.5],[5.5,47.6],[4.9,47.5],[4.5,47.4],[3.9,47.4],[3.2,47.5],[2.9,47.8],[2.5,48.3],[2.2,48.8],[2.1,49.4],[2.3,49.9],[2.4,50.3],[2.5,50.7],[2.59,51.09]]}},
-            {type:'Feature',properties:{type:'polyline',color:'#4488ff',weight:3,dashStyle:'dashed',text:'Central Powers Front'},geometry:{type:'LineString',coordinates:[[2.8,51.1],[2.9,50.9],[3.2,50.5],[3.5,50.1],[3.9,49.7],[4.6,49.45],[5.4,49.25],[6,49.1],[6.6,49],[7.3,48.8],[7.5,48.6],[7.8,48.2],[7.4,47.8],[7.2,47.6],[6.5,47.55],[5.9,47.65],[5.2,47.55],[4.7,47.5],[4.2,47.45],[3.5,47.55],[3.1,47.85],[2.7,48.35],[2.4,48.85],[2.3,49.45],[2.5,49.95],[2.6,50.35],[2.7,50.75],[2.8,51.1]]}},
-            {type:'Feature',properties:{type:'marker',color:'#ffcc00',text:'Verdun'},geometry:{type:'Point',coordinates:[5.38,49.16]}},
-            {type:'Feature',properties:{type:'marker',color:'#ffcc00',text:'Somme'},geometry:{type:'Point',coordinates:[2.7,50]}},
-            {type:'Feature',properties:{type:'marker',color:'#ffcc00',text:'Ypres'},geometry:{type:'Point',coordinates:[2.89,50.85]}},
-            {type:'Feature',properties:{type:'marker',color:'#ffcc00',text:'Marne'},geometry:{type:'Point',coordinates:[3.55,49.04]}}
+            /* Entente (Allied) front line — Nieuport to Swiss border (approx 1917-18) */
+            {type:'Feature',properties:{type:'polyline',color:'#ff4444',weight:3,dashStyle:'dashed',text:'Entente Front Line (1917-18)'},geometry:{type:'LineString',coordinates:[
+                [2.92,51.13],[2.86,51.03],[2.89,50.85],[2.89,50.77],
+                [2.85,50.61],[2.77,50.43],[2.77,50.35],[2.85,50.20],
+                [2.93,50.09],[3.07,50.01],[3.18,49.93],[2.95,49.80],
+                [3.10,49.65],[3.55,49.44],[3.82,49.25],[4.50,49.20],
+                [5.38,49.16],[5.80,49.13],[6.18,49.12],[6.50,48.95],
+                [6.90,48.78],[7.30,48.58],[7.75,48.58],[7.50,48.20],
+                [7.34,47.75],[6.86,47.64],[7.58,47.56]
+            ]}},
+            /* Central Powers front line — offset east of Allied line */
+            {type:'Feature',properties:{type:'polyline',color:'#4488ff',weight:3,dashStyle:'dashed',text:'Central Powers Front (1917-18)'},geometry:{type:'LineString',coordinates:[
+                [3.12,51.13],[3.06,51.03],[3.09,50.85],[3.09,50.77],
+                [3.05,50.61],[2.97,50.43],[2.97,50.35],[3.05,50.20],
+                [3.13,50.09],[3.27,50.01],[3.38,49.93],[3.15,49.80],
+                [3.30,49.65],[3.75,49.44],[4.02,49.25],[4.70,49.20],
+                [5.58,49.16],[6.00,49.13],[6.38,49.12],[6.70,48.95],
+                [7.10,48.78],[7.50,48.58],[7.95,48.58],[7.70,48.20],
+                [7.54,47.75],[7.06,47.64],[7.78,47.56]
+            ]}},
+            /* Hindenburg Line (Siegfriedstellung) — German defensive position */
+            {type:'Feature',properties:{type:'polyline',color:'#ffaa00',weight:2,dashStyle:'dotted',text:'Hindenburg Line (Siegfriedstellung)'},geometry:{type:'LineString',coordinates:[
+                [3.20,51.00],[3.25,50.90],[3.15,50.70],[3.10,50.55],
+                [3.10,50.40],[3.15,50.25],[3.35,50.05],[3.50,49.95],
+                [3.40,49.85],[3.55,49.70],[3.85,49.50],[4.10,49.35],
+                [4.40,49.28],[5.10,49.22],[5.70,49.18]
+            ]}},
+            /* Battle markers */
+            {type:'Feature',properties:{type:'marker',color:'#ffcc00',text:'Nieuport (1914, 1918)'},geometry:{type:'Point',coordinates:[2.92,51.13]}},
+            {type:'Feature',properties:{type:'marker',color:'#ffcc00',text:'Ypres (1914-18, 3 battles)'},geometry:{type:'Point',coordinates:[2.87,50.85]}},
+            {type:'Feature',properties:{type:'marker',color:'#ffcc00',text:'Passchendaele (1917)'},geometry:{type:'Point',coordinates:[2.95,50.90]}},
+            {type:'Feature',properties:{type:'marker',color:'#ffcc00',text:'Messines Ridge (1917)'},geometry:{type:'Point',coordinates:[2.89,50.77]}},
+            {type:'Feature',properties:{type:'marker',color:'#ffcc00',text:'Loos (1915)'},geometry:{type:'Point',coordinates:[2.77,50.43]}},
+            {type:'Feature',properties:{type:'marker',color:'#ffcc00',text:'Arras (1917)'},geometry:{type:'Point',coordinates:[2.78,50.29]}},
+            {type:'Feature',properties:{type:'marker',color:'#ffcc00',text:'Vimy Ridge (1917)'},geometry:{type:'Point',coordinates:[2.77,50.35]}},
+            {type:'Feature',properties:{type:'marker',color:'#ffcc00',text:'Somme (1916)'},geometry:{type:'Point',coordinates:[2.70,50.01]}},
+            {type:'Feature',properties:{type:'marker',color:'#ffcc00',text:'Cambrai (1917, first tanks)'},geometry:{type:'Point',coordinates:[3.24,50.18]}},
+            {type:'Feature',properties:{type:'marker',color:'#ffcc00',text:'Chemin des Dames (1917)'},geometry:{type:'Point',coordinates:[3.55,49.44]}},
+            {type:'Feature',properties:{type:'marker',color:'#ffcc00',text:'2nd Battle of the Marne (1918)'},geometry:{type:'Point',coordinates:[3.60,49.08]}},
+            {type:'Feature',properties:{type:'marker',color:'#ffcc00',text:'Verdun (1916, 300 days)'},geometry:{type:'Point',coordinates:[5.38,49.16]}},
+            {type:'Feature',properties:{type:'marker',color:'#ffcc00',text:'Metz'},geometry:{type:'Point',coordinates:[6.18,49.12]}},
+            {type:'Feature',properties:{type:'marker',color:'#ffcc00',text:'Strasbourg'},geometry:{type:'Point',coordinates:[7.75,48.58]}},
+            {type:'Feature',properties:{type:'marker',color:'#ffcc00',text:'Belfort'},geometry:{type:'Point',coordinates:[6.86,47.64]}},
+            /* Area labels */
+            {type:'Feature',properties:{type:'label',color:'#ff6644',text:'Allied-held France'},geometry:{type:'Point',coordinates:[2.5,49.5]}},
+            {type:'Feature',properties:{type:'label',color:'#4488ff',text:'German-occupied Belgium & France'},geometry:{type:'Point',coordinates:[4.5,50.0]}}
         ]}
     },
+    /* ── 2. WWII Eastern Front ──────────────────── */
     {
         name: 'WWII Eastern Front',
-        desc: 'Key lines on Eastern Front, 1941-1945',
+        desc: 'Barbarossa, max German advance (1942), Soviet counter-offensive to Berlin',
         geojson:{type:'FeatureCollection',features:[
-            {type:'Feature',properties:{type:'polyline',color:'#ff2222',weight:3,dashStyle:'dashed',text:'Barbarossa Line (Jun 1941)'},geometry:{type:'LineString',coordinates:[[21,54.5],[23,54],[24,53.5],[23.5,52],[24,51],[24,50.5],[26,50],[28,49.5],[30,49],[32,48],[35,47.5],[38,47],[40,46.5]]}},
-            {type:'Feature',properties:{type:'polyline',color:'#ff8800',weight:3,dashStyle:'solid',text:'Max German Advance (1941)'},geometry:{type:'LineString',coordinates:[[32,56],[36,55.5],[38,55],[37.5,54],[38,53],[40,52],[42,51],[44,50],[46,49],[48,48],[50,47],[48,46],[44,45.5],[42,44.5]]}},
-            {type:'Feature',properties:{type:'polyline',color:'#44aaff',weight:3,dashStyle:'dashed',text:'Soviet Advance to Berlin'},geometry:{type:'LineString',coordinates:[[50,55],[45,54.5],[40,54],[35,53.5],[30,53],[28,52],[24,52],[22,52.5],[20,52.5],[18,52],[15,52.5],[14.5,52.3]]}},
-            {type:'Feature',properties:{type:'marker',color:'#ff4444',text:'Stalingrad'},geometry:{type:'Point',coordinates:[43.5,48.7]}},
-            {type:'Feature',properties:{type:'marker',color:'#44aaff',text:'Berlin'},geometry:{type:'Point',coordinates:[13.4,52.52]}},
-            {type:'Feature',properties:{type:'marker',color:'#ff8800',text:'Leningrad'},geometry:{type:'Point',coordinates:[30.3,59.93]}}
+            /* Barbarossa start line — Baltic to Black Sea (Jun 22, 1941) */
+            {type:'Feature',properties:{type:'polyline',color:'#ff2222',weight:3,dashStyle:'dashed',text:'Barbarossa Line (Jun 1941)'},geometry:{type:'LineString',coordinates:[
+                [21.1,55.7],[22.8,54.1],[23.2,53.2],[23.7,52.1],
+                [24.0,51.0],[24.0,50.0],[24.5,49.2],[25.0,48.5],
+                [25.9,48.3],[27.6,47.1],[28.3,46.0]
+            ]}},
+            /* Max German advance — Leningrad to Caucasus (autumn 1942) */
+            {type:'Feature',properties:{type:'polyline',color:'#ff8800',weight:3,dashStyle:'solid',text:'Max German Advance (autumn 1942)'},geometry:{type:'LineString',coordinates:[
+                [30.0,59.9],[33.0,57.5],[34.5,56.2],[37.0,55.8],
+                [36.5,54.0],[37.5,52.5],[39.2,51.7],[41.0,49.5],
+                [43.5,48.7],[42.0,46.5],[44.0,44.0]
+            ]}},
+            /* Soviet counter-offensive path to Berlin (1943-45) */
+            {type:'Feature',properties:{type:'polyline',color:'#44aaff',weight:3,dashStyle:'dashed',text:'Soviet Advance to Berlin (1943-45)'},geometry:{type:'LineString',coordinates:[
+                [43.5,48.7],[41.0,47.5],[38.5,47.0],[36.0,46.5],
+                [33.5,46.5],[31.5,48.5],[30.5,50.5],[28.0,51.5],
+                [24.0,53.0],[21.0,52.2],[18.5,52.0],[15.0,52.5],
+                [13.4,52.5]
+            ]}},
+            /* City & battle markers */
+            {type:'Feature',properties:{type:'marker',color:'#ff4444',text:'Leningrad (sieged 872 days)'},geometry:{type:'Point',coordinates:[30.3,59.93]}},
+            {type:'Feature',properties:{type:'marker',color:'#ff8800',text:'Moscow (1941-42)'},geometry:{type:'Point',coordinates:[37.6,55.75]}},
+            {type:'Feature',properties:{type:'marker',color:'#ff4444',text:'Stalingrad (1942-43)'},geometry:{type:'Point',coordinates:[43.5,48.7]}},
+            {type:'Feature',properties:{type:'marker',color:'#44aaff',text:'Kursk (1943, largest tank battle)'},geometry:{type:'Point',coordinates:[36.2,51.7]}},
+            {type:'Feature',properties:{type:'marker',color:'#ff4444',text:'Minsk (1941, liberated 1944)'},geometry:{type:'Point',coordinates:[27.6,53.9]}},
+            {type:'Feature',properties:{type:'marker',color:'#ff4444',text:'Smolensk (1941)'},geometry:{type:'Point',coordinates:[32.0,54.8]}},
+            {type:'Feature',properties:{type:'marker',color:'#ff8800',text:'Kiev (1941, liberated 1943)'},geometry:{type:'Point',coordinates:[30.5,50.45]}},
+            {type:'Feature',properties:{type:'marker',color:'#ff4444',text:'Sevastopol (1941-42)'},geometry:{type:'Point',coordinates:[33.5,44.6]}},
+            {type:'Feature',properties:{type:'marker',color:'#ff4444',text:'Rostov-on-Don'},geometry:{type:'Point',coordinates:[39.7,47.2]}},
+            {type:'Feature',properties:{type:'marker',color:'#ff8800',text:'Brest-Litovsk'},geometry:{type:'Point',coordinates:[23.7,52.1]}},
+            {type:'Feature',properties:{type:'marker',color:'#ff8800',text:'Warsaw (1944 uprising)'},geometry:{type:'Point',coordinates:[21.0,52.2]}},
+            {type:'Feature',properties:{type:'marker',color:'#ff8800',text:'Vienna (1945)'},geometry:{type:'Point',coordinates:[16.4,48.2]}},
+            {type:'Feature',properties:{type:'marker',color:'#ff8800',text:'Budapest (1944-45 siege)'},geometry:{type:'Point',coordinates:[19.0,47.5]}},
+            {type:'Feature',properties:{type:'marker',color:'#44aaff',text:'Berlin (May 1945)'},geometry:{type:'Point',coordinates:[13.4,52.5]}},
+            /* Labels */
+            {type:'Feature',properties:{type:'label',color:'#ff6644',text:'Nazi-occupied Europe (1942)'},geometry:{type:'Point',coordinates:[28,50]}},
+            {type:'Feature',properties:{type:'label',color:'#44aaff',text:'Soviet Union'},geometry:{type:'Point',coordinates:[50,53]}}
         ]}
     },
+    /* ── 3. Napoleonic Campaigns ──────────────────── */
     {
         name: 'Napoleonic Campaigns',
-        desc: 'Key battles and routes, 1805-1815',
+        desc: 'Grande Armee routes & key battles, 1805-1815',
         geojson:{type:'FeatureCollection',features:[
-            {type:'Feature',properties:{type:'polyline',color:'#ffaa00',weight:3,dashStyle:'dotted',text:'March to Moscow (1812)'},geometry:{type:'LineString',coordinates:[[13.4,52.52],[18,52],[21,52.2],[24,54.7],[28,55.7],[32,56.8],[36,57.5],[37.6,55.75]]}},
-            {type:'Feature',properties:{type:'polyline',color:'#ff4444',weight:3,dashStyle:'solid',text:'Retreat from Moscow'},geometry:{type:'LineString',coordinates:[[37.6,55.75],[35,55],[30,54.5],[26,54],[22,53],[18,52],[14.5,52.3]]}},
-            {type:'Feature',properties:{type:'marker',color:'#ffcc00',text:'Austerlitz (1805)'},geometry:{type:'Point',coordinates:[16.13,49.13]}},
-            {type:'Feature',properties:{type:'marker',color:'#ffcc00',text:'Waterloo (1815)'},geometry:{type:'Point',coordinates:[4.4,50.71]}}
+            /* March to Moscow (Jun-Sep 1812) */
+            {type:'Feature',properties:{type:'polyline',color:'#ffaa00',weight:3,dashStyle:'dotted',text:'March to Moscow (Jun-Sep 1812)'},geometry:{type:'LineString',coordinates:[
+                [20.5,54.7],[21.0,54.7],[22.8,54.1],[23.7,52.1],
+                [24.0,53.7],[26.0,54.5],[27.6,53.9],[28.5,53.7],
+                [30.0,54.5],[32.0,54.8],[34.0,55.0],[36.0,55.5],
+                [37.6,55.75]
+            ]}},
+            /* Retreat from Moscow (Oct-Dec 1812) */
+            {type:'Feature',properties:{type:'polyline',color:'#ff4444',weight:3,dashStyle:'solid',text:'Retreat from Moscow (Oct-Dec 1812)'},geometry:{type:'LineString',coordinates:[
+                [37.6,55.75],[36.0,55.3],[34.5,54.5],[33.0,54.0],
+                [31.0,53.5],[29.0,53.0],[27.0,52.5],[25.0,52.0],
+                [24.0,53.7],[23.0,54.0],[21.5,54.7],[20.5,54.7]
+            ]}},
+            /* Earlier campaign routes */
+            {type:'Feature',properties:{type:'polyline',color:'#ff8800',weight:2,dashStyle:'dashed',text:'Austerlitz Campaign (1805)'},geometry:{type:'LineString',coordinates:[
+                [2.35,48.86],[5.0,48.5],[7.0,48.0],[8.5,48.5],
+                [10.0,48.4],[13.0,48.8],[15.0,49.0],[16.76,49.13]
+            ]}},
+            {type:'Feature',properties:{type:'polyline',color:'#ff8800',weight:2,dashStyle:'dashed',text:'Jena-Auerstedt Campaign (1806)'},geometry:{type:'LineString',coordinates:[
+                [8.0,49.0],[9.0,49.5],[10.0,50.0],[11.0,50.5],[11.59,50.93]
+            ]}},
+            /* Battle markers */
+            {type:'Feature',properties:{type:'marker',color:'#ffcc00',text:'Austerlitz (Dec 1805)'},geometry:{type:'Point',coordinates:[16.76,49.13]}},
+            {type:'Feature',properties:{type:'marker',color:'#ffcc00',text:'Jena-Auerstedt (Oct 1806)'},geometry:{type:'Point',coordinates:[11.59,50.93]}},
+            {type:'Feature',properties:{type:'marker',color:'#ffcc00',text:'Friedland (Jun 1807)'},geometry:{type:'Point',coordinates:[20.89,54.40]}},
+            {type:'Feature',properties:{type:'marker',color:'#ffcc00',text:'Borodino (Sep 1812)'},geometry:{type:'Point',coordinates:[35.82,55.53]}},
+            {type:'Feature',properties:{type:'marker',color:'#ff4444',text:'Moscow (burned Sep 1812)'},geometry:{type:'Point',coordinates:[37.62,55.75]}},
+            {type:'Feature',properties:{type:'marker',color:'#ffcc00',text:'Dresden (Aug 1813)'},geometry:{type:'Point',coordinates:[13.74,51.05]}},
+            {type:'Feature',properties:{type:'marker',color:'#ffcc00',text:'Leipzig (Oct 1813, Battle of Nations)'},geometry:{type:'Point',coordinates:[12.37,51.34]}},
+            {type:'Feature',properties:{type:'marker',color:'#ffcc00',text:'Lutzen (May 1813)'},geometry:{type:'Point',coordinates:[12.15,51.25]}},
+            {type:'Feature',properties:{type:'marker',color:'#ffcc00',text:'Bautzen (May 1813)'},geometry:{type:'Point',coordinates:[14.42,51.18]}},
+            {type:'Feature',properties:{type:'marker',color:'#ffcc00',text:'Waterloo (Jun 1815)'},geometry:{type:'Point',coordinates:[4.40,50.71]}},
+            /* City markers */
+            {type:'Feature',properties:{type:'marker',color:'#00bbff',text:'Paris (capital)'},geometry:{type:'Point',coordinates:[2.35,48.86]}},
+            {type:'Feature',properties:{type:'marker',color:'#00bbff',text:'Bologne-sur-Mer (camp 1805)'},geometry:{type:'Point',coordinates:[1.61,50.73]}},
+            {type:'Feature',properties:{type:'marker',color:'#00bbff',text:'Ulm (surrendered Oct 1805)'},geometry:{type:'Point',coordinates:[9.99,48.40]}},
+            {type:'Feature',properties:{type:'marker',color:'#00bbff',text:'Tilsit (treaty Jul 1807)'},geometry:{type:'Point',coordinates:[21.88,55.08]}},
+            /* Labels */
+            {type:'Feature',properties:{type:'label',color:'#ffaa00',text:'Grande Armee'},geometry:{type:'Point',coordinates:[30,53]}},
+            {type:'Feature',properties:{type:'label',color:'#4488ff',text:'Russian Empire'},geometry:{type:'Point',coordinates:[45,57]}}
         ]}
     },
+    /* ── 4. Cold War Iron Curtain ──────────────────── */
     {
         name: 'Cold War Iron Curtain',
-        desc: 'The division of Europe, 1945-1991',
+        desc: 'Division of Europe — NATO vs Warsaw Pact, 1945-1991',
         geojson:{type:'FeatureCollection',features:[
-            {type:'Feature',properties:{type:'polyline',color:'#ff3333',weight:4,dashStyle:'dotted',text:'Iron Curtain'},geometry:{type:'LineString',coordinates:[[-10,71],[-5,62],[8,55],[10,54.5],[14,54],[15,51],[16.5,49],[17,48],[18,47.5],[22,48],[25,44],[28,41],[29,41],[30,42],[40,43],[50,40]]}},
-            {type:'Feature',properties:{type:'label',color:'#ff4444',text:'NATO West'},geometry:{type:'Point',coordinates:[10,50]}},
-            {type:'Feature',properties:{type:'label',color:'#4488ff',text:'Warsaw Pact East'},geometry:{type:'Point',coordinates:[30,50]}},
-            {type:'Feature',properties:{type:'marker',color:'#ff6644',text:'Berlin Wall'},geometry:{type:'Point',coordinates:[13.4,52.52]}}
+            /* Inner German border (East-West Germany) */
+            {type:'Feature',properties:{type:'polyline',color:'#ff3333',weight:4,dashStyle:'dotted',text:'Inner German Border (1945-90)'},geometry:{type:'LineString',coordinates:[
+                [10.87,53.96],[10.60,53.70],[10.30,53.40],[10.10,53.10],
+                [9.90,52.80],[9.80,52.50],[9.75,52.20],[9.70,51.90],
+                [9.80,51.60],[10.00,51.30],[10.20,51.10],[10.50,50.90],
+                [10.80,50.70],[11.00,50.50],[11.20,50.35],[11.50,50.20],
+                [11.80,50.05]
+            ]}},
+            /* Full Iron Curtain — Baltic to Adriatic */
+            {type:'Feature',properties:{type:'polyline',color:'#ff3333',weight:4,dashStyle:'dotted',text:'Iron Curtain (full line)'},geometry:{type:'LineString',coordinates:[
+                [10.87,53.96],[14.00,54.20],[14.30,53.90],[14.80,53.40],
+                [15.00,53.00],[14.60,52.50],[14.70,52.00],[15.00,51.10],
+                [15.50,50.70],[16.00,50.20],[16.50,49.60],[17.00,49.20],
+                [17.50,48.80],[18.00,48.50],[18.50,48.20],[19.00,48.00],
+                [20.00,47.80],[21.00,47.50],[22.00,47.00],[23.00,46.50],
+                [24.00,46.00],[25.00,45.50],[26.00,45.00],[27.00,44.50],
+                [28.00,44.00],[29.00,43.50]
+            ]}},
+            /* Oder-Neisse line (Poland western border) */
+            {type:'Feature',properties:{type:'polyline',color:'#ffaa00',weight:2,dashStyle:'dashed',text:'Oder-Neisse Line'},geometry:{type:'LineString',coordinates:[
+                [14.30,53.90],[14.20,53.50],[14.10,53.10],[14.00,52.70],
+                [14.50,52.00],[14.70,51.60],[15.00,51.10]
+            ]}},
+            /* Berlin Wall */
+            {type:'Feature',properties:{type:'polyline',color:'#ff0000',weight:3,dashStyle:'solid',text:'Berlin Wall (1961-89)'},geometry:{type:'LineString',coordinates:[
+                [13.30,52.55],[13.25,52.52],[13.30,52.48],[13.38,52.45],
+                [13.42,52.47],[13.46,52.50],[13.43,52.53],[13.38,52.55],
+                [13.30,52.55]
+            ]}},
+            /* City markers */
+            {type:'Feature',properties:{type:'marker',color:'#ff0000',text:'Berlin (divided city)'},geometry:{type:'Point',coordinates:[13.40,52.52]}},
+            {type:'Feature',properties:{type:'marker',color:'#4488ff',text:'Vienna (withdrawn 1955)'},geometry:{type:'Point',coordinates:[16.37,48.21]}},
+            {type:'Feature',properties:{type:'marker',color:'#ff4444',text:'Prague (1968 invasion)'},geometry:{type:'Point',coordinates:[14.42,50.08]}},
+            {type:'Feature',properties:{type:'marker',color:'#ff4444',text:'Budapest (1956 uprising)'},geometry:{type:'Point',coordinates:[19.04,47.50]}},
+            {type:'Feature',properties:{type:'marker',color:'#ff4444',text:'Warsaw (Pact HQ)'},geometry:{type:'Point',coordinates:[21.01,52.23]}},
+            {type:'Feature',properties:{type:'marker',color:'#ff4444',text:'Moscow (Kremlin)'},geometry:{type:'Point',coordinates:[37.62,55.75]}},
+            {type:'Feature',properties:{type:'marker',color:'#4488ff',text:'Helsinki (Finland, neutral)'},geometry:{type:'Point',coordinates:[24.94,60.17]}},
+            {type:'Feature',properties:{type:'marker',color:'#4488ff',text:'Belgrade (Non-Aligned)'},geometry:{type:'Point',coordinates:[20.45,44.82]}},
+            /* Labels */
+            {type:'Feature',properties:{type:'label',color:'#4488ff',text:'NATO'},geometry:{type:'Point',coordinates:[8,50]}},
+            {type:'Feature',properties:{type:'label',color:'#ff4444',text:'Warsaw Pact'},geometry:{type:'Point',coordinates:[25,50]}},
+            {type:'Feature',properties:{type:'label',color:'#44aa44',text:'Non-Aligned / Neutral'},geometry:{type:'Point',coordinates:[18,46]}}
         ]}
     },
+    /* ── 5. Modern Ukraine Conflict ──────────────────── */
     {
         name: 'Modern Ukraine Conflict',
-        desc: 'Key front lines and areas, 2022-present',
+        desc: 'Front lines & key cities, 2022-present (approx late 2024)',
         geojson:{type:'FeatureCollection',features:[
-            {type:'Feature',properties:{type:'polyline',color:'#ff4444',weight:3,dashStyle:'dashed',text:'Front Line (approx 2023)'},geometry:{type:'LineString',coordinates:[[38,49.5],[37.5,48.5],[37,48],[36.5,47.5],[37,47],[37.5,46.5],[38,46.8],[38.5,47.2],[38.8,47.8],[39.5,48.3],[40,48.8],[40.5,49],[41,49.5],[41.5,49.8],[42,49.8],[42.5,49.5],[43,49],[44,48.5]]}},
-            {type:'Feature',properties:{type:'marker',color:'#ff6644',text:'Kyiv'},geometry:{type:'Point',coordinates:[30.52,50.45]}},
-            {type:'Feature',properties:{type:'marker',color:'#ff6644',text:'Bakhmut'},geometry:{type:'Point',coordinates:[38,48.6]}},
-            {type:'Feature',properties:{type:'marker',color:'#ff6644',text:'Mariupol'},geometry:{type:'Point',coordinates:[37.54,47.1]}}
+            /* Front line (approx late 2024) */
+            {type:'Feature',properties:{type:'polyline',color:'#ff4444',weight:3,dashStyle:'dashed',text:'Front Line (approx late 2024)'},geometry:{type:'LineString',coordinates:[
+                [37.3,49.9],[37.2,49.5],[37.0,49.0],[37.3,48.7],
+                [37.8,48.4],[38.0,48.1],[37.8,47.8],[37.5,47.5],
+                [37.0,47.2],[36.5,46.9],[36.0,46.5],[35.5,46.2],
+                [35.0,46.0],[34.5,46.3],[34.0,46.6],[33.7,46.8]
+            ]}},
+            /* Crimea annexation outline */
+            {type:'Feature',properties:{type:'polyline',color:'#ff8800',weight:2,dashStyle:'dotted',text:'Crimea (annexed 2014)'},geometry:{type:'LineString',coordinates:[
+                [33.5,46.0],[33.8,45.5],[34.0,45.0],[34.5,44.5],
+                [35.0,44.2],[35.5,44.0],[36.0,44.2],[36.5,44.5],
+                [36.6,45.0],[36.5,45.5],[36.0,45.8],[35.5,46.0],
+                [35.0,46.1],[34.5,46.2],[34.0,46.1],[33.5,46.0]
+            ]}},
+            /* Russian border */
+            {type:'Feature',properties:{type:'polyline',color:'#888888',weight:2,dashStyle:'solid',text:'International border'},geometry:{type:'LineString',coordinates:[
+                [38.0,52.1],[37.5,51.5],[37.0,51.0],[36.5,50.5],
+                [36.0,50.0],[35.5,49.5],[35.0,49.0],[36.5,48.5],
+                [37.0,48.0],[36.5,47.5],[35.5,47.0],[35.0,46.5],[34.5,46.0]
+            ]}},
+            /* City markers */
+            {type:'Feature',properties:{type:'marker',color:'#44aaff',text:'Kyiv (capital, defended)'},geometry:{type:'Point',coordinates:[30.52,50.45]}},
+            {type:'Feature',properties:{type:'marker',color:'#44aaff',text:'Kharkiv (2nd city, near front)'},geometry:{type:'Point',coordinates:[36.23,49.99]}},
+            {type:'Feature',properties:{type:'marker',color:'#ff6644',text:'Mariupol (fell May 2022)'},geometry:{type:'Point',coordinates:[37.54,47.10]}},
+            {type:'Feature',properties:{type:'marker',color:'#ff6644',text:'Bakhmut (fell May 2023)'},geometry:{type:'Point',coordinates:[38.00,48.60]}},
+            {type:'Feature',properties:{type:'marker',color:'#ff6644',text:'Avdiivka (fell Feb 2024)'},geometry:{type:'Point',coordinates:[37.75,48.13]}},
+            {type:'Feature',properties:{type:'marker',color:'#ff6644',text:'Donetsk (occupied since 2014)'},geometry:{type:'Point',coordinates:[37.80,48.00]}},
+            {type:'Feature',properties:{type:'marker',color:'#ff6644',text:'Luhansk (occupied since 2014)'},geometry:{type:'Point',coordinates:[39.30,48.57]}},
+            {type:'Feature',properties:{type:'marker',color:'#ff6644',text:'Zaporizhzhia (frontline city)'},geometry:{type:'Point',coordinates:[35.15,47.84]}},
+            {type:'Feature',properties:{type:'marker',color:'#ff8800',text:'Kherson (liberated Nov 2022)'},geometry:{type:'Point',coordinates:[32.62,46.64]}},
+            {type:'Feature',properties:{type:'marker',color:'#ff6644',text:'Sevastopol (naval base)'},geometry:{type:'Point',coordinates:[33.53,44.62]}},
+            {type:'Feature',properties:{type:'marker',color:'#44aaff',text:'Odesa (port city)'},geometry:{type:'Point',coordinates:[30.73,46.48]}},
+            {type:'Feature',properties:{type:'marker',color:'#44aaff',text:'Lviv (western hub)'},geometry:{type:'Point',coordinates:[24.03,49.84]}},
+            {type:'Feature',properties:{type:'label',color:'#44aaff',text:'Ukrainian-controlled'},geometry:{type:'Point',coordinates:[32,49]}},
+            {type:'Feature',properties:{type:'label',color:'#ff4444',text:'Russian-occupied'},geometry:{type:'Point',coordinates:[38,48.5]}}
+        ]}
+    },
+    /* ── 6. WWII Western Front & D-Day ──────────────── */
+    {
+        name: 'WWII Western Front & D-Day',
+        desc: 'Atlantic Wall, D-Day landings, Battle of the Bulge 1944-45',
+        geojson:{type:'FeatureCollection',features:[
+            /* Atlantic Wall — occupied European coastline */
+            {type:'Feature',properties:{type:'polyline',color:'#666666',weight:2,dashStyle:'dashed',text:'Atlantic Wall (Fortifications)'},geometry:{type:'LineString',coordinates:[
+                [-5.0,48.5],[-2.0,48.7],[0.0,49.3],[1.0,49.5],
+                [1.6,50.0],[1.8,50.5],[2.9,51.1],[3.5,51.4],
+                [4.0,51.9],[4.5,52.2],[5.0,52.7],[5.5,53.2],
+                [6.0,53.5],[7.0,54.0],[8.0,54.5],[9.0,55.0],
+                [10.0,55.5],[12.0,56.0],[12.5,56.5]
+            ]}},
+            /* D-Day front line — Normandy beaches */
+            {type:'Feature',properties:{type:'polyline',color:'#44aaff',weight:3,dashStyle:'solid',text:'D-Day Front Line (Jun 6, 1944)'},geometry:{type:'LineString',coordinates:[
+                [-1.2,49.7],[-0.8,49.6],[-0.5,49.4],[-0.3,49.3],
+                [0.0,49.2],[0.3,49.15],[0.6,49.10]
+            ]}},
+            /* Breakout from Normandy */
+            {type:'Feature',properties:{type:'polyline',color:'#44aaff',weight:2,dashStyle:'dashed',text:'Breakout from Normandy (Jul-Aug 1944)'},geometry:{type:'LineString',coordinates:[
+                [-0.3,49.3],[0.5,49.0],[1.5,48.5],[2.0,48.2],
+                [2.5,48.0],[3.0,48.5],[3.5,49.0],[4.0,49.5]
+            ]}},
+            /* Battle of the Bulge salient */
+            {type:'Feature',properties:{type:'polyline',color:'#ff8800',weight:3,dashStyle:'dashed',text:'Battle of the Bulge (Dec 1944)'},geometry:{type:'LineString',coordinates:[
+                [5.5,50.5],[5.8,50.3],[6.0,50.1],[5.8,49.9],
+                [6.0,49.7],[6.3,49.8],[6.5,50.0],[6.3,50.2],
+                [6.0,50.4],[5.5,50.5]
+            ]}},
+            /* D-Day landing beach markers */
+            {type:'Feature',properties:{type:'marker',color:'#ffcc00',text:'Utah Beach'},geometry:{type:'Point',coordinates:[-1.17,49.42]}},
+            {type:'Feature',properties:{type:'marker',color:'#ffcc00',text:'Omaha Beach'},geometry:{type:'Point',coordinates:[-0.87,49.36]}},
+            {type:'Feature',properties:{type:'marker',color:'#ffcc00',text:'Gold Beach'},geometry:{type:'Point',coordinates:[-0.25,49.36]}},
+            {type:'Feature',properties:{type:'marker',color:'#ffcc00',text:'Juno Beach'},geometry:{type:'Point',coordinates:[-0.20,49.33]}},
+            {type:'Feature',properties:{type:'marker',color:'#ffcc00',text:'Sword Beach'},geometry:{type:'Point',coordinates:[-0.10,49.31]}},
+            /* Key city markers */
+            {type:'Feature',properties:{type:'marker',color:'#44aaff',text:'Cherbourg (captured Jun 1944)'},geometry:{type:'Point',coordinates:[-1.62,49.64]}},
+            {type:'Feature',properties:{type:'marker',color:'#44aaff',text:'Caen (fierce fighting Jul 1944)'},geometry:{type:'Point',coordinates:[-0.37,49.18]}},
+            {type:'Feature',properties:{type:'marker',color:'#44aaff',text:'Paris (liberated Aug 25, 1944)'},geometry:{type:'Point',coordinates:[2.35,48.86]}},
+            {type:'Feature',properties:{type:'marker',color:'#44aaff',text:'Brussels (liberated Sep 1944)'},geometry:{type:'Point',coordinates:[4.35,50.85]}},
+            {type:'Feature',properties:{type:'marker',color:'#ff8800',text:'Bastogne (Bulge siege)'},geometry:{type:'Point',coordinates:[5.72,50.00]}},
+            {type:'Feature',properties:{type:'marker',color:'#44aaff',text:'Remagen Bridge (Mar 1945)'},geometry:{type:'Point',coordinates:[7.77,50.58]}},
+            {type:'Feature',properties:{type:'marker',color:'#44aaff',text:'Berlin (fell May 2, 1945)'},geometry:{type:'Point',coordinates:[13.40,52.52]}},
+            {type:'Feature',properties:{type:'marker',color:'#44aaff',text:'Rhineland crossing (Mar 1945)'},geometry:{type:'Point',coordinates:[6.80,51.00]}},
+            /* Labels */
+            {type:'Feature',properties:{type:'label',color:'#ff6644',text:'German-occupied France'},geometry:{type:'Point',coordinates:[2.0,50.0]}},
+            {type:'Feature',properties:{type:'label',color:'#44aaff',text:'Allied advance'},geometry:{type:'Point',coordinates:[5.5,49.0]}}
         ]}
     }
 ];
@@ -844,6 +1075,12 @@ function renderPreview(features) {
     $('#import-preview').classList.remove('hidden');
     $('#import-actions').classList.remove('hidden');
     $('#import-select-all').checked = features.every(f => f.checked);
+}
+
+/* ── Select All Checkbox Sync ──────────────────── */
+function updateSelectAllState() {
+    const all = importPendingFeatures;
+    $('#import-select-all').checked = all.length > 0 && all.every(f => f.checked);
 }
 
 /* ── Confirm Import ────────────────────────────── */
@@ -1494,8 +1731,56 @@ document.addEventListener('keydown', e => {
         case '6': setTool('measure');  break;
         case '7': setTool('eraser');   break;
         case 'i': case 'I': openImportModal(); break;
+        case 'f': case 'F': toggleFullscreen(); break;
     }
 });
+
+/* =====================================================
+   Fullscreen Mode
+   ===================================================== */
+const fsBtn = $('#btn-fullscreen');
+
+function toggleFullscreen() {
+    const isFs = !!(document.fullscreenElement || document.webkitFullscreenElement || document.msFullscreenElement);
+    if (!isFs) {
+        const el = document.documentElement;
+        if (el.requestFullscreen) {
+            el.requestFullscreen().catch(function (err) { console.warn('[FS] requestFullscreen failed:', err); });
+        } else if (el.webkitRequestFullscreen) {
+            el.webkitRequestFullscreen();
+        } else if (el.msRequestFullscreen) {
+            el.msRequestFullscreen();
+        } else {
+            console.warn('[FS] Fullscreen API not supported');
+        }
+    } else {
+        if (document.exitFullscreen) {
+            document.exitFullscreen().catch(function (err) { console.warn('[FS] exitFullscreen failed:', err); });
+        } else if (document.webkitExitFullscreen) {
+            document.webkitExitFullscreen();
+        } else if (document.msExitFullscreen) {
+            document.msExitFullscreen();
+        }
+    }
+}
+
+function updateFullscreenBtn() {
+    const isFs = !!(document.fullscreenElement || document.webkitFullscreenElement || document.msFullscreenElement);
+    console.log('[FS] fullscreen changed, isFs =', isFs);
+    if (fsBtn) {
+        fsBtn.textContent = isFs ? '⛶ Exit Fullscreen' : '⛶ Fullscreen';
+        fsBtn.title = isFs ? 'Exit fullscreen (F)' : 'Toggle fullscreen (F)';
+    }
+}
+
+if (fsBtn) {
+    fsBtn.addEventListener('click', function (e) {
+        e.stopPropagation();
+        toggleFullscreen();
+    });
+}
+document.addEventListener('fullscreenchange', function () { updateFullscreenBtn(); setTimeout(function () { map.invalidateSize(); }, 350); });
+document.addEventListener('webkitfullscreenchange', function () { updateFullscreenBtn(); setTimeout(function () { map.invalidateSize(); }, 350); });
 
 /* =====================================================
    Init
