@@ -1,41 +1,53 @@
 <!DOCTYPE html>
-<html lang="en">
-    <head>
-        <title>Gallery</title>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <meta http-equiv="X-UA-Compatible" content="ie=edge">
-        <link rel="stylesheet" href="style/styles.css">
-        <script defer src="style/script.js"></script>
-        <link rel="stylesheet" href="style/style.css">
-        <link rel="icon" href="style/obrazky/erb/erb.png">
-        <meta name="viewport" content="width=devite-width, initial-scale=1">
-    </head>
-        <header>
-        <img src="style/obrazky/erb/erb.png" alt="logo">
-            <nav>
-                <a href="index.html">Domov</a>
-                <a href="historia.html">História</a>
-                <a target="_blank" href="https://www.hviezdoslavov.sk/">Officialna Stránka</a>
-                <a href="gallery.html">Galéria</a>
-            </nav>
-        </header>
-    <body>
-        <section>
-            <div class="grid">
-                <img src="https://source.unsplash.com/800x600?mountain">
-                <img src="https://source.unsplash.com/800x600?nature">
-                <img src="https://source.unsplash.com/800x600?valley">
-                <img src="https://source.unsplash.com/800x600?beach">
-                <img src="https://source.unsplash.com/800x600?ocean">
-                <img src="https://source.unsplash.com/800x600?water">
-                <img src="https://source.unsplash.com/800x600?trees">
-                <img src="https://source.unsplash.com/800x600?lake">
-                <img src="https://source.unsplash.com/800x600?cliff">
-                <img src="https://source.unsplash.com/800x600?trees">
-                <img src="https://source.unsplash.com/800x600?lake">
-                <img src="https://source.unsplash.com/800x600?trees">
-            </div>
-        </section>
-    </body>
+<html lang="sk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Galéria — Hviezdoslavov</title>
+    <link rel="icon" href="style/obrazky/erb/erb.png">
+    <link rel="stylesheet" href="style/style.css">
+    <script defer src="style/script.js"></script>
+</head>
+<body>
+
+    <!-- Header -->
+    <header>
+        <img src="style/obrazky/erb/erb.png" alt="Erb obce">
+        <nav>
+            <a href="index.html">Domov</a>
+            <a href="historia.html">História</a>
+            <a href="gallery.html" class="active">Galéria</a>
+            <a href="hviezdoslavov.html">Hviezdoslavov</a>
+            <a href="podhaj.html">Podháj</a>
+            <a href="hviezdne byvanie.html">Hviezdne Bývanie</a>
+            <a href="hviezdoslavov zahrady.html">Záhrady</a>
+            <a href="https://www.hviezdoslavov.sk/" target="_blank">Oficiálna stránka</a>
+        </nav>
+    </header>
+
+    <!-- Gallery -->
+    <div class="section" style="padding-top: 110px;">
+        <h2 class="section-title">Galéria</h2>
+        <div class="divider"></div>
+        <p class="section-subtitle">Fotografie z obce Hviezdoslavov a jej okolia.</p>
+
+        <div class="gallery-grid">
+            <img src="style/obrazky/hviedoslavov/Hviedoslavov.jpg" alt="Hviezdoslavov">
+            <img src="style/obrazky/hviezdoslav/hviezdoslav.jpg" alt="Pavol Országh Hviezdoslav">
+            <img src="style/obrazky/hv bivanie/hvidzne bivanie.jpg" alt="Hviezdne bývanie">
+            <img src="style/obrazky/hv zharady/zahrady.jpg" alt="Záhrady">
+            <img src="style/obrazky/podhaj-foto/hajovna.jpg" alt="Hájovňa v Podháji">
+            <img src="style/obrazky/erb/erb.png" alt="Erb obce Hviezdoslavov">
+        </div>
+    </div>
+
+    <!-- Lightbox -->
+    <div id="lightbox">
+        <img src="" alt="Full size">
+    </div>
+
+    <!-- Footer -->
+    <footer>Školský projekt — Obec Hviezdoslavov</footer>
+
+</body>
 </html>
