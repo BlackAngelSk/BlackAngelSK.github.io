@@ -83,6 +83,19 @@ const sat = L.tileLayer(
     maxZoom: 18, crossOrigin: true,
     attribution: '&copy; <a href="https://www.esri.com">Esri</a>'
 });
+/* ── Fullscreen Button (injected into zoom control) ─── */
+map.whenReady(function () {
+    var zoomCtrl = document.querySelector('#map .leaflet-control-zoom');
+    if (zoomCtrl) {
+        var btn = document.createElement('button');
+        btn.id = 'btn-fullscreen';
+        btn.className = 'leaflet-control-fullscreen';
+        btn.title = 'Toggle fullscreen (F)';
+        btn.textContent = '\u26F6';
+        zoomCtrl.appendChild(btn);
+    }
+});
+
 osm.addTo(map);
 L.control.layers({
     '\u{1F5FA} Standard': osm,
@@ -92,13 +105,13 @@ L.control.layers({
 
 /* ── Map Label Languages ─────────────────────────── */
 const LANGUAGES = [
-    { code: 'EN', flag: '🇬🇧', url: 'https://{s}.basemaps.cartocdn.com/dark_only_labels/{z}/{x}/{y}{r}.png', max: 19, attr: '© CARTO © OSM' },
-    { code: 'SK', flag: '🇸🇰', url: 'https://{s}.basemaps.cartocdn.com/dark_only_labels/{z}/{x}/{y}{r}.png', max: 19, attr: '© CARTO © OSM' },
-    { code: 'DE', flag: '🇩🇪', url: 'https://{s}.basemaps.cartocdn.com/dark_only_labels/{z}/{x}/{y}{r}.png', max: 19, attr: '© CARTO © OSM' },
-    { code: 'JP', flag: '🇯🇵', url: 'https://{s}.basemaps.cartocdn.com/dark_only_labels/{z}/{x}/{y}{r}.png', max: 19, attr: '© CARTO © OSM' },
+    { code: 'EN', flag: '🇬🇧', url: 'https://{s}.basemaps.cartocdn.com/light_only_labels/{z}/{x}/{y}{r}.png', max: 19, attr: '© CARTO © OSM' },
+    { code: 'SK', flag: '🇸🇰', url: 'https://{s}.basemaps.cartocdn.com/light_only_labels/{z}/{x}/{y}{r}.png', max: 19, attr: '© CARTO © OSM' },
+    { code: 'DE', flag: '🇩🇪', url: 'https://{s}.basemaps.cartocdn.com/light_only_labels/{z}/{x}/{y}{r}.png', max: 19, attr: '© CARTO © OSM' },
+    { code: 'JP', flag: '🇯🇵', url: 'https://{s}.basemaps.cartocdn.com/light_only_labels/{z}/{x}/{y}{r}.png', max: 19, attr: '© CARTO © OSM' },
     { code: 'OFF', flag: '🚫', url: '', max: 19, attr: '' }
 ];
-let langIdx = 0;
+let langIdx = -1;
 let langOverlay = null;
 
 function setMapLanguage(idx) {
@@ -112,6 +125,9 @@ function setMapLanguage(idx) {
     $('#btn-lang').textContent = lang.flag + ' ' + lang.code;
 }
 $('#btn-lang').addEventListener('click', () => setMapLanguage(langIdx + 1));
+
+/* Use the base map's native labels by default. Load the optional label overlay only on demand. */
+$('#btn-lang').textContent = LANGUAGES[0].flag + ' ' + LANGUAGES[0].code;
 
 /* =====================================================
    Tool Management
@@ -285,7 +301,7 @@ function placeLabel() {
     if (!text || !S.labelLatLng) { hideLabelInput(); return; }
     const icon = L.divIcon({
         className: '',
-        html: '<div class="label-marker" style="border-color:' + S.color + ';color:' + S.color + '">' + escapeHtml(text) + '</div>',
+        html: '<div class="label-marker" style="border-color:' + S.color + ';color:#ffffff">' + escapeHtml(text) + '</div>',
         iconSize: null, iconAnchor: [0, 0]
     });
     const m = L.marker(S.labelLatLng, { icon, interactive: true }).addTo(map);
@@ -311,7 +327,7 @@ function startMeasure(e) {
     S.msPoints.push(e.latlng);
     if (!S.msLine) {
         S.msLine = L.polyline(S.msPoints, {
-            color: '#ffe066', weight: 2, dashArray: '8, 6', opacity: 0.9, interactive: false
+            color: '#ffe066', weight: 2, dashArray: '8, 6', opacity: 0.9
         }).addTo(map);
     } else { S.msLine.addLatLng(e.latlng); }
     if (S.msPoints.length >= 2) $('#btn-finish').classList.remove('hidden');
@@ -391,13 +407,27 @@ function enableEraser() {
     S.annotations.forEach(ann => {
         const isPoint = ann.type === 'marker' || ann.type === 'label';
         const origWeight = ann.weight;
+        /* Force interactive mode so eraser can receive clicks (measurement lines are non-interactive by default) */
+        if (ann.layer && ann.layer.options) {
+            ann._origInteractive = ann.layer.options.interactive;
+            ann.layer.options.interactive = true;
+            if (ann.layer.getElement) {
+                const el = ann.layer.getElement();
+                if (el) el.style.pointerEvents = 'auto';
+            }
+        }
+        /* Make lines thicker for easier clicking during erase mode */
+        if (!isPoint && ann.layer && ann.layer.setStyle) {
+            ann.layer.setStyle({ weight: Math.max(8, origWeight + 5) });
+            ann.layer.bringToFront();
+        }
         const h = {
             over: function () {
                 if (isPoint) {
                     const el = this.getElement();
                     if (el) { const inner = el.querySelector('.marker-pin, .label-marker'); if (inner) inner.classList.add('eraser-hover'); }
                 } else {
-                    this.setStyle({ color: '#ff4444', weight: origWeight + 3 });
+                    this.setStyle({ color: '#ff4444', weight: Math.max(10, origWeight + 6) });
                     this.bringToFront();
                 }
             },
@@ -406,7 +436,7 @@ function enableEraser() {
                     const el = this.getElement();
                     if (el) { const inner = el.querySelector('.marker-pin, .label-marker'); if (inner) inner.classList.remove('eraser-hover'); }
                 } else {
-                    this.setStyle({ color: ann.color, weight: origWeight });
+                    this.setStyle({ color: ann.color, weight: Math.max(8, origWeight + 5) });
                 }
             },
             click: function (ev) {
@@ -426,6 +456,15 @@ function disableEraser() {
         ann.layer.off('mouseover', h.over);
         ann.layer.off('mouseout', h.out);
         ann.layer.off('click', h.click);
+        /* Restore original interactive state */
+        if (ann.layer.options && ann._origInteractive !== undefined) {
+            ann.layer.options.interactive = ann._origInteractive;
+            if (ann.layer.getElement) {
+                const el = ann.layer.getElement();
+                if (el) el.style.pointerEvents = '';
+            }
+            delete ann._origInteractive;
+        }
     });
     S.eraserHandlers = [];
 }
@@ -502,6 +541,10 @@ function removeAnnotation(id) {
     if (i === -1) return;
     const ann = S.annotations[i];
     map.removeLayer(ann.layer);
+    /* Also remove the total label tooltip for measurement annotations */
+    if (ann.layer._totalLabel) {
+        map.removeLayer(ann.layer._totalLabel);
+    }
     S.annotations.splice(i, 1);
     pushUndo({ type: 'remove', ann });
     updateCount();
@@ -1133,7 +1176,7 @@ function confirmImport() {
                 radius: 5, fillColor: f.color, color: '#fff',
                 weight: 1.5, fillOpacity: 0.9, renderer: canvasRenderer
             });
-            if (text) marker.bindPopup('<b style="color:' + f.color + '">' + escapeHtml(text) + '</b>', { maxWidth: 250 });
+            if (text) marker.bindPopup('<b>' + escapeHtml(text) + '</b>', { maxWidth: 250 });
             const prevColor = S.color;
             S.color = f.color;
             storeAnnotation(marker, f.type || 'marker', ll, { text });
@@ -1272,7 +1315,70 @@ function wireImportModal() {
 }
 
 function handleFileImport(file) {
-    const isKML = file.name.toLowerCase().endsWith('.kml') || file.name.toLowerCase().endsWith('.kmz');
+    const nameLC = file.name.toLowerCase();
+    const isKML = nameLC.endsWith('.kml');
+    const isKMZ = nameLC.endsWith('.kmz');
+    const isGPX = nameLC.endsWith('.gpx');
+
+    /* ── KMZ (zipped KML) — read as binary ────── */
+    if (isKMZ) {
+        if (typeof JSZip === 'undefined') { alert('JSZip library not loaded. Please refresh the page and try again.'); return; }
+        const reader = new FileReader();
+        reader.onload = function (ev) {
+            JSZip.loadAsync(ev.target.result).then(zip => {
+                const kmlFile = Object.keys(zip.files).find(f => f.toLowerCase().endsWith('.kml'));
+                if (!kmlFile) { alert('No KML file found inside the KMZ archive.'); return; }
+                return zip.files[kmlFile].async('string');
+            }).then(kmlText => {
+                if (!kmlText) return;
+                try {
+                    importPendingFeatures = parseKML(kmlText);
+                    if (importPendingFeatures.length === 0) { alert('No compatible features found in KMZ.'); return; }
+                    renderPreview(importPendingFeatures);
+                } catch (err) {
+                    if (err && err.isNetworkLink) {
+                        const netUrl = err.url;
+                        alert('This KMZ contains a Google Maps NetworkLink.\nFetching the full map data…');
+                        const proxies = ['http://localhost:8080/kml?url=', '', 'https://corsproxy.io/?', 'https://api.allorigins.win/raw?url='];
+                        let attempt = 0;
+                        function tryFetch() {
+                            const target = proxies[attempt] ? proxies[attempt] + encodeURIComponent(netUrl) : netUrl;
+                            return fetch(target).then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.text(); })
+                                .then(t => { if (!t.includes('<Placemark') && !t.includes('<Document')) throw new Error('Not KML'); return t; })
+                                .catch(e => { attempt++; if (attempt < proxies.length) return tryFetch(); throw e; });
+                        }
+                        tryFetch().then(fullKml => {
+                            importPendingFeatures = parseKML(fullKml);
+                            if (importPendingFeatures.length === 0) { alert('No features found after fetching full KML.'); return; }
+                            renderPreview(importPendingFeatures);
+                        }).catch(fetchErr => {
+                            console.error('NetworkLink fetch failed:', fetchErr);
+                            openProxyModal('https://www.google.com/maps/d/viewer?mid=' + encodeURIComponent(netUrl));
+                            startProxyPolling();
+                        });
+                    } else { alert('Failed to parse KML inside KMZ.\n' + (err.message || err)); }
+                }
+            }).catch(err => { console.error('KMZ unzip failed:', err); alert('Failed to open KMZ file.\n' + err.message); });
+        };
+        reader.readAsArrayBuffer(file);
+        return;
+    }
+
+    /* ── GPX — read as text ────────────────────── */
+    if (isGPX) {
+        const reader = new FileReader();
+        reader.onload = function (ev) {
+            try {
+                importPendingFeatures = parseGPX(ev.target.result);
+                if (importPendingFeatures.length === 0) { alert('No compatible features found in GPX file.'); return; }
+                renderPreview(importPendingFeatures);
+            } catch (err) { console.error('GPX import failed:', err); alert('Failed to parse GPX file.\n' + (err.message || err)); }
+        };
+        reader.readAsText(file);
+        return;
+    }
+
+    /* ── KML / GeoJSON — read as text ─────────── */
     const reader = new FileReader();
     reader.onload = function (ev) {
         const text = ev.target.result;
@@ -1306,11 +1412,8 @@ function handleFileImport(file) {
                         renderPreview(importPendingFeatures);
                     }).catch(fetchErr => {
                         console.error('NetworkLink fetch failed:', fetchErr);
-                        alert('Could not fetch the full map data (CORS blocked).\n\n'
-                            + 'To import this map:\n'
-                            + '1. Run the proxy: node proxy.js\n'
-                            + '2. Re-import this KML file\n\n'
-                            + 'Or paste the Google Maps URL in the URL tab.');
+                        openProxyModal('https://www.google.com/maps/d/viewer?mid=' + encodeURIComponent(netUrl));
+                        startProxyPolling();
                     });
                 } else {
                     alert('Failed to parse file.\n' + (err.message || err));
@@ -1491,6 +1594,84 @@ function parseKML(kmlText) {
     return features;
 }
 
+/* =====================================================
+   GPX Import (GPS Exchange Format)
+   ===================================================== */
+function parseGPX(gpxText) {
+    gpxText = gpxText.replace(/xmlns="http:\/\/www\.topografix\.com\/GPX\/1\/[12]"/g, '');
+    const doc = new DOMParser().parseFromString(gpxText, 'application/xml');
+    const parseErr = doc.querySelector('parsererror');
+    if (parseErr) { console.error('GPX parse error:', parseErr.textContent.slice(0, 300)); throw new Error('Invalid GPX/XML'); }
+    const features = [];
+    let idx = 0;
+
+    function getTagText(parent, tag) {
+        const el = parent.getElementsByTagName(tag)[0];
+        return el ? el.textContent.trim() : '';
+    }
+
+    /* Waypoints → Markers */
+    const wpts = doc.getElementsByTagName('wpt');
+    for (let i = 0; i < wpts.length; i++) {
+        const wpt = wpts[i];
+        const lat = parseFloat(wpt.getAttribute('lat'));
+        const lon = parseFloat(wpt.getAttribute('lon'));
+        if (isNaN(lat) || isNaN(lon)) continue;
+        const name = getTagText(wpt, 'name') || getTagText(wpt, 'desc') || 'Waypoint ' + (idx + 1);
+        const desc = getTagText(wpt, 'desc');
+        features.push({ id: 'gpx_' + idx, name, type: 'label', color: '#ffcc00', weight: 3, dashStyle: 'solid',
+            geometryType: 'Point', geometry: { type: 'Point', coordinates: [lon, lat] },
+            text: desc ? name + '\n' + desc : name, checked: true, folder: 'Waypoints' });
+        idx++;
+    }
+
+    /* Routes → Polylines */
+    const routes = doc.getElementsByTagName('rte');
+    for (let i = 0; i < routes.length; i++) {
+        const rte = routes[i];
+        const rteName = getTagText(rte, 'name') || 'Route ' + (i + 1);
+        const rtepts = rte.getElementsByTagName('rtept');
+        const coords = [];
+        for (let j = 0; j < rtepts.length; j++) {
+            const lat = parseFloat(rtepts[j].getAttribute('lat'));
+            const lon = parseFloat(rtepts[j].getAttribute('lon'));
+            if (!isNaN(lat) && !isNaN(lon)) coords.push([lon, lat]);
+        }
+        if (coords.length >= 2) {
+            features.push({ id: 'gpx_' + idx, name: rteName, type: 'polyline', color: '#ff8800', weight: 3, dashStyle: 'dashed',
+                geometryType: 'LineString', geometry: { type: 'LineString', coordinates: coords },
+                text: rteName, checked: true, folder: 'Routes' });
+            idx++;
+        }
+    }
+
+    /* Tracks → Polylines */
+    const tracks = doc.getElementsByTagName('trk');
+    for (let i = 0; i < tracks.length; i++) {
+        const trk = tracks[i];
+        const trkName = getTagText(trk, 'name') || 'Track ' + (i + 1);
+        const trksegs = trk.getElementsByTagName('trkseg');
+        for (let s = 0; s < trksegs.length; s++) {
+            const trkpts = trksegs[s].getElementsByTagName('trkpt');
+            const coords = [];
+            for (let j = 0; j < trkpts.length; j++) {
+                const lat = parseFloat(trkpts[j].getAttribute('lat'));
+                const lon = parseFloat(trkpts[j].getAttribute('lon'));
+                if (!isNaN(lat) && !isNaN(lon)) coords.push([lon, lat]);
+            }
+            if (coords.length >= 2) {
+                const segName = trksegs.length > 1 ? trkName + ' (segment ' + (s + 1) + ')' : trkName;
+                features.push({ id: 'gpx_' + idx, name: segName, type: 'polyline', color: '#44aaff', weight: 3, dashStyle: 'solid',
+                    geometryType: 'LineString', geometry: { type: 'LineString', coordinates: coords },
+                    text: segName, checked: true, folder: 'Tracks' });
+                idx++;
+            }
+        }
+    }
+
+    return features;
+}
+
 function fetchGoogleKML(mid, btn) {
     const kmlUrl = 'https://www.google.com/maps/d/u/0/kml?mid=' + mid + '&forcekml=1';
     const proxies = [
@@ -1516,6 +1697,7 @@ function handleUrlImport() {
     const btn = $('#import-url-btn');
     btn.disabled = true; btn.textContent = 'Fetching…';
 
+    /* ── Google Maps URL → KML proxy flow ────── */
     const mid = parseGoogleMapsUrl(url);
     if (mid) {
         fetchGoogleKML(mid, btn).then(kmlText => {
@@ -1524,28 +1706,104 @@ function handleUrlImport() {
             renderPreview(importPendingFeatures);
         }).catch(err => {
             console.error('KML import failed:', err);
-            alert('Could not fetch from Google My Maps (CORS blocked).\n\n'
-                + 'To import this map:\n'
-                + '1. Open the map in Google Maps\n'
-                + '2. Click the three dots (⋮) menu\n'
-                + '3. Select "Download KML"\n'
-                + '4. Use the File tab here to import the .kml file\n\n'
-                + 'Or run the local proxy: node proxy.js');
+            openProxyModal(url);
+            startProxyPolling();
         }).finally(() => { btn.disabled = false; btn.textContent = 'Fetch & Import'; });
         return;
     }
 
-    fetch(url).then(r => {
-        if (!r.ok) throw new Error('HTTP ' + r.status);
-        return r.json();
-    }).then(data => {
-        importPendingFeatures = parseGeoJSONForPreview(data);
-        if (importPendingFeatures.length === 0) { alert('No compatible features found.'); return; }
-        renderPreview(importPendingFeatures);
-    }).catch(err => {
+    /* ── Detect format from URL extension ────── */
+    const urlLower = url.split('?')[0].toLowerCase();
+    const isGPXUrl = urlLower.endsWith('.gpx');
+    const isKmlUrl = urlLower.endsWith('.kml');
+    const isKmzUrl = urlLower.endsWith('.kmz');
+
+    function fetchAsText() {
+        return fetch(url).then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.text(); });
+    }
+    function fetchAsBinary() {
+        return fetch(url).then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.arrayBuffer(); });
+    }
+
+    function handleError(err) {
         console.error('URL import failed:', err);
-        alert('Failed to fetch GeoJSON from URL.\n' + err.message);
-    }).finally(() => { btn.disabled = false; btn.textContent = 'Fetch & Import'; });
+        alert('Failed to fetch data from URL.\n' + err.message);
+        btn.disabled = false; btn.textContent = 'Fetch & Import';
+    }
+
+    /* ── GPX URL ─────────────────────────────── */
+    if (isGPXUrl) {
+        fetchAsText().then(gpxText => {
+            importPendingFeatures = parseGPX(gpxText);
+            if (importPendingFeatures.length === 0) { alert('No compatible features found in GPX.'); return; }
+            renderPreview(importPendingFeatures);
+        }).catch(handleError).finally(() => { btn.disabled = false; btn.textContent = 'Fetch & Import'; });
+        return;
+    }
+
+    /* ── KML URL ─────────────────────────────── */
+    if (isKmlUrl) {
+        fetchAsText().then(kmlText => {
+            importPendingFeatures = parseKML(kmlText);
+            if (importPendingFeatures.length === 0) { alert('No compatible features found in KML.'); return; }
+            renderPreview(importPendingFeatures);
+        }).catch(handleError).finally(() => { btn.disabled = false; btn.textContent = 'Fetch & Import'; });
+        return;
+    }
+
+    /* ── KMZ URL (zipped) ────────────────────── */
+    if (isKmzUrl) {
+        if (typeof JSZip === 'undefined') { alert('JSZip library not loaded. Please refresh the page and try again.'); btn.disabled = false; btn.textContent = 'Fetch & Import'; return; }
+        fetchAsBinary().then(buf => JSZip.loadAsync(buf))
+            .then(zip => {
+                const kmlFile = Object.keys(zip.files).find(f => f.toLowerCase().endsWith('.kml'));
+                if (!kmlFile) throw new Error('No KML file found inside KMZ');
+                return zip.files[kmlFile].async('string');
+            }).then(kmlText => {
+                importPendingFeatures = parseKML(kmlText);
+                if (importPendingFeatures.length === 0) { alert('No compatible features found in KMZ.'); return; }
+                renderPreview(importPendingFeatures);
+            }).catch(handleError).finally(() => { btn.disabled = false; btn.textContent = 'Fetch & Import'; });
+        return;
+    }
+
+    /* ── Generic: try GeoJSON → KML → GPX ────── */
+    const CORS_PROXIES = ['', 'https://corsproxy.io/?', 'https://api.allorigins.win/raw?url='];
+
+    function tryFetchWithProxy(proxyIdx) {
+        const target = CORS_PROXIES[proxyIdx] ? CORS_PROXIES[proxyIdx] + encodeURIComponent(url) : url;
+        return fetch(target).then(r => {
+            if (!r.ok) throw new Error('HTTP ' + r.status);
+            return r.text().then(t => {
+                if (t.includes('<kml') || t.includes('<Document') || t.includes('<Placemark')) return { text: t, format: 'kml' };
+                if (t.includes('<gpx')) return { text: t, format: 'gpx' };
+                try { JSON.parse(t); return { text: t, format: 'geojson' }; } catch (_) {}
+                return { text: t, format: 'unknown' };
+            });
+        });
+    }
+
+    function attemptImport(proxyIdx) {
+        if (proxyIdx >= CORS_PROXIES.length) {
+            btn.disabled = false; btn.textContent = 'Fetch & Import';
+            alert('Could not import data from this URL.\nMake sure the URL points to a GeoJSON, KML, or GPX file.');
+            return;
+        }
+        tryFetchWithProxy(proxyIdx).then(result => {
+            let parsed = false;
+            if (result.format === 'geojson') {
+                try { importPendingFeatures = parseGeoJSONForPreview(JSON.parse(result.text)); parsed = importPendingFeatures.length > 0; } catch (_) {}
+            } else if (result.format === 'kml') {
+                try { importPendingFeatures = parseKML(result.text); parsed = importPendingFeatures.length > 0; } catch (_) {}
+            } else if (result.format === 'gpx') {
+                try { importPendingFeatures = parseGPX(result.text); parsed = importPendingFeatures.length > 0; } catch (_) {}
+            }
+            if (parsed) { renderPreview(importPendingFeatures); btn.disabled = false; btn.textContent = 'Fetch & Import'; }
+            else { attemptImport(proxyIdx + 1); }
+        }).catch(() => attemptImport(proxyIdx + 1));
+    }
+
+    attemptImport(0);
 }
 
 /* ── Save Modal ────────────────────────────────── */
@@ -1712,6 +1970,7 @@ document.addEventListener('keydown', e => {
     if ((e.ctrlKey || e.metaKey) && (e.key === 'y' || (e.key === 'z' && e.shiftKey))) { e.preventDefault(); redo(); return; }
     switch (e.key) {
         case 'Escape':
+            if (!$('#proxy-modal').classList.contains('hidden')) { closeProxyModal(); break; }
             if (!$('#import-modal').classList.contains('hidden')) { closeImportModal(); break; }
             if (!$('#save-modal').classList.contains('hidden')) { $('#save-modal').classList.add('hidden'); break; }
             if (S.tool === 'polyline') cancelPolyline();
@@ -1795,6 +2054,7 @@ let cfgSnapEdge = true;
 function makeDraggable(el, handleEl, id) {
     let isDragging = false, startX, startY, origLeft, origTop;
     el.classList.add('draggable');
+    el.dataset.draggableId = id;
 
     function startDrag(e) {
         if (e.button && e.button !== 0) return;
@@ -1848,6 +2108,9 @@ function makeDraggable(el, handleEl, id) {
         document.removeEventListener('touchmove', onMove);
         document.removeEventListener('touchend', endDrag);
         saveLayout();
+        /* Prevent the document click handler from immediately closing panels */
+        window._justDraggedPanel = true;
+        setTimeout(function () { window._justDraggedPanel = false; }, 100);
     }
 
     handleEl.addEventListener('mousedown', startDrag);
@@ -2031,6 +2294,161 @@ function savePreset() {
 })();
 
 /* =====================================================
+   Proxy Setup Modal — OS Detection & Management
+   ===================================================== */
+let proxyPendingUrl = null;   /* Google Maps URL to retry after proxy starts */
+let proxyPollTimer = null;    /* interval ID for polling proxy status */
+
+function detectProxyOS() {
+    const ua = navigator.userAgent || '';
+    if (/Win/i.test(ua)) return 'Windows';
+    if (/Mac/i.test(ua)) return 'macOS';
+    if (/Linux/i.test(ua)) return 'Linux';
+    if (/Android/i.test(ua)) return 'Android';
+    if (/iPhone|iPad|iPod/i.test(ua)) return 'iOS';
+    return 'Unknown';
+}
+
+function openProxyModal(pendingUrl) {
+    proxyPendingUrl = pendingUrl || null;
+    const modal = $('#proxy-modal');
+    modal.classList.remove('hidden');
+
+    /* Detect OS and set instructions */
+    const os = detectProxyOS();
+    $('#proxy-os-name').textContent = os;
+    document.body.classList.remove('proxy-show-win', 'proxy-show-unix');
+    if (/Windows/i.test(os)) {
+        document.body.classList.add('proxy-show-win');
+    } else {
+        document.body.classList.add('proxy-show-unix');
+    }
+
+    /* Reset status area */
+    const statusEl = $('#proxy-status-text');
+    statusEl.textContent = '⏳ Waiting for proxy…';
+    statusEl.className = '';
+    $('#proxy-status-detail').textContent = 'Run the setup script, then click "Check Proxy Status".';
+    $('#proxy-check-btn').style.display = '';
+    $('#proxy-retry-btn').style.display = 'none';
+}
+
+function closeProxyModal() {
+    $('#proxy-modal').classList.add('hidden');
+    if (proxyPollTimer) { clearInterval(proxyPollTimer); proxyPollTimer = null; }
+    proxyPendingUrl = null;
+}
+
+function checkProxyStatus() {
+    const statusEl = $('#proxy-status-text');
+    const detailEl = $('#proxy-status-detail');
+    statusEl.textContent = '🔄 Checking proxy…';
+    statusEl.className = '';
+    detailEl.textContent = 'Connecting to localhost:8080…';
+
+    fetch('http://localhost:8080/kml?url=' + encodeURIComponent('https://www.google.com/maps'), { mode: 'no-cors' })
+        .then(() => {
+            /* With no-cors we can't read the response, but if it doesn't throw, proxy is up.
+               Do a second opaque HEAD-like check by fetching a known-bad URL —
+               if we get *any* response (even 400), the proxy is alive. */
+            return fetch('http://localhost:8080/');
+        })
+        .then(r => {
+            /* Proxy returned anything — it's alive */
+            statusEl.textContent = '✅ Proxy is running!';
+            statusEl.className = 'proxy-ok';
+            detailEl.textContent = 'Connected to localhost:8080';
+            $('#proxy-check-btn').style.display = 'none';
+            $('#proxy-retry-btn').style.display = '';
+
+            /* Auto-stop polling */
+            if (proxyPollTimer) { clearInterval(proxyPollTimer); proxyPollTimer = null; }
+        })
+        .catch(() => {
+            /* Also try direct fetch to the proxy root */
+            fetch('http://localhost:8080/', { mode: 'no-cors' })
+                .then(() => {
+                    statusEl.textContent = '✅ Proxy is running!';
+                    statusEl.className = 'proxy-ok';
+                    detailEl.textContent = 'Connected to localhost:8080';
+                    $('#proxy-check-btn').style.display = 'none';
+                    $('#proxy-retry-btn').style.display = '';
+                    if (proxyPollTimer) { clearInterval(proxyPollTimer); proxyPollTimer = null; }
+                })
+                .catch(() => {
+                    statusEl.textContent = '❌ Proxy not running yet';
+                    statusEl.className = 'proxy-fail';
+                    detailEl.textContent = 'Make sure you ran the setup script and it says "Proxy is running". Then try again.';
+                });
+        });
+}
+
+function startProxyPolling() {
+    if (proxyPollTimer) clearInterval(proxyPollTimer);
+    proxyPollTimer = setInterval(checkProxyStatus, 3000);
+    checkProxyStatus();
+}
+
+function retryProxyImport() {
+    if (!proxyPendingUrl) {
+        closeProxyModal();
+        return;
+    }
+    const statusEl = $('#proxy-status-text');
+    const detailEl = $('#proxy-status-detail');
+    statusEl.textContent = '🔄 Retrying import…';
+    statusEl.className = '';
+    detailEl.textContent = 'Fetching KML through local proxy…';
+
+    const mid = parseGoogleMapsUrl(proxyPendingUrl);
+    if (mid) {
+        const kmlUrl = 'https://www.google.com/maps/d/u/0/kml?mid=' + mid + '&forcekml=1';
+        fetch('http://localhost:8080/kml?url=' + encodeURIComponent(kmlUrl))
+            .then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.text(); })
+            .then(kmlText => {
+                importPendingFeatures = parseKML(kmlText);
+                if (importPendingFeatures.length === 0) { alert('No features found in this Google Map.'); closeProxyModal(); return; }
+                renderPreview(importPendingFeatures);
+                closeProxyModal();
+            })
+            .catch(err => {
+                statusEl.textContent = '❌ Retry failed';
+                statusEl.className = 'proxy-fail';
+                detailEl.textContent = 'Error: ' + (err.message || 'unknown') + '. Make sure the proxy is running.';
+            });
+    } else {
+        /* Not a Google Maps URL — just try direct fetch through proxy */
+        fetch('http://localhost:8080/kml?url=' + encodeURIComponent(proxyPendingUrl))
+            .then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.text(); })
+            .then(text => {
+                try {
+                    importPendingFeatures = parseKML(text);
+                } catch (_) {
+                    importPendingFeatures = parseGeoJSONForPreview(JSON.parse(text));
+                }
+                if (importPendingFeatures.length === 0) { alert('No features found.'); closeProxyModal(); return; }
+                renderPreview(importPendingFeatures);
+                closeProxyModal();
+            })
+            .catch(err => {
+                statusEl.textContent = '❌ Retry failed';
+                statusEl.className = 'proxy-fail';
+                detailEl.textContent = 'Error: ' + (err.message || 'unknown');
+            });
+    }
+}
+
+/* Wire up proxy modal buttons */
+(function wireProxyModal() {
+    $('#proxy-modal-close').addEventListener('click', closeProxyModal);
+    $('#proxy-modal').addEventListener('click', e => {
+        if (e.target === $('#proxy-modal')) closeProxyModal();
+    });
+    $('#proxy-check-btn').addEventListener('click', checkProxyStatus);
+    $('#proxy-retry-btn').addEventListener('click', retryProxyImport);
+})();
+
+/* =====================================================
    Init
    ===================================================== */
 $('#zoom-display').textContent = 'Zoom: ' + map.getZoom();
@@ -2059,8 +2477,9 @@ $('#btn-settings').addEventListener('click', (e) => {
     panel.classList.toggle('hidden');
     document.body.classList.toggle('layout-editing', isOpening);
 });
-/* Close settings popup when clicking outside */
+/* Close settings popup when clicking outside (but not right after a panel drag) */
 document.addEventListener('click', (e) => {
+    if (window._justDraggedPanel) return;
     const panel = $('#settings-panel');
     if (panel.classList.contains('hidden')) return;
     if (e.target.closest('#settings-panel') || e.target.closest('#btn-settings')) return;

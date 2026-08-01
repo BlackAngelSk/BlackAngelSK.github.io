@@ -116,6 +116,79 @@
         </div>
     </div>
 
+    <!-- Proxy Setup Modal -->
+    <div id="proxy-modal" class="hidden">
+        <div id="proxy-modal-content">
+            <div class="proxy-header">
+                <h3>🔧 Proxy Setup Required</h3>
+                <button id="proxy-modal-close" title="Close (Esc)">✕</button>
+            </div>
+            <div class="proxy-body">
+                <p class="proxy-explain">To import Google Maps, a local proxy server is needed to bypass CORS restrictions. This script will <strong>auto-install Node.js</strong> if you don't have it, download the proxy, and start it.</p>
+
+                <div class="proxy-os-section">
+                    <div class="proxy-os-label">Your platform: <strong id="proxy-os-name">Detecting…</strong></div>
+                </div>
+
+                <div class="proxy-step">
+                    <div class="proxy-step-num">1</div>
+                    <div class="proxy-step-content">
+                        <div class="proxy-step-title">Download the setup script</div>
+                        <div class="proxy-step-desc">Click the button for your OS. It handles everything automatically.</div>
+                        <div class="proxy-download-row">
+                            <a id="proxy-dl-bat" class="proxy-download-btn proxy-dl-win" href="setup-proxy.bat" download>
+                                <span class="proxy-dl-icon">🪟</span>
+                                <span>Windows (.bat)</span>
+                            </a>
+                            <a id="proxy-dl-sh" class="proxy-download-btn proxy-dl-unix" href="setup-proxy.sh" download>
+                                <span class="proxy-dl-icon">🐧</span>
+                                <span>Linux / Mac (.sh)</span>
+                            </a>
+                            <a class="proxy-download-btn proxy-dl-all" href="proxy.js" download title="Download proxy.js directly">
+                                <span class="proxy-dl-icon">📄</span>
+                                <span>proxy.js</span>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="proxy-step">
+                    <div class="proxy-step-num">2</div>
+                    <div class="proxy-step-content">
+                        <div class="proxy-step-title">Run the script</div>
+                        <div class="proxy-step-desc" id="proxy-run-instructions">
+                            <span class="proxy-cmd-win">Double-click <code>setup-proxy.bat</code> or run in CMD:<br><code>setup-proxy.bat</code></span>
+                            <span class="proxy-cmd-unix">Open a terminal and run:<br><code>bash setup-proxy.sh</code></span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="proxy-step">
+                    <div class="proxy-step-num">3</div>
+                    <div class="proxy-step-content">
+                        <div class="proxy-step-title">Come back here</div>
+                        <div class="proxy-step-desc">Once the script says "Proxy is running", click the button below to check and retry your import.</div>
+                    </div>
+                </div>
+
+                <div class="proxy-status-area">
+                    <div id="proxy-status-text">⏳ Waiting for proxy…</div>
+                    <div class="proxy-status-actions">
+                        <button id="proxy-check-btn" class="import-action-btn">🔍 Check Proxy Status</button>
+                        <button id="proxy-retry-btn" class="import-action-btn import-btn-primary" style="display:none">🔄 Retry Import</button>
+                    </div>
+                    <div id="proxy-status-detail" class="proxy-status-detail"></div>
+                </div>
+
+                <div class="proxy-footer-links">
+                    <span>Manual: <code>node proxy.js</code> (port 8080)</span>
+                    <span>·</span>
+                    <a href="https://nodejs.org" target="_blank" rel="noopener">Get Node.js</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Import Modal -->
     <div id="import-modal" class="hidden">
         <div id="import-modal-content">
@@ -132,10 +205,10 @@
             <div class="import-tab-content active" id="import-tab-file">
                 <div id="import-dropzone">
                     <span class="dropzone-icon">📄</span>
-                    <p>Drop a GeoJSON or KML file here</p>
+                    <p>Drop a GeoJSON, KML, or GPX file here</p>
                     <p class="dropzone-sub">or</p>
                     <button id="import-browse-btn" class="import-action-btn">Browse Files</button>
-                    <input type="file" id="file-input" accept=".geojson,.json,.kml,.kmz" class="hidden">
+                    <input type="file" id="file-input" accept=".geojson,.json,.kml,.kmz,.gpx" class="hidden">
                 </div>
             </div>
             <!-- URL Tab -->
@@ -144,7 +217,7 @@
                     <label>Paste a URL:</label>
                     <input type="text" id="import-url-input" placeholder="Google Maps URL or GeoJSON URL" autocomplete="off" spellcheck="false">
                     <button id="import-url-btn" class="import-action-btn">Fetch & Import</button>
-                    <p class="import-url-hint">Supports GeoJSON URLs. For Google Maps: download the KML file (three dots → Download KML) and import via the File tab instead.</p>
+                    <p class="import-url-hint">Supports GeoJSON, KML/KMZ, and GPX URLs. Google Maps URLs are auto-detected. Direct links to files from GPS apps (Komoot, Wikiloc, Strava, etc.) also work.</p>
                 </div>
             </div>
             <!-- Presets Tab -->
@@ -189,7 +262,7 @@
         <div class="bar-sep"></div>
         <button id="btn-lang" class="bar-btn" title="Change map language">🌍 EN</button>
         <div class="bar-sep"></div>
-        <button id="btn-fullscreen" class="bar-btn" title="Toggle fullscreen (F)">⛶ Fullscreen</button>
+        <!-- Fullscreen button moved to Leaflet control near zoom buttons -->
         <div class="bar-sep"></div>
         <button id="btn-settings" class="bar-btn" title="Open layout settings">⚙ Layout</button>
         <div class="bar-sep"></div>
@@ -205,6 +278,7 @@
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script src="map.js?v=5"></script>
 </body>
 </html>
