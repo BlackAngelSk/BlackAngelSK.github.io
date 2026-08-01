@@ -1,82 +1,153 @@
 <!DOCTYPE html>
 <html lang="en">
-    <head>
-        <title>payday 2 Builds</title>
-        <link rel="stylesheet"  type="text/css" href="cfg.css">
-        <script defer src="style/script.js"></script>
-        <meta charset="UTF-8">
-        <mete name="viewport" content="width=device-width, initial-scale=1.0">
-        <style>
-            body{
-                background-image: url(payday2.jpg);
-                background-repeat: no-repeat;
-                background-attachment: fixed;
-                background-size: cover;
-            }
-        </style>
-    </head>
-    <body>  
-        <div class="gallery ">
-            <section>
-                <nav>
-                    <h3>Someone Builds</h3>
-                    <div class="parts">
-                    <a target="_blank" href="https://pd2builder.netlify.app/?s=383c1000d010-6V0010zs000158&p=e&a=0&t=6&d=3">Op anarchist</a>
-                    </div>
-                </nav>
-                <nav>
-                    <h3>My Builds</h3>
-                    <div class="parts">
-                    <a target="_black" href="https://pd2builder.netlify.app/?s=1G3I3000c10-410gF00507g000100">Anarchist</a>
-                    </div>
-                </nav>
-            </section>
-            <section>
-                <h3>Anarchist - 1</h3>
-            <div class="grid">
-                <h1>Martermind</h1>
-                <img src="payday\anarchist/1 - small.png"></a>
-                <h1>Enforcer</h1>
-                <img src="payday\anarchist/2 - small.png"></a>
-                <h1>Technician</h1>
-                <img src="payday\anarchist/3 - small.png"></a>
-                <h1>Ghost</h1>
-                <img src="payday\anarchist/4 - small.png"></a>
-                <h1>Fugitive</h1>
-                <img src="payday\anarchist/5 - small.png"></a>
-            </div>
-        </section>
-        <section>
-                <h3>Anarchist 2</h3>
-            <div class="grid">
-                <h1>Martermind</h1>
-                <img src="payday\anarchist v2/1 – kópia.png">
-                <h1>Enforcer</h1>
-                <img src="payday\anarchist v2/2 - kopia.png">
-                <h1>Technician</h1>
-                <img src="payday\anarchist v2/3 - kopia.png">
-                <h1>Ghost</h1>
-                <img src="payday\anarchist v2/4 - kopia.png">
-                <h1>Fugitive</h1>
-                <img src="payday\anarchist v2/5 - kopia.png">
-            </div>
-        </section>
-        <section>
-                <h3>Anarchist 3</h3>
-            <div class="grid">
-                <h1>Martermind</h1>
-                <img src="payday\anarchist v3/1 - kopia.png">
-                <h1>Enforcer</h1>
-                <img src="payday\anarchist v3/2  - kopia.png">
-                <h1>Technician</h1>
-                <img src="payday\anarchist v3/3  - kopia.png">
-                <h1>Ghost</h1>
-                <img src="payday\anarchist v3/4  - kopia.png">
-                <h1>Fugitive</h1>
-                <img src="payday\anarchist v3/5  - kopia.png">
-            </div>
-            by ivan
-        </section>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Payday 2 — Builds</title>
+    <link rel="stylesheet" href="cfg.css">
+</head>
+<body>
+
+    <!-- Header -->
+    <header>
+        <a href="index.html" class="logo">Payday <span>2</span></a>
+        <nav>
+            <a href="index.html">Home</a>
+            <a href="bulds.html" class="active">Builds</a>
+        </nav>
+    </header>
+
+    <!-- Builds Section -->
+    <div class="section" style="padding-top: 120px;">
+        <div class="section-header">
+            <h2>Skill <span>Builds</span></h2>
+            <div class="divider"></div>
+            <p>Anarchist perk deck builds — click a card to expand the skill trees. Click any image to view full size.</p>
         </div>
-    </body>
+
+        <!-- External Build Links -->
+        <div class="builds-links" style="margin-bottom: 50px;">
+            <a href="https://pd2builder.netlify.app/?s=383c1000d010-6V0010zs000158&p=e&a=0&t=6&d=3" target="_blank" class="build-link-card">
+                <div class="icon">🔗</div>
+                <h3>Community Build</h3>
+                <p>Anarchist — Op version</p>
+            </a>
+            <a href="https://pd2builder.netlify.app/?s=1G3I3000c10-410gF00507g000100" target="_blank" class="build-link-card">
+                <div class="icon">🔗</div>
+                <h3>My Build</h3>
+                <p>Anarchist — Personal</p>
+            </a>
+        </div>
+
+        <!-- Build 1: Anarchist -->
+        <div class="build-card open">
+            <div class="build-card-header" onclick="toggleCard(this)">
+                <h3>Anarchist <span>— 1</span></h3>
+                <span class="toggle-icon">▼</span>
+            </div>
+            <div class="build-card-body">
+                <div class="skill-tree-grid">
+                    <div class="skill-tree-item">
+                        <h4>Mastermind</h4>
+                        <img src="payday/anarchist/1 - small.png" alt="Mastermind skill tree" loading="lazy">
+                    </div>
+                    <div class="skill-tree-item">
+                        <h4>Enforcer</h4>
+                        <img src="payday/anarchist/2 - small.png" alt="Enforcer skill tree" loading="lazy">
+                    </div>
+                    <div class="skill-tree-item">
+                        <h4>Technician</h4>
+                        <img src="payday/anarchist/3 - small.png" alt="Technician skill tree" loading="lazy">
+                    </div>
+                    <div class="skill-tree-item">
+                        <h4>Ghost</h4>
+                        <img src="payday/anarchist/4 - small.png" alt="Ghost skill tree" loading="lazy">
+                    </div>
+                    <div class="skill-tree-item">
+                        <h4>Fugitive</h4>
+                        <img src="payday/anarchist/5 - small.png" alt="Fugitive skill tree" loading="lazy">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Build 2: Anarchist v2 -->
+        <div class="build-card">
+            <div class="build-card-header" onclick="toggleCard(this)">
+                <h3>Anarchist <span>— 2</span></h3>
+                <span class="toggle-icon">▼</span>
+            </div>
+            <div class="build-card-body">
+                <div class="skill-tree-grid">
+                    <div class="skill-tree-item">
+                        <h4>Mastermind</h4>
+                        <img src="payday/anarchist v2/1 - kópia.png" alt="Mastermind skill tree" loading="lazy">
+                    </div>
+                    <div class="skill-tree-item">
+                        <h4>Enforcer</h4>
+                        <img src="payday/anarchist v2/2 - kopia.png" alt="Enforcer skill tree" loading="lazy">
+                    </div>
+                    <div class="skill-tree-item">
+                        <h4>Technician</h4>
+                        <img src="payday/anarchist v2/3 - kopia.png" alt="Technician skill tree" loading="lazy">
+                    </div>
+                    <div class="skill-tree-item">
+                        <h4>Ghost</h4>
+                        <img src="payday/anarchist v2/4 - kopia.png" alt="Ghost skill tree" loading="lazy">
+                    </div>
+                    <div class="skill-tree-item">
+                        <h4>Fugitive</h4>
+                        <img src="payday/anarchist v2/5 - kopia.png" alt="Fugitive skill tree" loading="lazy">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Build 3: Anarchist v3 -->
+        <div class="build-card">
+            <div class="build-card-header" onclick="toggleCard(this)">
+                <h3>Anarchist <span>— 3</span></h3>
+                <span class="toggle-icon">▼</span>
+            </div>
+            <div class="build-card-body">
+                <div class="byline">by Ivan</div>
+                <div class="skill-tree-grid">
+                    <div class="skill-tree-item">
+                        <h4>Mastermind</h4>
+                        <img src="payday/anarchist v3/1 - kopia.png" alt="Mastermind skill tree" loading="lazy">
+                    </div>
+                    <div class="skill-tree-item">
+                        <h4>Enforcer</h4>
+                        <img src="payday/anarchist v3/2  - kopia.png" alt="Enforcer skill tree" loading="lazy">
+                    </div>
+                    <div class="skill-tree-item">
+                        <h4>Technician</h4>
+                        <img src="payday/anarchist v3/3  - kopia.png" alt="Technician skill tree" loading="lazy">
+                    </div>
+                    <div class="skill-tree-item">
+                        <h4>Ghost</h4>
+                        <img src="payday/anarchist v3/4  - kopia.png" alt="Ghost skill tree" loading="lazy">
+                    </div>
+                    <div class="skill-tree-item">
+                        <h4>Fugitive</h4>
+                        <img src="payday/anarchist v3/5  - kopia.png" alt="Fugitive skill tree" loading="lazy">
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer>
+        <p>Payday 2 Builds & Reference — Fan-made project</p>
+    </footer>
+
+    <!-- Lightbox -->
+    <div id="lightbox">
+        <button id="lightbox-close" onclick="closeLightbox()">✕</button>
+        <img src="" alt="Full size skill tree">
+    </div>
+
+    <script src="script.js"></script>
+</body>
 </html>
