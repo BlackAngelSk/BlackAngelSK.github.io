@@ -1,0 +1,420 @@
+@import url('https://fonts.googleapis.com/css2?family=Roboto+Condensed:wght@400;600;700&family=Oswald:wght@400;500;600;700&display=swap');
+
+*, *::before, *::after {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+:root {
+    --red: #c9302c;
+    --red-dark: #a12622;
+    --red-glow: rgba(201, 48, 44, 0.3);
+    --blue: #4a90d9;
+    --dark-bg: #1a1a1e;
+    --card-bg: #242428;
+    --card-border: #333;
+    --text-primary: #f0f0f0;
+    --text-secondary: #aaa;
+    --text-dim: #666;
+}
+
+html {
+    scroll-behavior: smooth;
+}
+
+body {
+    background: var(--dark-bg);
+    color: var(--text-primary);
+    font-family: 'Roboto Condensed', sans-serif;
+    line-height: 1.6;
+    overflow-x: hidden;
+}
+
+/* ============ HEADER ============ */
+.header {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 64px;
+    background: rgba(26, 26, 30, 0.95);
+    backdrop-filter: blur(10px);
+    border-bottom: 1px solid var(--card-border);
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 30px;
+}
+
+.header .logo {
+    font-family: 'Oswald', sans-serif;
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--red);
+    text-decoration: none;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+}
+
+.header .logo span {
+    color: var(--text-primary);
+}
+
+.header nav {
+    display: flex;
+    gap: 6px;
+}
+
+.header nav a {
+    text-decoration: none;
+    color: var(--text-secondary);
+    padding: 8px 16px;
+    border-radius: 6px;
+    font-family: 'Oswald', sans-serif;
+    font-size: 14px;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    transition: all 0.3s ease;
+    border: 1px solid transparent;
+}
+
+.header nav a:hover,
+.header nav a.active {
+    color: var(--red);
+    border-color: var(--red);
+    background: rgba(201, 48, 44, 0.08);
+}
+
+/* ============ HERO ============ */
+.hero {
+    position: relative;
+    width: 100%;
+    padding: 140px 20px 60px;
+    text-align: center;
+    background: linear-gradient(180deg, #221a1a 0%, var(--dark-bg) 100%);
+}
+
+.hero h1 {
+    font-family: 'Oswald', sans-serif;
+    font-size: clamp(36px, 6vw, 56px);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 4px;
+    color: var(--text-primary);
+    margin-bottom: 8px;
+}
+
+.hero h1 span {
+    color: var(--red);
+}
+
+.hero p {
+    font-size: 18px;
+    color: var(--text-secondary);
+    max-width: 500px;
+    margin: 0 auto;
+}
+
+/* ============ GRID ============ */
+.card-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    gap: 20px;
+    padding: 30px;
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+.card-grid.map-grid {
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+}
+
+/* ============ CARDS ============ */
+.card {
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    border-radius: 12px;
+    padding: 14px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    text-align: center;
+}
+
+.card:hover {
+    transform: translateY(-4px);
+    border-color: var(--red);
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.4);
+}
+
+.card img {
+    width: 100%;
+    border-radius: 10px;
+    transition: transform 0.3s ease;
+}
+
+.card:hover img {
+    transform: scale(1.05);
+}
+
+.card .card-name {
+    margin-top: 10px;
+    font-family: 'Oswald', sans-serif;
+    font-size: 16px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+/* ============ CHARACTER DETAILS PANEL ============ */
+.details-panel {
+    max-width: 900px;
+    margin: 20px auto 60px;
+    padding: 30px;
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    border-radius: 16px;
+    display: none;
+}
+
+.details-panel.visible {
+    display: block;
+}
+
+.details-panel .panel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 24px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid var(--card-border);
+}
+
+.details-panel .panel-header h2 {
+    font-family: 'Oswald', sans-serif;
+    font-size: 28px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    color: var(--red);
+}
+
+.close-btn {
+    padding: 8px 20px;
+    background: transparent;
+    color: var(--text-secondary);
+    border: 1px solid var(--card-border);
+    border-radius: 6px;
+    font-family: 'Oswald', sans-serif;
+    font-size: 14px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.close-btn:hover {
+    color: var(--red);
+    border-color: var(--red);
+}
+
+/* ============ UPGRADE SECTIONS ============ */
+.upgrade-section {
+    margin-bottom: 28px;
+}
+
+.upgrade-section:last-child {
+    margin-bottom: 0;
+}
+
+.upgrade-section h3 {
+    font-family: 'Oswald', sans-serif;
+    font-size: 18px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--text-primary);
+    margin-bottom: 14px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--card-border);
+}
+
+.upgrade-section h3 .weapon-tag {
+    color: var(--red);
+}
+
+.upgrade-items {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 14px;
+}
+
+.upgrade-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 12px;
+    background: rgba(255, 255, 255, 0.03);
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.upgrade-item img {
+    width: 64px;
+    height: 64px;
+    border-radius: 6px;
+    object-fit: cover;
+    flex-shrink: 0;
+}
+
+.upgrade-item p {
+    font-size: 14px;
+    color: var(--text-secondary);
+    line-height: 1.5;
+}
+
+/* ============ DIFFICULTY BUTTONS ============ */
+.difficulty-grid {
+    display: flex;
+    justify-content: center;
+    gap: 12px;
+    padding: 20px 30px;
+    flex-wrap: wrap;
+}
+
+.diff-btn {
+    padding: 12px 32px;
+    background: var(--card-bg);
+    color: var(--text-primary);
+    border: 1px solid var(--card-border);
+    border-radius: 8px;
+    font-family: 'Oswald', sans-serif;
+    font-size: 16px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.diff-btn:hover {
+    border-color: var(--red);
+    color: var(--red);
+    background: rgba(201, 48, 44, 0.08);
+}
+
+.diff-btn.selected {
+    border-color: var(--red);
+    color: var(--red);
+    background: rgba(201, 48, 44, 0.12);
+}
+
+/* ============ SECTION HEADING ============ */
+.section-heading {
+    text-align: center;
+    padding: 40px 20px 0;
+}
+
+.section-heading h2 {
+    font-family: 'Oswald', sans-serif;
+    font-size: 28px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 3px;
+    color: var(--text-primary);
+}
+
+.section-heading .divider {
+    width: 50px;
+    height: 3px;
+    background: var(--red);
+    margin: 12px auto 0;
+    border-radius: 2px;
+}
+
+/* ============ FOOTER ============ */
+footer {
+    width: 100%;
+    padding: 24px 30px;
+    background: rgba(20, 20, 22, 0.95);
+    border-top: 1px solid var(--card-border);
+    text-align: center;
+    color: var(--text-dim);
+    font-size: 13px;
+    line-height: 1.8;
+}
+
+footer a {
+    color: var(--red);
+    text-decoration: none;
+}
+
+footer a:hover {
+    color: var(--text-primary);
+}
+
+/* ============ STEP INDICATOR ============ */
+.step-indicator {
+    display: flex;
+    justify-content: center;
+    gap: 12px;
+    padding: 20px;
+}
+
+.step {
+    padding: 8px 20px;
+    border-radius: 20px;
+    font-size: 13px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--text-dim);
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    transition: all 0.3s ease;
+}
+
+.step.active {
+    color: var(--text-primary);
+    border-color: var(--red);
+    background: rgba(201, 48, 44, 0.1);
+}
+
+.step.done {
+    color: var(--red);
+    border-color: var(--red-dark);
+}
+
+/* ============ HIDDEN ============ */
+.hidden {
+    display: none !important;
+}
+
+/* ============ RESPONSIVE ============ */
+@media (max-width: 700px) {
+    .header {
+        padding: 0 16px;
+    }
+
+    .header nav a {
+        padding: 6px 10px;
+        font-size: 12px;
+    }
+
+    .card-grid {
+        grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+        gap: 12px;
+        padding: 20px 16px;
+    }
+
+    .upgrade-items {
+        grid-template-columns: 1fr;
+    }
+
+    .details-panel {
+        margin: 10px 16px 40px;
+        padding: 20px;
+    }
+}

@@ -1,184 +1,174 @@
 <!DOCTYPE html>
-<html lang="sk">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TF2 MVM - Výber mapy</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            background-color: #1e1e1e;
-            color: white;
-            text-align: center;
-            margin: 0;
-            padding: 0;
-        }
-        h1, h2 {
-            margin-top: 20px;
-        }
-        .map-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 20px;
-            padding: 20px;
-        }
-        .map-card {
-            background-color: #2b2b2b;
-            border-radius: 10px;
-            padding: 10px;
-            cursor: pointer;
-            transition: transform 0.2s ease, box-shadow 0.2s ease;
-        }
-        .map-card:hover {
-            transform: scale(1.1);
-            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.5);
-        }
-        .map-card img {
-            width: 100%;
-            border-radius: 8px;
-        }
-        .map-name {
-            margin-top: 10px;
-            font-size: 18px;
-            font-weight: bold;
-        }
-        .hidden {
-            display: none;
-        }
-        .character-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-            gap: 20px;
-            padding: 20px;
-        }
-        .character-card {
-            background-color: #2b2b2b;
-            border-radius: 10px;
-            padding: 10px;
-            cursor: pointer;
-            transition: transform 0.2s ease, box-shadow 0.2s ease;
-        }
-        .character-card:hover {
-            transform: scale(1.1);
-            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.5);
-        }
-        .character-card img {
-            width: 100%;
-            border-radius: 8px;
-        }
-        .character-name {
-            margin-top: 10px;
-            font-size: 18px;
-            font-weight: bold;
-        }
-        .footer {
-            margin-top: 40px;
-            padding: 10px;
-            background-color: #2b2b2b;
-            color: white;
-        }
-    </style>
+    <title>TF2 MvM — Map Selection</title>
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
-    <h1>Vyber si mapu pre MvM</h1>
-    <div class="map-grid">
-        <div class="map-card" onclick="selectMap('coalTown')">
-            <img src="images/maps/coal_town.jpg" alt="Coal Town">
-            <div class="map-name">Coal Town</div>
+    <!-- Header -->
+    <div class="header">
+        <a href="/index.html" class="logo">TF2 <span>MvM</span></a>
+        <nav>
+            <a href="tf2.html">Characters</a>
+            <a href="tf3.html" class="active">Maps</a>
+        </nav>
+    </div>
+
+    <!-- Hero -->
+    <div class="hero">
+        <h1>Choose Your <span>MvM</span> Map</h1>
+        <p>Select a map, then difficulty, then pick your class.</p>
+    </div>
+
+    <!-- Step Indicator -->
+    <div class="step-indicator">
+        <div class="step active" id="step1">1. Map</div>
+        <div class="step" id="step2">2. Difficulty</div>
+        <div class="step" id="step3">3. Class</div>
+    </div>
+
+    <!-- Step 1: Map Selection -->
+    <div id="map-section">
+        <div class="section-heading">
+            <h2>Select a Map</h2>
+            <div class="divider"></div>
         </div>
-        <div class="map-card" onclick="selectMap('decoy')">
-            <img src="images/maps/decoy.jpg" alt="Decoy">
-            <div class="map-name">Decoy</div>
-        </div>
-        <div class="map-card" onclick="selectMap('mannworks')">
-            <img src="images/maps/mannworks.jpg" alt="Mannworks">
-            <div class="map-name">Mannworks</div>
-        </div>
-        <div class="map-card" onclick="selectMap('bigrock')">
-            <img src="images/maps/bigrock.jpg" alt="Bigrock">
-            <div class="map-name">Bigrock</div>
-        </div>
-        <div class="map-card" onclick="selectMap('rottenburg')">
-            <img src="images/maps/rottenburg.jpg" alt="Rottenburg">
-            <div class="map-name">Rottenburg</div>
+        <div class="card-grid map-grid">
+            <div class="card" onclick="selectMap('coalTown')">
+                <img src="images/maps/Coal Town/quarry.jpg" alt="Coal Town">
+                <div class="card-name">Coal Town</div>
+            </div>
+            <div class="card" onclick="selectMap('decoy')">
+                <img src="images/maps/Decoy/Decoy.jpg" alt="Decoy">
+                <div class="card-name">Decoy</div>
+            </div>
+            <div class="card" onclick="selectMap('mannworks')">
+                <img src="images/maps/MannWorks/MannWorks.jpg" alt="Mannworks">
+                <div class="card-name">Mannworks</div>
+            </div>
+            <div class="card" onclick="selectMap('bigrock')">
+                <img src="images/maps/BigRock/BigRock.jpg" alt="Big Rock">
+                <div class="card-name">Big Rock</div>
+            </div>
+            <div class="card" onclick="selectMap('rottenburg')">
+                <img src="images/maps/Rottenburg/Rottenburg.jpg" alt="Rottenburg">
+                <div class="card-name">Rottenburg</div>
+            </div>
+            <div class="card" onclick="selectMap('manhattan')">
+                <img src="images/maps/Manhattan/Manhattan.jpg" alt="Manhattan">
+                <div class="card-name">Manhattan</div>
+            </div>
         </div>
     </div>
 
+    <!-- Step 2: Difficulty -->
     <div id="difficulty-section" class="hidden">
-        <h2>Vyber si obtiažnosť</h2>
-        <div>
-            <button onclick="selectDifficulty('normal')"></button>
-            <button onclick="selectDifficulty('advanced')">Pokročilá</button>
-            <button onclick="selectDifficulty('expert')">Expertná</button>
-            <button onclick="selectDifficulty('normal')">Normálna</button>
-            <button onclick="selectDifficulty('advanced')">Pokročilá</button>
-
+        <div class="section-heading">
+            <h2>Select Difficulty</h2>
+            <div class="divider"></div>
+        </div>
+        <div class="difficulty-grid">
+            <button class="diff-btn" onclick="selectDifficulty('normal')">Normal</button>
+            <button class="diff-btn" onclick="selectDifficulty('advanced')">Advanced</button>
+            <button class="diff-btn" onclick="selectDifficulty('expert')">Expert</button>
         </div>
     </div>
 
+    <!-- Step 3: Character Selection -->
     <div id="character-section" class="hidden">
-        <h2>Vyber si postavu</h2>
-        <div class="character-grid">
-            <div class="character-card" onclick="showDetails('scout')">
+        <div class="section-heading">
+            <h2>Select Your Class</h2>
+            <div class="divider"></div>
+        </div>
+        <div class="card-grid">
+            <div class="card" onclick="selectCharacter('scout')">
                 <img src="images/tokens/scouttoken.jpg" alt="Scout">
-                <div class="character-name">Scout</div>
+                <div class="card-name">Scout</div>
             </div>
-            <div class="character-card" onclick="showDetails('soldier')">
+            <div class="card" onclick="selectCharacter('soldier')">
                 <img src="images/tokens/soldiertoken.jpg" alt="Soldier">
-                <div class="character-name">Soldier</div>
+                <div class="card-name">Soldier</div>
             </div>
-            <div class="character-card" onclick="showDetails('pyro')">
+            <div class="card" onclick="selectCharacter('pyro')">
                 <img src="images/tokens/pyrotoken.jpg" alt="Pyro">
-                <div class="character-name">Pyro</div>
+                <div class="card-name">Pyro</div>
             </div>
-            <div class="character-card" onclick="showDetails('demoman')">
+            <div class="card" onclick="selectCharacter('demoman')">
                 <img src="images/tokens/demotoken.jpg" alt="Demoman">
-                <div class="character-name">Demoman</div>
+                <div class="card-name">Demoman</div>
             </div>
-            <div class="character-card" onclick="showDetails('heavy')">
+            <div class="card" onclick="selectCharacter('heavy')">
                 <img src="images/tokens/heavytoken.jpg" alt="Heavy">
-                <div class="character-name">Heavy</div>
+                <div class="card-name">Heavy</div>
             </div>
-            <div class="character-card" onclick="showDetails('engineer')">
+            <div class="card" onclick="selectCharacter('engineer')">
                 <img src="images/tokens/engitoken.jpg" alt="Engineer">
-                <div class="character-name">Engineer</div>
+                <div class="card-name">Engineer</div>
             </div>
-            <div class="character-card" onclick="showDetails('medic')">
+            <div class="card" onclick="selectCharacter('medic')">
                 <img src="images/tokens/medictoken.jpg" alt="Medic">
-                <div class="character-name">Medic</div>
+                <div class="card-name">Medic</div>
             </div>
-            <div class="character-card" onclick="showDetails('sniper')">
+            <div class="card" onclick="selectCharacter('sniper')">
                 <img src="images/tokens/snipertoken.jpg" alt="Sniper">
-                <div class="character-name">Sniper</div>
+                <div class="card-name">Sniper</div>
             </div>
-            <div class="character-card" onclick="showDetails('spy')">
+            <div class="card" onclick="selectCharacter('spy')">
                 <img src="images/tokens/spytoken.jpg" alt="Spy">
-                <div class="character-name">Spy</div>
+                <div class="card-name">Spy</div>
             </div>
         </div>
     </div>
+
+    <!-- Footer -->
+    <footer>
+        <p>Version 0.0.4 Alpha — Made by BlackAngelSK</p>
+    </footer>
 
     <script>
+        let selectedMap = null;
+        let selectedDifficulty = null;
+
         function selectMap(map) {
-            console.log("Vybraná mapa: " + map);
-            document.getElementById("difficulty-section").classList.remove("hidden");
-            document.getElementById("character-section").classList.add("hidden");
+            selectedMap = map;
+            document.getElementById('difficulty-section').classList.remove('hidden');
+            document.getElementById('character-section').classList.add('hidden');
+
+            // Update step indicator
+            document.getElementById('step1').classList.remove('active');
+            document.getElementById('step1').classList.add('done');
+            document.getElementById('step2').classList.add('active');
+            document.getElementById('step2').classList.remove('done');
+            document.getElementById('step3').classList.remove('active', 'done');
+
+            // Scroll to difficulty
+            document.getElementById('difficulty-section').scrollIntoView({ behavior: 'smooth', block: 'start' });
         }
 
         function selectDifficulty(difficulty) {
-            console.log("Vybraná obtiažnosť: " + difficulty);
-            document.getElementById("character-section").classList.remove("hidden");
+            selectedDifficulty = difficulty;
+            document.getElementById('character-section').classList.remove('hidden');
+
+            // Update step indicator
+            document.getElementById('step2').classList.remove('active');
+            document.getElementById('step2').classList.add('done');
+            document.getElementById('step3').classList.add('active');
+
+            // Scroll to character selection
+            document.getElementById('character-section').scrollIntoView({ behavior: 'smooth', block: 'start' });
         }
 
-        function showDetails(character) {
-            alert(`Zobrazenie upgradov pre: ${character}`);
+        function selectCharacter(character) {
+            // Mark final step as done
+            document.getElementById('step3').classList.remove('active');
+            document.getElementById('step3').classList.add('done');
+
+            alert(`Loadout ready!\nMap: ${selectedMap}\nDifficulty: ${selectedDifficulty}\nClass: ${character}`);
         }
     </script>
-
-    <footer class="footer">
-        <p>Version 0.0.4 Alpha | Made by AI because I'm lazy</p>
-    </footer>
 
 </body>
 </html>

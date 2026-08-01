@@ -3,137 +3,85 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TF2 MVM</title>
-    <script src='title.js'></script>
-    <!--ccs-->
-  <style>
-        body {
-            font-family: Arial, sans-serif;
-            background-color: #1e1e1e;
-            color: white;
-            text-align: center;
-            margin: 0;
-            padding: 0;
-        }
-        h1 {
-            margin-top: 20px;
-        }
-        .character-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-            gap: 20px;
-            padding: 20px;
-        }
-        .character-card {
-            background-color: #2b2b2b;
-            border-radius: 10px;
-            padding: 10px;
-            transition: transform 0.2s ease, box-shadow 0.2s ease;
-            cursor: pointer;
-        }
-        .character-card:hover {
-            transform: scale(1.1);
-            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.5);
-        }
-        .character-card img {
-            width: 100%;
-            border-radius: 8px;
-        }
-        .character-name {
-            margin-top: 10px;
-            font-size: 18px;
-            font-weight: bold;
-        }
-        .character-details {
-            display: none;
-            margin-top: 20px;
-            padding: 20px;
-            background-color: #2b2b2b;
-            border-radius: 10px;
-        }
-        .character-details img {
-            max-width: 200px;
-            margin: 10px;
-            border-radius: 8px;
-        }
-        .close-button {
-            margin-top: 10px;
-            padding: 10px 20px;
-            font-size: 16px;
-            background-color: #ff5757;
-            color: white;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-        }
-        .close-button:hover {
-            background-color: #ff2b2b;
-        }
-        .upgrade-section {
-            margin-top: 20px;
-        }
-        .upgrade-title {
-            font-size: 20px;
-            margin-bottom: 10px;
-        }
-        .upgrade-description {
-            font-size: 14px;
-            margin-top: 5px;
-            color: #c9c9c9;
-        }
-    </style>
-    <!--ccs-->
+    <title>TF2 MvM — Characters</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="title.js" defer></script>
 </head>
 <body>
-    <a href="/index.html">github</a>
-    <h1>TF2 MVM - Characters </h1>
-    <div class="character-grid">
-        <div class="character-card" onclick="showDetails('scout')">
+
+    <!-- Header -->
+    <div class="header">
+        <a href="/index.html" class="logo">TF2 <span>MvM</span></a>
+        <nav>
+            <a href="tf2.html" class="active">Characters</a>
+            <a href="tf3.html">Maps</a>
+        </nav>
+    </div>
+
+    <!-- Hero -->
+    <div class="hero">
+        <h1>TF2 <span>MvM</span> — Characters</h1>
+        <p>Select a class to view their recommended Mann vs Machine upgrades.</p>
+    </div>
+
+    <!-- Character Grid -->
+    <div class="card-grid">
+        <div class="card" onclick="showDetails('scout')">
             <img src="images/tokens/scouttoken.jpg" alt="Scout">
-            <div class="character-name">Scout</div>
+            <div class="card-name">Scout</div>
         </div>
-        <div class="character-card" onclick="showDetails('soldier')">
+        <div class="card" onclick="showDetails('soldier')">
             <img src="images/tokens/soldiertoken.jpg" alt="Soldier">
-            <div class="character-name">Soldier</div>
+            <div class="card-name">Soldier</div>
         </div>
-        <div class="character-card" onclick="showDetails('pyro')">
+        <div class="card" onclick="showDetails('pyro')">
             <img src="images/tokens/pyrotoken.jpg" alt="Pyro">
-            <div class="character-name">Pyro</div>
+            <div class="card-name">Pyro</div>
         </div>
-        <div class="character-card" onclick="showDetails('demoman')">
+        <div class="card" onclick="showDetails('demoman')">
             <img src="images/tokens/demotoken.jpg" alt="Demoman">
-            <div class="character-name">Demoman</div>
+            <div class="card-name">Demoman</div>
         </div>
-        <div class="character-card" onclick="showDetails('heavy')">
+        <div class="card" onclick="showDetails('heavy')">
             <img src="images/tokens/heavytoken.jpg" alt="Heavy">
-            <div class="character-name">Heavy</div>
+            <div class="card-name">Heavy</div>
         </div>
-        <div class="character-card" onclick="showDetails('engineer')">
+        <div class="card" onclick="showDetails('engineer')">
             <img src="images/tokens/engitoken.jpg" alt="Engineer">
-            <div class="character-name">Engineer</div>
+            <div class="card-name">Engineer</div>
         </div>
-        <div class="character-card" onclick="showDetails('medic')">
+        <div class="card" onclick="showDetails('medic')">
             <img src="images/tokens/medictoken.jpg" alt="Medic">
-            <div class="character-name">Medic</div>
+            <div class="card-name">Medic</div>
         </div>
-        <div class="character-card" onclick="showDetails('sniper')">
+        <div class="card" onclick="showDetails('sniper')">
             <img src="images/tokens/snipertoken.jpg" alt="Sniper">
-            <div class="character-name">Sniper</div>
+            <div class="card-name">Sniper</div>
         </div>
-        <div class="character-card" onclick="showDetails('spy')">
+        <div class="card" onclick="showDetails('spy')">
             <img src="images/tokens/spytoken.jpg" alt="Spy">
-            <div class="character-name">Spy</div>
+            <div class="card-name">Spy</div>
         </div>
     </div>
 
-    <div id="character-details" class="character-details">
-        <button class="close-button" onclick="hideDetails()">Close</button>
+    <!-- Details Panel -->
+    <div id="details-panel" class="details-panel">
+        <div class="panel-header">
+            <h2 id="panel-title"></h2>
+            <button class="close-btn" onclick="hideDetails()">Close</button>
+        </div>
         <div id="character-info"></div>
     </div>
+
+    <!-- Footer -->
+    <footer>
+        <p>Version 0.0.3 Alpha</p>
+        <p>&copy; 2025 BlackAngelSK and GGame666. All Rights Reserved.</p>
+    </footer>
+
     <script>
-        // Data for character upgrades = pain to code 
+        // ============ CHARACTER DATA ============
         const characterData = {
-           
             scout: {
                 basic: [
                     { img: "images/noimagenow/no_image.png", description: "inset text here" },
@@ -162,8 +110,6 @@
                     ]
                 }
             },
-           
-           
             soldier: {
                 basic: [
                     { img: "images/noimagenow/no_image.png", description: "inset text here" },
@@ -192,8 +138,6 @@
                     ]
                 }
             },
-           
-           
             pyro: {
                 basic: [
                     { img: "images/noimagenow/no_image.png", description: "inset text here" },
@@ -225,8 +169,6 @@
                     ]
                 }
             },
-           
-           
             demoman: {
                 basic: [
                     { img: "images/noimagenow/no_image.png", description: "inset text here" },
@@ -246,7 +188,7 @@
                     "The Scotsman's Skullcutter": [
                         { img: "images/noimagenow/no_image.png", description: "inset text here" }
                     ],
-                    "The Claidheamh Mòr": [
+                    "The Claidheamh Mor": [
                         { img: "images/noimagenow/no_image.png", description: "inset text here" }
                     ],
                     "Nessie's Nine Iron": [
@@ -257,8 +199,6 @@
                     ]
                 }
             },
-           
-           
             heavy: {
                 basic: [
                     { img: "images/noimagenow/no_image.png", description: "inset text here" },
@@ -273,7 +213,7 @@
                         { img: "images/noimagenow/no_image.png", description: "inset text here" },
                         { img: "images/noimagenow/no_image.png", description: "inset text here" }
                     ],
-                    "Natascha": [
+                    "The Tomislav": [
                         { img: "images/noimagenow/no_image.png", description: "inset text here" },
                         { img: "images/noimagenow/no_image.png", description: "inset text here" }
                     ]
@@ -296,8 +236,6 @@
                     ]
                 }
             },
-            
-            
             engineer: {
                 basic: [
                     { img: "images/noimagenow/no_image.png", description: "inset text here" },
@@ -322,22 +260,12 @@
                     ]
                 },
                 melee: {
-                   "The Jag": [
-                        { img: "images/noimagenow/no_image.png", description: "inset text here" },
-                        { img: "images/noimagenow/no_image.png", description: "inset text here" }
-                    ],
-                    "The Southern Hospitality": [
-                        { img: "images/noimagenow/no_image.png", description: "inset text here" },
-                        { img: "images/noimagenow/no_image.png", description: "inset text here" }
-                    ],       
-                    "The Gunslinger": [
+                    "The Jag": [
                         { img: "images/noimagenow/no_image.png", description: "inset text here" },
                         { img: "images/noimagenow/no_image.png", description: "inset text here" }
                     ]
                 }
             },
-           
-           
             medic: {
                 basic: [
                     { img: "images/noimagenow/no_image.png", description: "inset text here" },
@@ -348,32 +276,23 @@
                         { img: "images/noimagenow/no_image.png", description: "inset text here" },
                         { img: "images/noimagenow/no_image.png", description: "inset text here" }
                     ],
-                    "Scattergun": [
-                        { img: "images/noimagenow/no_image.png", description: "inset text here" },
-                        { img: "images/noimagenow/no_image.png", description: "inset text here" }
-                    ],
-                    "The Ubersaw": [
-                        { img: "images/noimagenow/no_image.png", description: "inset text here" },
-                        { img: "images/noimagenow/no_image.png", description: "inset text here" }
-                    ],
-                    "The Overdose": [
+                    "The Crusader's Crossbow": [
                         { img: "images/noimagenow/no_image.png", description: "inset text here" },
                         { img: "images/noimagenow/no_image.png", description: "inset text here" }
                     ]
                 },
                 melee: {
                     "The Ubersaw": [
-                        { img: "images/noimagenow/no_image.png", description: "inset text here" },
                         { img: "images/noimagenow/no_image.png", description: "inset text here" }
                     ],
                     "The Vita-Saw": [
-                        { img: "images/noimagenow/no_image.png", description: "inset text here" },
+                        { img: "images/noimagenow/no_image.png", description: "inset text here" }
+                    ],
+                    "The Overdose": [
                         { img: "images/noimagenow/no_image.png", description: "inset text here" }
                     ]
                 }
             },
-            
-            
             sniper: {
                 basic: [
                     { img: "images/noimagenow/no_image.png", description: "inset text here" },
@@ -398,8 +317,6 @@
                     ]
                 }
             },
-            
-            
             spy: {
                 basic: [
                     { img: "images/noimagenow/no_image.png", description: "inset text here" },
@@ -410,81 +327,94 @@
                         { img: "images/noimagenow/no_image.png", description: "inset text here" },
                         { img: "images/noimagenow/no_image.png", description: "inset text here" }
                     ],
-                    "": [
+                    "The Ambassador": [
                         { img: "images/noimagenow/no_image.png", description: "inset text here" },
                         { img: "images/noimagenow/no_image.png", description: "inset text here" }
                     ]
                 },
                 melee: {
-                    "Escape Plan": [
+                    "The Conniver's Kunai": [
                         { img: "images/noimagenow/no_image.png", description: "inset text here" }
                     ],
-                    "Disciplinary Action": [
+                    "The Dead Ringer": [
                         { img: "images/noimagenow/no_image.png", description: "inset text here" }
                     ]
                 }
             }
-
         };
- function showDetails(character) {
-            if (!characterData[character]) {
-                alert("Údaje pre túto postavu nie sú k dispozícii!");
-                return;
-            }
+
+        // ============ SHOW DETAILS ============
+        function showDetails(character) {
+            if (!characterData[character]) return;
 
             const { basic, special, melee } = characterData[character];
             const detailsDiv = document.getElementById('character-info');
+            const panelTitle = document.getElementById('panel-title');
 
-            let basicSection = `
+            panelTitle.textContent = character.charAt(0).toUpperCase() + character.slice(1);
+
+            let html = '';
+
+            // Basic upgrades
+            html += `
                 <div class="upgrade-section">
-                    <div class="upgrade-title">BASE upgrades</div>
-                    ${basic.map(upgrade => `
-                        <div>
-                            <img src="${upgrade.img}" alt="BASE upgrade">
-                            <div class="upgrade-description">${upgrade.description}</div>
-                        </div>
-                    `).join('')}
+                    <h3>Base Upgrades</h3>
+                    <div class="upgrade-items">
+                        ${basic.map(u => `
+                            <div class="upgrade-item">
+                                <img src="${u.img}" alt="Base upgrade">
+                                <p>${u.description}</p>
+                            </div>
+                        `).join('')}
+                    </div>
                 </div>
             `;
 
-            let specialSections = Object.entries(special)
-                .map(([weapon, upgrades]) => `
+            // Special weapon upgrades
+            Object.entries(special).forEach(([weapon, upgrades]) => {
+                html += `
                     <div class="upgrade-section">
-                        <div class="upgrade-title">For Weapon}: ${weapon}</div>
-                        ${upgrades.map(upgrade => `
-                            <div>
-                                <img src="${upgrade.img}" alt="${weapon} upgrade">
-                                <div class="upgrade-description">${upgrade.description}</div>
-                            </div>
-                        `).join('')}
+                        <h3>Primary — <span class="weapon-tag">${weapon}</span></h3>
+                        <div class="upgrade-items">
+                            ${upgrades.map(u => `
+                                <div class="upgrade-item">
+                                    <img src="${u.img}" alt="${weapon} upgrade">
+                                    <p>${u.description}</p>
+                                </div>
+                            `).join('')}
+                        </div>
                     </div>
-                `)
-                .join('');
+                `;
+            });
 
-            let meleeSections = Object.entries(melee)
-                .map(([weapon, upgrades]) => `
+            // Melee weapon upgrades
+            Object.entries(melee).forEach(([weapon, upgrades]) => {
+                html += `
                     <div class="upgrade-section">
-                        <div class="upgrade-title">Melee Weapon}: ${weapon}</div>
-                        ${upgrades.map(upgrade => `
-                            <div>
-                                <img src="${upgrade.img}" alt="${weapon} upgrade">
-                                <div class="upgrade-description">${upgrade.description}</div>
-                            </div>
-                        `).join('')}
+                        <h3>Melee — <span class="weapon-tag">${weapon}</span></h3>
+                        <div class="upgrade-items">
+                            ${upgrades.map(u => `
+                                <div class="upgrade-item">
+                                    <img src="${u.img}" alt="${weapon} upgrade">
+                                    <p>${u.description}</p>
+                                </div>
+                            `).join('')}
+                        </div>
                     </div>
-                `)
-                .join('');
+                `;
+            });
 
-            detailsDiv.innerHTML = basicSection + specialSections + meleeSections;
-            document.getElementById('character-details').style.display = 'block';
+            detailsDiv.innerHTML = html;
+
+            const panel = document.getElementById('details-panel');
+            panel.classList.add('visible');
+            panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
         }
 
         function hideDetails() {
-            document.getElementById('character-details').style.display = 'none';
+            document.getElementById('details-panel').classList.remove('visible');
         }
     </script>
+
 </body>
-    <footer>version 0.0.3 alpha</footer>
-    <footer> © 2025 BlackAngelSK and GGame666. All Rights Reserved.</footer>
-    <footer>99.99 made my ai bcs im lazy</footer>
 </html>
