@@ -3,8 +3,6 @@
 #   Map Proxy - Auto Setup & Launcher
 # ============================================
 
-set -e
-
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
@@ -89,18 +87,52 @@ echo
 
 # ── Step 2: Check for proxy.js ──────────────────
 echo -e "[2/4] Checking for proxy script..."
+echo -e "  Script directory: ${SCRIPT_DIR}"
+echo -e "  Looking for: ${SCRIPT_DIR}/proxy.js"
 
-if [ ! -f "$SCRIPT_DIR/proxy.js" ]; then
-    echo "  proxy.js not found locally. Downloading from GitHub..."
-    REPO_RAW="https://raw.githubusercontent.com/BlackAngelSK/BlackAngelSK.github.io/main/globe/proxy.js"
-    curl -fsSL "$REPO_RAW" -o "$SCRIPT_DIR/proxy.js"
-    if [ $? -ne 0 ]; then
+if [ -f "$SCRIPT_DIR/proxy.js" ]; then
+    echo -e "  ${GREEN}proxy.js found.${NC}"
+else
+    echo -e "  proxy.js not found locally. Attempting download..."
+    REPO_RAW="https://github.com/BlackAngelSk/BlackAngelSK.github.io/main/globe/proxy.js"
+    echo -e "  Download URL: $REPO_RAW"
+
+    # Try curl first, then wget
+    DOWNLOADED=0
+    if command -v curl &> /dev/null; then
+        echo "  Downloading using curl..."
+        curl -fsSL "$REPO_RAW" -o "$SCRIPT_DIR/proxy.js"
+        DOWNLOADED=$?
+    elif command -v wget &> /dev/null; then
+        echo "  Downloading using wget..."
+        wget -q "$REPO_RAW" -O "$SCRIPT_DIR/proxy.js"
+        DOWNLOADED=$?
+    else
+        echo -e "  ${RED}ERROR: Neither curl nor wget found.${NC}"
+        echo "  Please install curl or wget, or download proxy.js manually."
+        exit 1
+    fi
+
+    if [ $DOWNLOADED -ne 0 ]; then
         echo -e "  ${RED}ERROR: Failed to download proxy.js${NC}"
+        echo "  Please download manually from:"
+        echo "  $REPO_RAW"
+        echo "  And save it to: $SCRIPT_DIR/proxy.js"
+        rm -f "$SCRIPT_DIR/proxy.js" 2>/dev/null
+        exit 1
+    fi
+
+    # Verify downloaded file is valid (not a 404 HTML page)
+    FILE_SIZE=$(wc -c < "$SCRIPT_DIR/proxy.js" 2>/dev/null || echo 0)
+    echo -e "  Downloaded file size: ${FILE_SIZE} bytes"
+    if [ "$FILE_SIZE" -lt 50 ] 2>/dev/null; then
+        echo -e "  ${RED}ERROR: proxy.js seems too small (${FILE_SIZE} bytes).${NC}"
+        echo "  The download may have failed (e.g., 404 error from GitHub)."
+        echo "  Check your internet connection and try again."
+        rm -f "$SCRIPT_DIR/proxy.js" 2>/dev/null
         exit 1
     fi
     echo -e "  ${GREEN}Downloaded proxy.js successfully.${NC}"
-else
-    echo -e "  ${GREEN}proxy.js found.${NC}"
 fi
 echo
 
