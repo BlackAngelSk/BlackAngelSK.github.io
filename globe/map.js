@@ -34,7 +34,10 @@ const S = {
     msLabels: [],
     msPreview: null,
     /* label input */
-    labelLatLng: null
+    labelLatLng: null,
+    /* region highlight */
+    highlighted: null,
+    highlightedOrigStyle: null
 };
 const UNDO_LIMIT = 50;
 
@@ -563,6 +566,44 @@ function clearAll() {
 
 function updateCount() {
     $('#ann-count').textContent = S.annotations.length + ' annotation' + (S.annotations.length !== 1 ? 's' : '');
+}
+
+/* =====================================================
+   Region Highlight — double-click toggle
+   ===================================================== */
+function toggleHighlight(layer) {
+    /* If clicking the already-highlighted polygon, un-highlight it */
+    if (S.highlighted === layer) {
+        layer.setStyle(S.highlightedOrigStyle);
+        layer.bringToBack();
+        S.highlighted = null;
+        S.highlightedOrigStyle = null;
+        return;
+    }
+    /* Un-highlight previous if any */
+    if (S.highlighted) {
+        S.highlighted.setStyle(S.highlightedOrigStyle);
+        S.highlighted.bringToBack();
+    }
+    /* Store original style and apply highlight */
+    S.highlightedOrigStyle = Object.assign({}, layer.options);
+    S.highlighted = layer;
+    layer.setStyle({
+        color: '#ffdd00',
+        weight: 7,
+        opacity: 1,
+        fillOpacity: 0.35,
+        dashArray: ''
+    });
+    layer.bringToFront();
+}
+
+/* Attach double-click highlight to a polygon layer */
+function attachHighlightHandler(layer) {
+    layer.on('dblclick', function (e) {
+        L.DomEvent.stop(e);
+        toggleHighlight(this);
+    });
 }
 
 /* =====================================================
@@ -1167,6 +1208,7 @@ function confirmImport() {
             storeAnnotation(layer, 'polygon', f.geometry.coordinates, { text: f.text || f.name });
             S.color = prevColor;
             layer.addTo(grp);
+            attachHighlightHandler(layer);
             count++;
         } else if (f.geometryType === 'Point') {
             const ll = [f.geometry.coordinates[1], f.geometry.coordinates[0]];
@@ -1875,6 +1917,13 @@ map.on('dblclick', e => {
     if (S.tool === 'measure') {
         L.DomEvent.stop(e);
         finishMeasure();
+    }
+    /* Clear highlight when double-clicking empty map area (only in pan mode) */
+    if (S.tool === 'pan' && S.highlighted) {
+        S.highlighted.setStyle(S.highlightedOrigStyle);
+        S.highlighted.bringToBack();
+        S.highlighted = null;
+        S.highlightedOrigStyle = null;
     }
 });
 
