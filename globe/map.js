@@ -459,6 +459,12 @@ function disableEraser() {
         ann.layer.off('mouseover', h.over);
         ann.layer.off('mouseout', h.out);
         ann.layer.off('click', h.click);
+        /* Restore original style (weight, color) that was changed for eraser visibility */
+        const isPoint = ann.type === 'marker' || ann.type === 'label';
+        if (!isPoint && ann.layer && ann.layer.setStyle) {
+            ann.layer.setStyle({ weight: ann.weight, color: ann.color });
+            ann.layer.bringToBack();
+        }
         /* Restore original interactive state */
         if (ann.layer.options && ann._origInteractive !== undefined) {
             ann.layer.options.interactive = ann._origInteractive;
