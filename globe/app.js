@@ -341,6 +341,39 @@ CITIES.forEach(c=>{
 const stC=mkStars(4000);const stT=new THREE.CanvasTexture(stC);stT.anisotropy=renderer.capabilities.getMaxAnisotropy();
 scene.add(new THREE.Mesh(new THREE.SphereGeometry(800,64,64),new THREE.MeshBasicMaterial({map:stT,side:THREE.BackSide})));
 
+// Planets
+const PLANET_BASE='https://raw.githubusercontent.com/mrdoob/three.js/dev/examples/textures/planets/';
+const PLANETS=[
+  {name:'Mercury',tex:'mercury_map.jpg',size:2.4,dist:350,spd:0.008,tilt:0.03,color:'#aaaaaa',fact:'Smallest planet, closest to the Sun'},
+  {name:'Venus',tex:'venus_map.jpg',size:4.5,dist:400,spd:0.005,tilt:0.02,color:'#e8c088',fact:'Hottest planet, rotates backwards'},
+  {name:'Mars',tex:'mars_map.jpg',size:3.2,dist:460,spd:0.006,tilt:0.04,color:'#cc5533',fact:'The Red Planet, has the tallest volcano'},
+  {name:'Jupiter',tex:'jupiter_map.jpg',size:12,dist:550,spd:0.003,tilt:0.01,color:'#d4a574',fact:'Largest planet, Great Red Spot storm'},
+  {name:'Saturn',tex:'saturn_map.jpg',size:10,dist:660,spd:0.002,tilt:0.02,color:'#e8d088',fact:'Famous for its beautiful ring system'},
+  {name:'Uranus',tex:'uranus_map.jpg',size:6,dist:760,spd:0.0015,tilt:0.05,color:'#88ccdd',fact:'Rotates on its side, ice giant'},
+  {name:'Neptune',tex:'neptune_map.jpg',size:5.5,dist:850,spd:0.001,tilt:0.03,color:'#4466cc',fact:'Farthest planet, strongest winds'},
+];
+const planetsGroup=new THREE.Group();scene.add(planetsGroup);
+const planetMeshes=[];
+let shPlanets=true;
+PLANETS.forEach((p,i)=>{
+  const angle=(i/PLANETS.length)*Math.PI*2+Math.random()*0.5;
+  const yOff=(Math.random()-0.5)*120;
+  const tex=loader.load(PLANET_BASE+p.tex,t=>{t.colorSpace=THREE.SRGBColorSpace;onL('planet-'+p.name);},undefined,e=>onE('planet-'+p.name,e));
+  const mat=new THREE.MeshPhongMaterial({map:tex,shininess:5});
+  const mesh=new THREE.Mesh(new THREE.SphereGeometry(p.size,32,32),mat);
+  mesh.position.set(Math.cos(angle)*p.dist,yOff,Math.sin(angle)*p.dist);
+  mesh.userData={name:p.name,fact:p.fact,orbitDist:p.dist,orbitSpd:p.spd,orbitAngle:angle,yOff:yOff,tilt:p.tilt};
+  planetsGroup.add(mesh);planetMeshes.push(mesh);
+  // Saturn ring
+  if(p.name==='Saturn'){
+    const ringTex=loader.load(PLANET_BASE+'saturn_ring.png',t=>{t.colorSpace=THREE.SRGBColorSpace;});
+    const ringMat=new THREE.MeshBasicMaterial({map:ringTex,transparent:true,opacity:0.7,side:THREE.DoubleSide,depthWrite:false});
+    const ring=new THREE.Mesh(new THREE.RingGeometry(p.size*1.4,p.size*2.4,64),ringMat);
+    ring.rotation.x=Math.PI*0.45;
+    mesh.add(ring);
+  }
+});
+
 // Controls
 const ctrl=new OrbitControls(camera,renderer.domElement);
 ctrl.enableDamping=true;ctrl.dampingFactor=0.08;ctrl.rotateSpeed=0.5;ctrl.zoomSpeed=0.8;
@@ -360,6 +393,9 @@ btnCl.addEventListener('click',()=>{shCloud=!shCloud;btnCl.classList.toggle('act
 btnAz.addEventListener('click',()=>{shAtm=!shAtm;btnAz.classList.toggle('active',shAtm);});
 btnNt.addEventListener('click',()=>{nMde=!nMde;btnNt.classList.toggle('active',nMde);});
 if(btnCt)btnCt.addEventListener('click',()=>{shCt=!shCt;btnCt.classList.toggle('active',shCt);});
+
+const btnPl=document.getElementById('btn-planets');
+if(btnPl)btnPl.addEventListener('click',()=>{shPlanets=!shPlanets;btnPl.classList.toggle('active',shPlanets);});
 
 // Country click
 const countryPanel=document.getElementById('country-panel');
@@ -483,10 +519,18 @@ renderer.domElement.addEventListener('mousemove',(e)=>{
   ms.x=(e.clientX/window.innerWidth)*2-1;
   ms.y=-(e.clientY/window.innerHeight)*2+1;
   ray.setFromCamera(ms,camera);
+  // Check cities first
   const hits=ray.intersectObjects(ctG.children);
   if(hits.length>0&&hits[0].object.userData&&hits[0].object.userData.name){
     hoverObj=hits[0].object;tooltip.style.display='block';tooltip.style.left=(e.clientX+12)+'px';tooltip.style.top=(e.clientY-20)+'px';
     tooltip.textContent=hoverObj.userData.name;
+  }else if(shPlanets){
+    // Check planets
+    const pHits=ray.intersectObjects(planetMeshes);
+    if(pHits.length>0&&pHits[0].object.userData&&pHits[0].object.userData.name){
+      hoverObj=pHits[0].object;tooltip.style.display='block';tooltip.style.left=(e.clientX+12)+'px';tooltip.style.top=(e.clientY-20)+'px';
+      tooltip.textContent=hoverObj.userData.name+' — '+hoverObj.userData.fact;
+    }else{tooltip.style.display='none';}
   }else{tooltip.style.display='none';}
 });
 
@@ -498,8 +542,16 @@ function animate(){
   clMh.rotation.y+=0.0008;
   if(nMde){nlM.opacity=Math.min(nlM.opacity+0.015,1.0);aL.intensity=Math.max(aL.intensity-0.02,0.2);}
   else{nlM.opacity=Math.max(nlM.opacity-0.015,0.0);aL.intensity=Math.min(aL.intensity+0.02,1.0);}
-  atM.visible=shAtm;clMh.visible=shCloud;ctG.visible=shCt;
-  
+  atM.visible=shAtm;clMh.visible=shCloud;ctG.visible=shCt;planetsGroup.visible=shPlanets;
+
+  // Animate planet orbits
+  planetMeshes.forEach(m=>{
+    const d=m.userData;
+    d.orbitAngle+=d.orbitSpd;
+    m.position.set(Math.cos(d.orbitAngle)*d.orbitDist,d.yOff+Math.sin(time*2+d.orbitAngle)*5,Math.sin(d.orbitAngle)*d.orbitDist);
+    m.rotation.y+=0.003;
+  });
+
   if(cntryMode&&gsapDest){
     gsapT++;
     const t=gsapT/gsapDur;
