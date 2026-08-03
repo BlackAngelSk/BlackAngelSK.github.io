@@ -600,10 +600,10 @@ body.tool-measure #map { cursor: crosshair !important; }
 /* ── Measurement Tooltips ───────────────────────── */
 .measure-label {
     background: rgba(10, 20, 50, 0.9);
-    border: 1px solid rgba(255, 200, 60, 0.6);
+    border: 1px solid rgba(0, 200, 255, 0.6);
     border-radius: 5px;
     padding: 2px 7px;
-    color: #ffe066;
+    color: #00ddff;
     font-size: 0.72rem;
     font-weight: 600;
     font-family: 'Courier New', monospace;
@@ -676,6 +676,9 @@ body.tool-measure #map { cursor: crosshair !important; }
     line-height: 1;
     filter: drop-shadow(0 1px 3px rgba(0,0,0,0.5));
     pointer-events: none;
+}
+.fire-marker.eraser-hover {
+    filter: brightness(1.8) drop-shadow(0 0 8px rgba(255,68,68,0.9));
 }
 
 @media (max-width: 700px) {

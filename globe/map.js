@@ -485,7 +485,7 @@ function startMeasure(e) {
     S.msPoints.push(e.latlng);
     if (!S.msLine) {
         S.msLine = L.polyline(S.msPoints, {
-            color: '#ffe066', weight: 2, dashArray: '8, 6', opacity: 0.9
+            color: '#00ddff', weight: 2, dashArray: '8, 6', opacity: 0.9
         }).addTo(map);
     } else { S.msLine.addLatLng(e.latlng); }
     if (S.msPoints.length >= 2) $('#btn-finish').classList.remove('hidden');
@@ -498,7 +498,7 @@ function updateMeasurePreview(e) {
     const last = S.msPoints[S.msPoints.length - 1];
     if (!S.msPreview) {
         S.msPreview = L.polyline([last, e.latlng], {
-            color: '#ffe066', weight: 1, dashArray: '4, 8', opacity: 0.5, interactive: false
+            color: '#00ddff', weight: 1, dashArray: '4, 8', opacity: 0.5, interactive: false
         }).addTo(map);
     } else { S.msPreview.setLatLngs([last, e.latlng]); }
 }
