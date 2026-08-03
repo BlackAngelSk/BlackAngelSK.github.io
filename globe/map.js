@@ -23,6 +23,8 @@ const S = {
     plPreview: null,
     /* eraser */
     eraserHandlers: [],
+    eraserDragging: false,
+    eraserErasedIds: new Set(),
     /* touch fallback */
     lastLatLng: null,
     /* undo/redo */
@@ -33,6 +35,7 @@ const S = {
     arrowLine: null,
     arrowHead: null,
     arrowDrawing: false,
+    flag: null,
     /* measure */
     msPoints: [],
     msLine: null,
@@ -59,7 +62,8 @@ const STATUS = {
     marker: 'Click to drop a pin on the map',
     label: 'Click to place a text label',
     measure: 'Click to measure distance · Dbl-click / Enter to finish · Esc to cancel',
-    eraser: 'Click an annotation to erase it'
+    eraser: 'Click an annotation to erase it',
+    fire: 'Click to place a fire on the map'
 };
 
 /* ── DOM shortcuts ────────────────────────────────── */
@@ -77,6 +81,26 @@ const map = L.map('map', {
     doubleClickZoom: false,
     preferCanvas: true
 });
+
+/* Keep Leaflet's viewport in sync when the browser viewport or the map
+   container changes size (fullscreen, mobile browser chrome, split view,
+   or a resized window). */
+const mapElement = document.getElementById('map');
+let mapResizeFrame = 0;
+function requestMapResize() {
+    if (mapResizeFrame) cancelAnimationFrame(mapResizeFrame);
+    mapResizeFrame = requestAnimationFrame(() => {
+        mapResizeFrame = 0;
+        map.invalidateSize({ pan: false, debounceMoveend: true });
+        if (typeof clampDraggablePanels === 'function') clampDraggablePanels();
+    });
+}
+if (typeof ResizeObserver !== 'undefined') {
+    new ResizeObserver(requestMapResize).observe(mapElement);
+}
+window.addEventListener('resize', requestMapResize);
+window.addEventListener('orientationchange', requestMapResize);
+if (window.visualViewport) window.visualViewport.addEventListener('resize', requestMapResize);
 
 /* ── Tile layers (zoom-dependent density) ─────────── */
 const osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -157,8 +181,8 @@ function setTool(tool) {
     S.tool = tool;
     S.drawing = false;
 
-    /* map dragging */
-    if (tool === 'pan' || tool === 'eraser') map.draggingenable();
+    /* map dragging — disabled for eraser so drag-to-erase works */
+    if (tool === 'pan') map.dragging.enable();
     else map.dragging.disable();
 
     /* enter new tool */
@@ -172,8 +196,14 @@ function setTool(tool) {
         arrow: '\u27A1\uFE0F', marker: '\u{1F4CC}', label: '\u{1F3F7}\uFE0F', measure: '\u{1F4CF}', eraser: '\u{1F9F9}'
     };
     $('#status-icon').textContent = icons[tool] || '\u{1F4CD}';
-    document.body.className = 'tool-' + tool;
+    Array.from(document.body.classList)
+        .filter(className => className.indexOf('tool-') === 0)
+        .forEach(className => document.body.classList.remove(className));
+    document.body.classList.add('tool-' + tool);
     if (tool !== 'polyline' && tool !== 'measure') $('#btn-finish').classList.add('hidden');
+    /* show/hide flag panel when arrow tool is active */
+    const flagPanel = $('#flag-panel');
+    if (flagPanel) flagPanel.classList.toggle('hidden', tool !== 'arrow');
     updateUndoRedoUI();
 }
 
@@ -286,19 +316,36 @@ function computeArrowAngle(startLatLng, endLatLng) {
     return (Math.atan2(y, x) * 180 / Math.PI + 360) % 360;
 }
 
-function createArrowheadIcon(color, preview) {
+function createArrowheadIcon(color, preview, flag) {
     var size = 24;
     var svgNs = 'http://www.w3.org/2000/svg';
+    var flagHtml = flag
+        ? '<span class="arrowhead-flag">' + flag + '</span>'
+        : '';
     return L.divIcon({
         className: '',
         html: '<div class="arrowhead-wrap' + (preview ? ' arrowhead-preview' : '') + '">'
             + '<svg xmlns="' + svgNs + '" width="' + size + '" height="' + size + '" viewBox="0 0 24 24">'
             + '<polygon points="12,1 22,22 12,17 2,22" fill="' + color + '" '
             + 'stroke="rgba(255,255,255,0.45)" stroke-width="1.2" stroke-linejoin="round"/>'
-            + '</svg></div>',
+            + '</svg>' + flagHtml + '</div>',
         iconSize: [size, size],
         iconAnchor: [size / 2, size / 2]
     });
+}
+
+function removeArrowHead(ann) {
+    if (ann && ann.extra && ann.extra.headLayer) {
+        map.removeLayer(ann.extra.headLayer);
+    }
+}
+
+function addArrowHeadToAnnotation(ann, marker) {
+    if (!ann || !marker) return;
+    marker._arrowId = ann.id;
+    marker._isArrowHead = true;
+    ann.extra = ann.extra || {};
+    ann.extra.headLayer = marker;
 }
 
 function startArrow(e) {
@@ -311,7 +358,7 @@ function startArrow(e) {
         lineCap: 'round', lineJoin: 'round'
     }).addTo(map);
     S.arrowHead = L.marker(e.latlng, {
-        icon: createArrowheadIcon(S.color, true),
+        icon: createArrowheadIcon(S.color, true, S.flag),
         interactive: false
     }).addTo(map);
 }
@@ -326,6 +373,8 @@ function moveArrow(e) {
     if (el) {
         var inner = el.querySelector('.arrowhead-wrap');
         if (inner) inner.style.transform = 'rotate(' + angle + 'deg)';
+        var flagEl = el.querySelector('.arrowhead-flag');
+        if (flagEl) flagEl.style.transform = 'translateY(-50%) rotate(' + (-angle) + 'deg)';
     }
 }
 
@@ -339,19 +388,19 @@ function finishArrow() {
     var startLL = latlngs[0], endLL = latlngs[1];
     var angle = computeArrowAngle(startLL, endLL);
     var coords = [[startLL.lat, startLL.lng], [endLL.lat, endLL.lng]];
-    var headIcon = createArrowheadIcon(S.color, false);
-    var headMarker = L.marker(endLL, { icon: headIcon, interactive: true }).addTo(map);
+    var currentFlag = S.flag;
+    var headIcon = createArrowheadIcon(S.color, false, currentFlag);
+    /* Keep the head visual-only so the line receives eraser clicks at its end. */
+    var headMarker = L.marker(endLL, { icon: headIcon, interactive: false }).addTo(map);
     var headEl = headMarker.getElement();
     if (headEl) {
         var inner = headEl.querySelector('.arrowhead-wrap');
         if (inner) inner.style.transform = 'rotate(' + angle + 'deg)';
+        var flagEl = headEl.querySelector('.arrowhead-flag');
+        if (flagEl) flagEl.style.transform = 'translateY(-50%) rotate(' + (-angle) + 'deg)';
     }
-    storeAnnotation(S.arrowLine, 'arrow', coords, { headLatLng: [endLL.lat, endLL.lng], angle: angle });
-    var arrowId = S.arrowLine._annId;
-    headMarker._annId = arrowId;
-    headMarker._isArrowHead = true;
-    headMarker._arrowId = arrowId;
-    S.annotations.push({ id: arrowId, layer: headMarker, type: 'arrowhead', coords: [endLL.lat, endLL.lng], color: S.color, weight: S.weight, dashStyle: S.dashStyle, dashArray: DASH[S.dashStyle], extra: null });
+    storeAnnotation(S.arrowLine, 'arrow', coords, { headLatLng: [endLL.lat, endLL.lng], angle: angle, flag: currentFlag || null });
+    addArrowHeadToAnnotation(S.annotations[S.annotations.length - 1], headMarker);
     resetArrow();
 }
 
@@ -402,6 +451,20 @@ function placeLabel() {
     const m = L.marker(S.labelLatLng, { icon, interactive: true }).addTo(map);
     storeAnnotation(m, 'label', [S.labelLatLng.lat, S.labelLatLng.lng], { text });
     hideLabelInput();
+}
+
+/* =====================================================
+   Fire Emoji Tool
+   ===================================================== */
+function placeFire(e) {
+    if (S.tool !== 'fire') return;
+    const icon = L.divIcon({
+        className: '',
+        html: '<div class="fire-marker">🔥</div>',
+        iconSize: [32, 32], iconAnchor: [16, 16]
+    });
+    const marker = L.marker(e.latlng, { icon }).addTo(map);
+    storeAnnotation(marker, 'fire', [e.latlng.lat, e.latlng.lng]);
 }
 function escapeHtml(s) {
     return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
@@ -521,7 +584,7 @@ function enableEraser() {
                 if (isPoint) {
                     const el = this.getElement();
                     if (el) { const inner = el.querySelector('.marker-pin, .label-marker'); if (inner) inner.classList.add('eraser-hover'); }
-                } else {
+                } else if (this.setStyle) {
                     this.setStyle({ color: '#ff4444', weight: Math.max(10, origWeight + 6) });
                     this.bringToFront();
                 }
@@ -530,12 +593,12 @@ function enableEraser() {
                 if (isPoint) {
                     const el = this.getElement();
                     if (el) { const inner = el.querySelector('.marker-pin, .label-marker'); if (inner) inner.classList.remove('eraser-hover'); }
-                } else {
+                } else if (this.setStyle) {
                     this.setStyle({ color: ann.color, weight: Math.max(8, origWeight + 5) });
                 }
             },
             click: function (ev) {
-                L.DomEvent.stop(ev);
+                if (ev && ev.originalEvent) L.DomEvent.stop(ev.originalEvent);
                 removeAnnotation(ann.id);
             }
         };
@@ -548,26 +611,103 @@ function enableEraser() {
 
 function disableEraser() {
     S.eraserHandlers.forEach(({ ann, h }) => {
-        ann.layer.off('mouseover', h.over);
-        ann.layer.off('mouseout', h.out);
-        ann.layer.off('click', h.click);
-        /* Restore original style (weight, color) that was changed for eraser visibility */
-        const isPoint = ann.type === 'marker' || ann.type === 'label';
-        if (!isPoint && ann.layer && ann.layer.setStyle) {
-            ann.layer.setStyle({ weight: ann.weight, color: ann.color });
-            ann.layer.bringToBack();
-        }
-        /* Restore original interactive state */
-        if (ann.layer.options && ann._origInteractive !== undefined) {
-            ann.layer.options.interactive = ann._origInteractive;
-            if (ann.layer.getElement) {
-                const el = ann.layer.getElement();
-                if (el) el.style.pointerEvents = '';
-            }
-            delete ann._origInteractive;
-        }
+        restoreEraserState(ann, h);
     });
     S.eraserHandlers = [];
+}
+
+function restoreEraserState(ann, h) {
+    if (!ann || !ann.layer) return;
+    ann.layer.off('mouseover', h.over);
+    ann.layer.off('mouseout', h.out);
+    ann.layer.off('click', h.click);
+    /* Restore original style (weight, color) that was changed for eraser visibility */
+    const isPoint = ann.type === 'marker' || ann.type === 'label';
+    if (isPoint && ann.layer.getElement) {
+        const el = ann.layer.getElement();
+        if (el) {
+            const inner = el.querySelector('.marker-pin, .label-marker');
+            if (inner) inner.classList.remove('eraser-hover');
+        }
+    }
+    if (!isPoint && ann.layer.setStyle) {
+        ann.layer.setStyle({ weight: ann.weight, color: ann.color });
+        ann.layer.bringToBack();
+    }
+    /* Restore original interactive state */
+    if (ann.layer.options && ann._origInteractive !== undefined) {
+        ann.layer.options.interactive = ann._origInteractive;
+        if (ann.layer.getElement) {
+            const el = ann.layer.getElement();
+            if (el) el.style.pointerEvents = '';
+        }
+        delete ann._origInteractive;
+    }
+}
+
+function removeEraserHandlersFor(ann) {
+    S.eraserHandlers = S.eraserHandlers.filter(({ ann: current, h }) => {
+        if (current !== ann) return true;
+        restoreEraserState(ann, h);
+        return false;
+    });
+}
+
+/* ── Eraser drag-to-erase ──────────────────────── */
+const ERASE_RADIUS_PX = 20;
+
+function eraserDragStart() {
+    if (S.tool !== 'eraser') return;
+    S.eraserDragging = true;
+    S.eraserErasedIds = new Set();
+}
+
+function eraserDragMove(e) {
+    if (!S.eraserDragging || S.tool !== 'eraser') return;
+    var containerPoint = map.latLngToContainerPoint(e.latlng);
+    S.annotations.slice().forEach(function (ann) {
+        if (S.eraserErasedIds.has(ann.id)) return;
+        var hit = false;
+        var isPoint = ann.type === 'marker' || ann.type === 'label';
+        if (isPoint) {
+            /* For point annotations, check distance from cursor to the annotation's latlng */
+            var annLatLng = ann.coords;
+            if (Array.isArray(annLatLng) && annLatLng.length === 2) {
+                var annPoint = map.latLngToContainerPoint(L.latLng(annLatLng[0], annLatLng[1]));
+                var dist = Math.hypot(containerPoint.x - annPoint.x, containerPoint.y - annPoint.y);
+                if (dist <= ERASE_RADIUS_PX) hit = true;
+            }
+        } else {
+            /* For line annotations, check distance from cursor to each segment */
+            var coords = ann.coords;
+            if (Array.isArray(coords)) {
+                for (var i = 0; i < coords.length - 1; i++) {
+                    var p1 = map.latLngToContainerPoint(L.latLng(coords[i][0], coords[i][1]));
+                    var p2 = map.latLngToContainerPoint(L.latLng(coords[i + 1][0], coords[i + 1][1]));
+                    var d = pointToSegmentDist(containerPoint.x, containerPoint.y, p1.x, p1.y, p2.x, p2.y);
+                    if (d <= ERASE_RADIUS_PX) { hit = true; break; }
+                }
+            }
+        }
+        if (hit) {
+            S.eraserErasedIds.add(ann.id);
+            removeAnnotation(ann.id);
+        }
+    });
+}
+
+function eraserDragEnd() {
+    S.eraserDragging = false;
+    S.eraserErasedIds = new Set();
+}
+
+/* Helper: distance from point (px,py) to segment (ax,ay)-(bx,by) */
+function pointToSegmentDist(px, py, ax, ay, bx, by) {
+    var dx = bx - ax, dy = by - ay;
+    var lenSq = dx * dx + dy * dy;
+    if (lenSq === 0) return Math.hypot(px - ax, py - ay);
+    var t = Math.max(0, Math.min(1, ((px - ax) * dx + (py - ay) * dy) / lenSq));
+    return Math.hypot(px - (ax + t * dx), py - (ay + t * dy));
 }
 
 /* =====================================================
@@ -585,13 +725,22 @@ function undo() {
     const a = S.undoStack.pop();
     if (a.type === 'add') {
         map.removeLayer(a.ann.layer);
+        removeArrowHead(a.ann);
         S.annotations = S.annotations.filter(x => x.id !== a.ann.id);
     } else if (a.type === 'remove') {
         a.ann.layer.addTo(map);
+        if (a.ann.extra && a.ann.extra.headLayer) a.ann.extra.headLayer.addTo(map);
+        if (a.ann.layer._totalLabel) a.ann.layer._totalLabel.addTo(map);
         S.annotations.push(a.ann);
     } else if (a.type === 'clear') {
-        a.anns.forEach(x => { x.layer.addTo(map); S.annotations.push(x); });
+        a.anns.forEach(x => {
+            x.layer.addTo(map);
+            if (x.extra && x.extra.headLayer) x.extra.headLayer.addTo(map);
+            if (x.layer._totalLabel) x.layer._totalLabel.addTo(map);
+            S.annotations.push(x);
+        });
     }
+    if (S.tool === 'eraser') { disableEraser(); enableEraser(); }
     S.redoStack.push(a);
     updateCount(); updateUndoRedoUI();
 }
@@ -601,14 +750,22 @@ function redo() {
     const a = S.redoStack.pop();
     if (a.type === 'add') {
         a.ann.layer.addTo(map);
+        if (a.ann.extra && a.ann.extra.headLayer) a.ann.extra.headLayer.addTo(map);
         S.annotations.push(a.ann);
     } else if (a.type === 'remove') {
         map.removeLayer(a.ann.layer);
+        removeArrowHead(a.ann);
+        if (a.ann.layer._totalLabel) map.removeLayer(a.ann.layer._totalLabel);
         S.annotations = S.annotations.filter(x => x.id !== a.ann.id);
     } else if (a.type === 'clear') {
-        a.anns.forEach(x => { map.removeLayer(x.layer); });
+        a.anns.forEach(x => {
+            map.removeLayer(x.layer);
+            removeArrowHead(x);
+            if (x.layer._totalLabel) map.removeLayer(x.layer._totalLabel);
+        });
         S.annotations = [];
     }
+    if (S.tool === 'eraser') { disableEraser(); enableEraser(); }
     S.undoStack.push(a);
     updateCount(); updateUndoRedoUI();
 }
@@ -641,19 +798,12 @@ function removeAnnotation(id) {
     const i = S.annotations.findIndex(a => a.id === id);
     if (i === -1) return;
     const ann = S.annotations[i];
+    removeEraserHandlersFor(ann);
     map.removeLayer(ann.layer);
+    removeArrowHead(ann);
     /* Also remove the total label tooltip for measurement annotations */
     if (ann.layer._totalLabel) {
         map.removeLayer(ann.layer._totalLabel);
-    }
-    /* Also remove companion arrowhead markers for arrow annotations */
-    if (ann.type === 'arrow') {
-        S.annotations.forEach(other => {
-            if (other._isArrowHead && other._arrowId === id) {
-                map.removeLayer(other.layer);
-            }
-        });
-        S.annotations = S.annotations.filter(a => !(a._isArrowHead && a._arrowId === id));
     }
     S.annotations.splice(i, 1);
     pushUndo({ type: 'remove', ann });
@@ -665,7 +815,11 @@ function clearAll() {
     if (!confirm('Clear all annotations? You can undo this.')) return;
     disableEraser();
     const snapshot = S.annotations.slice();
-    S.annotations.forEach(a => map.removeLayer(a.layer));
+    S.annotations.forEach(a => {
+        map.removeLayer(a.layer);
+        removeArrowHead(a);
+        if (a.layer._totalLabel) map.removeLayer(a.layer._totalLabel);
+    });
     S.annotations = [];
     pushUndo({ type: 'clear', anns: snapshot });
     updateCount();
@@ -708,7 +862,7 @@ function toggleHighlight(layer) {
 /* Attach double-click highlight to a polygon layer */
 function attachHighlightHandler(layer) {
     layer.on('dblclick', function (e) {
-        L.DomEvent.stop(e);
+        if (e && e.originalEvent) L.DomEvent.stop(e.originalEvent);
         toggleHighlight(this);
     });
 }
@@ -1989,12 +2143,14 @@ map.on('mousedown', e => {
     mouseDown = true;
     if (S.tool === 'freehand') startFreehand(e);
     if (S.tool === 'arrow') startArrow(e);
+    if (S.tool === 'eraser') eraserDragStart();
 });
 
 map.on('mousemove', e => {
     S.lastLatLng = e.latlng;
     if (S.tool === 'freehand' && S.drawing) moveFreehand(e);
     if (S.tool === 'arrow' && S.arrowDrawing) moveArrow(e);
+    if (S.tool === 'eraser' && S.eraserDragging) eraserDragMove(e);
     if (S.tool === 'polyline') movePolyPreview(e);
     if (S.tool === 'measure') moveMeasurePreview(e);
 });
@@ -2003,11 +2159,13 @@ map.on('mouseup', () => {
     mouseDown = false;
     if (S.tool === 'freehand' && S.drawing) finishFreehand();
     if (S.tool === 'arrow' && S.arrowDrawing) finishArrow();
+    if (S.tool === 'eraser') eraserDragEnd();
 });
 
 map.on('click', e => {
     if (S.tool === 'polyline') addPolylinePoint(e);
     if (S.tool === 'marker') placeMarker(e);
+    if (S.tool === 'fire') placeFire(e);
     if (S.tool === 'measure') startMeasure(e);
     if (S.tool === 'label') {
         const pt = map.latLngToContainerPoint(e.latlng);
@@ -2017,7 +2175,7 @@ map.on('click', e => {
 
 map.on('dblclick', e => {
     if (S.tool === 'polyline') {
-        L.DomEvent.stop(e);
+        if (e && e.originalEvent) L.DomEvent.stop(e.originalEvent);
         if (S.plPoints.length > 0) {
             S.plPoints.pop();
             if (S.plLine) { const ll = S.plLine.getLatLngs(); if (ll.length > 0) ll.pop(); S.plLine.setLatLngs(ll); }
@@ -2025,7 +2183,7 @@ map.on('dblclick', e => {
         finishPolyline();
     }
     if (S.tool === 'measure') {
-        L.DomEvent.stop(e);
+        if (e && e.originalEvent) L.DomEvent.stop(e.originalEvent);
         finishMeasure();
     }
     /* Clear highlight when double-clicking empty map area (only in pan mode) */
@@ -2149,6 +2307,7 @@ document.addEventListener('keydown', e => {
         case '6': setTool('label');    break;
         case '7': setTool('measure');  break;
         case '8': setTool('eraser');   break;
+        case '9': setTool('fire');     break;
         case 'i': case 'I': openImportModal(); break;
         case 'f': case 'F': toggleFullscreen(); break;
     }
@@ -2198,8 +2357,8 @@ if (fsBtn) {
         toggleFullscreen();
     });
 }
-document.addEventListener('fullscreenchange', function () { updateFullscreenBtn(); setTimeout(function () { map.invalidateSize(); }, 350); });
-document.addEventListener('webkitfullscreenchange', function () { updateFullscreenBtn(); setTimeout(function () { map.invalidateSize(); }, 350); });
+document.addEventListener('fullscreenchange', function () { updateFullscreenBtn(); setTimeout(requestMapResize, 350); });
+document.addEventListener('webkitfullscreenchange', function () { updateFullscreenBtn(); setTimeout(requestMapResize, 350); });
 
 /* =====================================================
    Draggable Panels
@@ -2318,6 +2477,28 @@ function resetLayout() {
     cfgSnapEdge = true;
     applyVisibility();
     saveSettings();
+}
+
+function clampDraggablePanels() {
+    const viewportWidth = document.documentElement.clientWidth || window.innerWidth;
+    const viewportHeight = document.documentElement.clientHeight || window.innerHeight;
+    let changed = false;
+
+    document.querySelectorAll('[data-draggable]').forEach(el => {
+        /* Only clamp panels that have been manually positioned. CSS-anchored
+           panels should keep their responsive default positions. */
+        if (!el.style.left && !el.style.top) return;
+        const rect = el.getBoundingClientRect();
+        const left = Math.max(0, Math.min(viewportWidth - el.offsetWidth, rect.left));
+        const top = Math.max(0, Math.min(viewportHeight - el.offsetHeight, rect.top));
+        if (Math.round(rect.left) !== Math.round(left) || Math.round(rect.top) !== Math.round(top)) {
+            el.style.left = left + 'px';
+            el.style.top = top + 'px';
+            changed = true;
+        }
+    });
+
+    if (changed) saveLayout();
 }
 
 /* ── Panel Visibility ──────────────────────────── */
@@ -2626,6 +2807,17 @@ $('#style-toggle').addEventListener('click', (e) => {
     body.classList.toggle('hidden');
     arrow.classList.toggle('open');
 });
+
+/* ── Flag Selector Buttons ────────────────────── */
+$$('.flag-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+        const flag = btn.dataset.flag || null;
+        S.flag = flag;
+        $$('.flag-btn').forEach(b => b.classList.toggle('active', (b.dataset.flag || null) === S.flag));
+    });
+});
+/* Initialize: select "no flag" by default */
+$$('.flag-btn').forEach(b => b.classList.toggle('active', b.dataset.flag === ''));
 
 /* Reset layout button (inside settings popup) */
 

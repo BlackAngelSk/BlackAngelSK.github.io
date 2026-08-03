@@ -38,6 +38,9 @@
         <button class="tool-btn" data-tool="eraser" title="Eraser (8)">
             <span class="tool-icon">🧹</span><span class="tool-label">Erase</span>
         </button>
+        <button class="tool-btn" data-tool="fire" title="Place Fire (9)">
+            <span class="tool-icon">🔥</span><span class="tool-label">Fire</span>
+        </button>
     </div>
 
     <!-- Label Text Input Popup -->
@@ -105,6 +108,22 @@
 
     <!-- Finish Button (shown when polyline tool active) -->
     <button id="btn-finish" class="hidden" title="Finish polyline (Enter)">✓ Finish</button>
+
+    <!-- Flag Selector (shown when arrow tool active) -->
+    <div id="flag-panel" class="hidden">
+        <div class="flag-panel-title">🏳️ Flag</div>
+        <div id="flag-grid">
+            <button class="flag-btn" data-flag="" title="No flag">✕</button>
+            <button class="flag-btn" data-flag="🇷🇺" title="Russia">🇷🇺</button>
+            <button class="flag-btn" data-flag="🇺🇦" title="Ukraine">🇺🇦</button>
+            <button class="flag-btn" data-flag="🇮🇱" title="Israel">🇮🇱</button>
+            <button class="flag-btn" data-flag="🇺🇸" title="USA">🇺🇸</button>
+            <button class="flag-btn" data-flag="🇮🇷" title="Iran">🇮🇷</button>
+            <button class="flag-btn" data-flag="🇪🇺" title="EU">🇪🇺</button>
+            <button class="flag-btn" data-flag="🇸🇰" title="Slovakia">🇸🇰</button>
+            <button class="flag-btn" data-flag="🇬🇧" title="Great Britain">🇬🇧</button>
+        </div>
+    </div>
 
     <!-- Save Modal -->
     <div id="save-modal" class="hidden">
