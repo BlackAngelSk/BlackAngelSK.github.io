@@ -341,44 +341,42 @@ CITIES.forEach(c=>{
 const stC=mkStars(4000);const stT=new THREE.CanvasTexture(stC);stT.anisotropy=renderer.capabilities.getMaxAnisotropy();
 scene.add(new THREE.Mesh(new THREE.SphereGeometry(800,64,64),new THREE.MeshBasicMaterial({map:stT,side:THREE.BackSide})));
 
-// Planets
-const PLANET_BASE='https://raw.githubusercontent.com/mrdoob/three.js/dev/examples/textures/planets/';
-const PLANETS=[
-  {name:'Mercury',tex:'mercury_map.jpg',size:2.4,dist:350,spd:0.008,tilt:0.03,color:'#aaaaaa',fact:'Smallest planet, closest to the Sun'},
-  {name:'Venus',tex:'venus_map.jpg',size:4.5,dist:400,spd:0.005,tilt:0.02,color:'#e8c088',fact:'Hottest planet, rotates backwards'},
-  {name:'Mars',tex:'mars_map.jpg',size:3.2,dist:460,spd:0.006,tilt:0.04,color:'#cc5533',fact:'The Red Planet, has the tallest volcano'},
-  {name:'Jupiter',tex:'jupiter_map.jpg',size:12,dist:550,spd:0.003,tilt:0.01,color:'#d4a574',fact:'Largest planet, Great Red Spot storm'},
-  {name:'Saturn',tex:'saturn_map.jpg',size:10,dist:660,spd:0.002,tilt:0.02,color:'#e8d088',fact:'Famous for its beautiful ring system'},
-  {name:'Uranus',tex:'uranus_map.jpg',size:6,dist:760,spd:0.0015,tilt:0.05,color:'#88ccdd',fact:'Rotates on its side, ice giant'},
-  {name:'Neptune',tex:'neptune_map.jpg',size:5.5,dist:850,spd:0.001,tilt:0.03,color:'#4466cc',fact:'Farthest planet, strongest winds'},
-];
-const planetsGroup=new THREE.Group();scene.add(planetsGroup);
-const planetMeshes=[];
-let shPlanets=true;
-PLANETS.forEach((p,i)=>{
-  const angle=(i/PLANETS.length)*Math.PI*2+Math.random()*0.5;
-  const yOff=(Math.random()-0.5)*120;
-  const tex=loader.load(PLANET_BASE+p.tex,t=>{t.colorSpace=THREE.SRGBColorSpace;onL('planet-'+p.name);},undefined,e=>onE('planet-'+p.name,e));
-  const mat=new THREE.MeshPhongMaterial({map:tex,shininess:5});
-  const mesh=new THREE.Mesh(new THREE.SphereGeometry(p.size,32,32),mat);
-  mesh.position.set(Math.cos(angle)*p.dist,yOff,Math.sin(angle)*p.dist);
-  mesh.userData={name:p.name,fact:p.fact,orbitDist:p.dist,orbitSpd:p.spd,orbitAngle:angle,yOff:yOff,tilt:p.tilt};
-  planetsGroup.add(mesh);planetMeshes.push(mesh);
-  // Saturn ring
-  if(p.name==='Saturn'){
-    const ringTex=loader.load(PLANET_BASE+'saturn_ring.png',t=>{t.colorSpace=THREE.SRGBColorSpace;});
-    const ringMat=new THREE.MeshBasicMaterial({map:ringTex,transparent:true,opacity:0.7,side:THREE.DoubleSide,depthWrite:false});
-    const ring=new THREE.Mesh(new THREE.RingGeometry(p.size*1.4,p.size*2.4,64),ringMat);
-    ring.rotation.x=Math.PI*0.45;
-    mesh.add(ring);
+
+// Timezone lines — 24 meridians at every 15° of longitude
+const tzGroup=new THREE.Group();gG.add(tzGroup);tzGroup.visible=false;
+const TZ_SEG=64;
+for(let lon=-180;lon<180;lon+=15){
+  const pts=[];
+  for(let lat=-90;lat<=90;lat+=3){
+    const v=latLonToV3(lat,lon,ER*1.006);
+    pts.push(v);
   }
-});
+  const geo=new THREE.BufferGeometry().setFromPoints(pts);
+  const isPrime=lon===0;
+  const mat=new THREE.LineBasicMaterial({color:isPrime?0x44aaff:0x8866cc,transparent:true,opacity:isPrime?0.6:0.25,depthTest:false});
+  tzGroup.add(new THREE.Line(geo,mat));
+  // Add UTC offset label at the equator for every 3rd line
+  if(lon%45===0){
+    const offsetH=lon/15;
+    const label=(offsetH>=0?'+':'')+Math.round(offsetH);
+    const lcv=document.createElement('canvas');lcv.width=64;lcv.height=32;const lx=lcv.getContext('2d');
+    lx.clearRect(0,0,64,32);lx.font='bold 14px monospace';lx.fillStyle=isPrime?'rgba(68,170,255,0.8)':'rgba(136,102,204,0.6)';
+    lx.textAlign='center';lx.textBaseline='middle';lx.fillText('UTC'+label,32,16);
+    const lTex=new THREE.CanvasTexture(lcv);
+    const lMat=new THREE.SpriteMaterial({map:lTex,transparent:true,depthTest:false,depthWrite:false});
+    const lSp=new THREE.Sprite(lMat);lSp.scale.set(6,3,1);
+    lSp.position.copy(latLonToV3(0,lon,ER*1.008));
+    tzGroup.add(lSp);
+  }
+}
 
 // Controls
 const ctrl=new OrbitControls(camera,renderer.domElement);
 ctrl.enableDamping=true;ctrl.dampingFactor=0.08;ctrl.rotateSpeed=0.5;ctrl.zoomSpeed=0.8;
 ctrl.minDistance=150;ctrl.maxDistance=500;ctrl.enablePan=false;
 
+const SOLAR_DAY_MS=86400000; // 24h in milliseconds
+const SUN_XZ_ANGLE=Math.atan2(200,200); // sun light is at 45° in XZ plane
 let autoRo=true,shCloud=true,shAtm=true,shBrD=true,shCt=true,nMde=false;
 
 // UI
@@ -394,8 +392,9 @@ btnAz.addEventListener('click',()=>{shAtm=!shAtm;btnAz.classList.toggle('active'
 btnNt.addEventListener('click',()=>{nMde=!nMde;btnNt.classList.toggle('active',nMde);});
 if(btnCt)btnCt.addEventListener('click',()=>{shCt=!shCt;btnCt.classList.toggle('active',shCt);});
 
-const btnPl=document.getElementById('btn-planets');
-if(btnPl)btnPl.addEventListener('click',()=>{shPlanets=!shPlanets;btnPl.classList.toggle('active',shPlanets);});
+const btnTz=document.getElementById('btn-timezones');
+let shTz=false;
+if(btnTz)btnTz.addEventListener('click',()=>{shTz=!shTz;tzGroup.visible=shTz;btnTz.classList.toggle('active',shTz);});
 
 // Country click
 const countryPanel=document.getElementById('country-panel');
@@ -524,34 +523,54 @@ renderer.domElement.addEventListener('mousemove',(e)=>{
   if(hits.length>0&&hits[0].object.userData&&hits[0].object.userData.name){
     hoverObj=hits[0].object;tooltip.style.display='block';tooltip.style.left=(e.clientX+12)+'px';tooltip.style.top=(e.clientY-20)+'px';
     tooltip.textContent=hoverObj.userData.name;
-  }else if(shPlanets){
-    // Check planets
-    const pHits=ray.intersectObjects(planetMeshes);
-    if(pHits.length>0&&pHits[0].object.userData&&pHits[0].object.userData.name){
-      hoverObj=pHits[0].object;tooltip.style.display='block';tooltip.style.left=(e.clientX+12)+'px';tooltip.style.top=(e.clientY-20)+'px';
-      tooltip.textContent=hoverObj.userData.name+' — '+hoverObj.userData.fact;
-    }else{tooltip.style.display='none';}
   }else{tooltip.style.display='none';}
 });
+
+// Clock HUD
+const clockUtc=document.getElementById('clock-utc');
+const clockLocal=document.getElementById('clock-local');
+const clockCoords=document.getElementById('clock-coords');
+function updateClock(){
+  // Get the point on Earth facing the camera
+  const camDir=camera.position.clone().normalize();
+  const subPoint=camDir.multiplyScalar(ER);
+  // Convert to lat/lon (inverse of latLonToV3)
+  const n=camera.position.clone().normalize();
+  const lat=90-Math.asin(n.y)*180/Math.PI;
+  let lon=Math.atan2(n.z,-n.x)*180/Math.PI-180;
+  if(lon<-180)lon+=360;if(lon>180)lon-=360;
+  // UTC time
+  const now=new Date();
+  const utcH=String(now.getUTCHours()).padStart(2,'0');
+  const utcM=String(now.getUTCMinutes()).padStart(2,'0');
+  const utcS=String(now.getUTCSeconds()).padStart(2,'0');
+  if(clockUtc)clockUtc.textContent='UTC  '+utcH+':'+utcM+':'+utcS;
+  // Local solar time based on longitude
+  const localOffset=lon/15; // hours offset from UTC
+  const localMs=now.getTime()+localOffset*3600000;
+  const localDate=new Date(localMs);
+  const locH=String(localDate.getUTCHours()).padStart(2,'0');
+  const locM=String(localDate.getUTCMinutes()).padStart(2,'0');
+  const locS=String(localDate.getUTCSeconds()).padStart(2,'0');
+  const tzName=lon>=0?'E':'W';
+  if(clockLocal)clockLocal.textContent=locH+':'+locM+':'+locS+' '+Math.abs(Math.round(lon))+'°'+tzName;
+  if(clockCoords)clockCoords.textContent=lat.toFixed(1)+'°'+(lat>=0?'N':'S')+'  '+Math.abs(lon).toFixed(1)+'°'+(lon>=0?'E':'W');
+}
 
 // Animation
 let time=0;
 function animate(){
   requestAnimationFrame(animate);time+=0.001;
-  if(autoRo)gG.rotation.y+=0.002;
+  if(autoRo){
+    const now=Date.now();
+    const utcH=(now%SOLAR_DAY_MS)/3600000; // hours since UTC midnight
+    gG.rotation.y=-SUN_XZ_ANGLE+(utcH-12)*Math.PI/12; // align sun with correct longitude
+  }
   clMh.rotation.y+=0.0008;
   if(nMde){nlM.opacity=Math.min(nlM.opacity+0.015,1.0);aL.intensity=Math.max(aL.intensity-0.02,0.2);}
   else{nlM.opacity=Math.max(nlM.opacity-0.015,0.0);aL.intensity=Math.min(aL.intensity+0.02,1.0);}
-  atM.visible=shAtm;clMh.visible=shCloud;ctG.visible=shCt;planetsGroup.visible=shPlanets;
-
-  // Animate planet orbits
-  planetMeshes.forEach(m=>{
-    const d=m.userData;
-    d.orbitAngle+=d.orbitSpd;
-    m.position.set(Math.cos(d.orbitAngle)*d.orbitDist,d.yOff+Math.sin(time*2+d.orbitAngle)*5,Math.sin(d.orbitAngle)*d.orbitDist);
-    m.rotation.y+=0.003;
-  });
-
+  atM.visible=shAtm;clMh.visible=shCloud;ctG.visible=shCt;
+  
   if(cntryMode&&gsapDest){
     gsapT++;
     const t=gsapT/gsapDur;
@@ -569,6 +588,7 @@ function animate(){
   const zoomK=Math.min(Math.max(Math.pow(350/camDist,0.3),0.85),1.8);
   ctLabels.forEach(lb=>{lb.scale.set(5*zoomK,1.25*zoomK,1);});
 
+  updateClock();
   ctrl.update();renderer.render(scene,camera);
 }
 

@@ -455,6 +455,7 @@ body.layout-editing #bottom-bar {
 body.tool-eraser #map,
 body.tool-freehand #map,
 body.tool-polyline #map,
+body.tool-arrow #map,
 body.tool-marker #map,
 body.tool-label #map,
 body.tool-measure #map { cursor: crosshair !important; }
@@ -464,6 +465,24 @@ body.tool-measure #map { cursor: crosshair !important; }
     width: 1px; height: 20px;
     background: rgba(100, 160, 255, 0.2);
     flex-shrink: 0;
+}
+
+/* ── Arrowhead Icon ────────────────────────────── */
+.arrowhead-wrap {
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transform-origin: 12px 12px;
+}
+.arrowhead-wrap svg {
+    overflow: visible;
+    filter: drop-shadow(0 1px 3px rgba(0,0,0,0.45));
+}
+.arrowhead-wrap.arrowhead-preview {
+    opacity: 0.6;
+    pointer-events: none;
 }
 
 /* ── Marker Pin ─────────────────────────────────── */

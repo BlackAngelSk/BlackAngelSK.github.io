@@ -273,6 +273,44 @@ canvas {
     margin-left: 6px;
 }
 
+/* Clock HUD */
+#clock-hud {
+    position: fixed;
+    top: 16px;
+    right: 16px;
+    background: rgba(10, 20, 50, 0.85);
+    border: 1px solid rgba(100, 160, 255, 0.3);
+    border-radius: 10px;
+    padding: 10px 14px;
+    z-index: 15;
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    font-family: 'Courier New', monospace;
+    min-width: 180px;
+    pointer-events: none;
+}
+
+#clock-utc {
+    font-size: 1.1rem;
+    color: rgba(200, 220, 255, 0.9);
+    letter-spacing: 1px;
+    margin-bottom: 4px;
+}
+
+#clock-local {
+    font-size: 1.3rem;
+    font-weight: bold;
+    color: #8ec8ff;
+    letter-spacing: 1px;
+    margin-bottom: 4px;
+}
+
+#clock-coords {
+    font-size: 0.75rem;
+    color: rgba(140, 180, 255, 0.6);
+    letter-spacing: 0.5px;
+}
+
 @media (max-width: 600px) {
     #header h1 { font-size: 1.4rem; }
     #controls { flex-wrap: wrap; justify-content: center; }

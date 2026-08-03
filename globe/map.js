@@ -28,6 +28,11 @@ const S = {
     /* undo/redo */
     undoStack: [],
     redoStack: [],
+    /* arrow */
+    arrowStart: null,
+    arrowLine: null,
+    arrowHead: null,
+    arrowDrawing: false,
     /* measure */
     msPoints: [],
     msLine: null,
@@ -50,6 +55,7 @@ const STATUS = {
     pan: 'Ready — Pan mode',
     freehand: 'Click and drag to draw',
     polyline: 'Click to add points · Dbl-click / Enter to finish · Esc to cancel',
+    arrow: 'Click and drag to draw an arrow',
     marker: 'Click to drop a pin on the map',
     label: 'Click to place a text label',
     measure: 'Click to measure distance · Dbl-click / Enter to finish · Esc to cancel',
@@ -139,6 +145,7 @@ function setTool(tool) {
     /* finish any in-progress drawing */
     if (S.tool === 'polyline' && S.plPoints.length > 0) finishPolyline();
     if (S.tool === 'freehand' && S.drawing) finishFreehand();
+    if (S.tool === 'arrow' && S.arrowDrawing) finishArrow();
     if (S.tool === 'measure' && S.msPoints.length > 0) finishMeasure();
 
     /* hide label input if switching away */
@@ -151,7 +158,7 @@ function setTool(tool) {
     S.drawing = false;
 
     /* map dragging */
-    if (tool === 'pan' || tool === 'eraser') map.dragging.enable();
+    if (tool === 'pan' || tool === 'eraser') map.draggingenable();
     else map.dragging.disable();
 
     /* enter new tool */
@@ -162,7 +169,7 @@ function setTool(tool) {
     $('#status-text').textContent = STATUS[tool];
     const icons = {
         pan: '\u{1F4CD}', freehand: '\u270F\uFE0F', polyline: '\u{1F4D0}',
-        marker: '\u{1F4CC}', label: '\u{1F3F7}\uFE0F', measure: '\u{1F4CF}', eraser: '\u{1F9F9}'
+        arrow: '\u27A1\uFE0F', marker: '\u{1F4CC}', label: '\u{1F3F7}\uFE0F', measure: '\u{1F4CF}', eraser: '\u{1F9F9}'
     };
     $('#status-icon').textContent = icons[tool] || '\u{1F4CD}';
     document.body.className = 'tool-' + tool;
@@ -265,6 +272,91 @@ function cancelPolyline() {
     if (S.plPreview) map.removeLayer(S.plPreview);
     S.plPoints = []; S.plLine = null; S.plPreview = null;
     $('#btn-finish').classList.add('hidden');
+}
+
+/* =====================================================
+   Arrow Drawing (click-and-drag)
+   ===================================================== */
+function computeArrowAngle(startLatLng, endLatLng) {
+    var dLng = (endLatLng.lng - startLatLng.lng) * Math.PI / 180;
+    var lat1 = startLatLng.lat * Math.PI / 180;
+    var lat2 = endLatLng.lat * Math.PI / 180;
+    var y = Math.sin(dLng) * Math.cos(lat2);
+    var x = Math.cos(lat1) * Math.sin(lat2) - Math.sin(lat1) * Math.cos(lat2) * Math.cos(dLng);
+    return (Math.atan2(y, x) * 180 / Math.PI + 360) % 360;
+}
+
+function createArrowheadIcon(color, preview) {
+    var size = 24;
+    var svgNs = 'http://www.w3.org/2000/svg';
+    return L.divIcon({
+        className: '',
+        html: '<div class="arrowhead-wrap' + (preview ? ' arrowhead-preview' : '') + '">'
+            + '<svg xmlns="' + svgNs + '" width="' + size + '" height="' + size + '" viewBox="0 0 24 24">'
+            + '<polygon points="12,1 22,22 12,17 2,22" fill="' + color + '" '
+            + 'stroke="rgba(255,255,255,0.45)" stroke-width="1.2" stroke-linejoin="round"/>'
+            + '</svg></div>',
+        iconSize: [size, size],
+        iconAnchor: [size / 2, size / 2]
+    });
+}
+
+function startArrow(e) {
+    if (S.tool !== 'arrow') return;
+    S.arrowDrawing = true;
+    S.arrowStart = e.latlng;
+    S.arrowLine = L.polyline([e.latlng, e.latlng], {
+        color: S.color, weight: S.weight,
+        dashArray: DASH[S.dashStyle], opacity: 1,
+        lineCap: 'round', lineJoin: 'round'
+    }).addTo(map);
+    S.arrowHead = L.marker(e.latlng, {
+        icon: createArrowheadIcon(S.color, true),
+        interactive: false
+    }).addTo(map);
+}
+
+function moveArrow(e) {
+    if (!S.arrowDrawing || !S.arrowLine) return;
+    S.lastLatLng = e.latlng;
+    S.arrowLine.setLatLngs([S.arrowStart, e.latlng]);
+    S.arrowHead.setLatLng(e.latlng);
+    var angle = computeArrowAngle(S.arrowStart, e.latlng);
+    var el = S.arrowHead.getElement();
+    if (el) {
+        var inner = el.querySelector('.arrowhead-wrap');
+        if (inner) inner.style.transform = 'rotate(' + angle + 'deg)';
+    }
+}
+
+function finishArrow() {
+    if (!S.arrowLine || !S.arrowStart) { resetArrow(); return; }
+    if (S.arrowHead) { map.removeLayer(S.arrowHead); S.arrowHead = null; }
+    var latlngs = S.arrowLine.getLatLngs();
+    if (latlngs.length < 2 || (latlngs[0].lat === latlngs[1].lat && latlngs[0].lng === latlngs[1].lng)) {
+        map.removeLayer(S.arrowLine); resetArrow(); return;
+    }
+    var startLL = latlngs[0], endLL = latlngs[1];
+    var angle = computeArrowAngle(startLL, endLL);
+    var coords = [[startLL.lat, startLL.lng], [endLL.lat, endLL.lng]];
+    var headIcon = createArrowheadIcon(S.color, false);
+    var headMarker = L.marker(endLL, { icon: headIcon, interactive: true }).addTo(map);
+    var headEl = headMarker.getElement();
+    if (headEl) {
+        var inner = headEl.querySelector('.arrowhead-wrap');
+        if (inner) inner.style.transform = 'rotate(' + angle + 'deg)';
+    }
+    storeAnnotation(S.arrowLine, 'arrow', coords, { headLatLng: [endLL.lat, endLL.lng], angle: angle });
+    var arrowId = S.arrowLine._annId;
+    headMarker._annId = arrowId;
+    headMarker._isArrowHead = true;
+    headMarker._arrowId = arrowId;
+    S.annotations.push({ id: arrowId, layer: headMarker, type: 'arrowhead', coords: [endLL.lat, endLL.lng], color: S.color, weight: S.weight, dashStyle: S.dashStyle, dashArray: DASH[S.dashStyle], extra: null });
+    resetArrow();
+}
+
+function resetArrow() {
+    S.arrowStart = null; S.arrowLine = null; S.arrowHead = null; S.arrowDrawing = false;
 }
 
 /* =====================================================
@@ -553,6 +645,15 @@ function removeAnnotation(id) {
     /* Also remove the total label tooltip for measurement annotations */
     if (ann.layer._totalLabel) {
         map.removeLayer(ann.layer._totalLabel);
+    }
+    /* Also remove companion arrowhead markers for arrow annotations */
+    if (ann.type === 'arrow') {
+        S.annotations.forEach(other => {
+            if (other._isArrowHead && other._arrowId === id) {
+                map.removeLayer(other.layer);
+            }
+        });
+        S.annotations = S.annotations.filter(a => !(a._isArrowHead && a._arrowId === id));
     }
     S.annotations.splice(i, 1);
     pushUndo({ type: 'remove', ann });
@@ -1887,11 +1988,13 @@ let mouseDown = false;
 map.on('mousedown', e => {
     mouseDown = true;
     if (S.tool === 'freehand') startFreehand(e);
+    if (S.tool === 'arrow') startArrow(e);
 });
 
 map.on('mousemove', e => {
     S.lastLatLng = e.latlng;
     if (S.tool === 'freehand' && S.drawing) moveFreehand(e);
+    if (S.tool === 'arrow' && S.arrowDrawing) moveArrow(e);
     if (S.tool === 'polyline') movePolyPreview(e);
     if (S.tool === 'measure') moveMeasurePreview(e);
 });
@@ -1899,6 +2002,7 @@ map.on('mousemove', e => {
 map.on('mouseup', () => {
     mouseDown = false;
     if (S.tool === 'freehand' && S.drawing) finishFreehand();
+    if (S.tool === 'arrow' && S.arrowDrawing) finishArrow();
 });
 
 map.on('click', e => {
@@ -2040,10 +2144,11 @@ document.addEventListener('keydown', e => {
         case '1': setTool('pan');      break;
         case '2': setTool('freehand'); break;
         case '3': setTool('polyline'); break;
-        case '4': setTool('marker');   break;
-        case '5': setTool('label');    break;
-        case '6': setTool('measure');  break;
-        case '7': setTool('eraser');   break;
+        case '4': setTool('arrow');    break;
+        case '5': setTool('marker');   break;
+        case '6': setTool('label');    break;
+        case '7': setTool('measure');  break;
+        case '8': setTool('eraser');   break;
         case 'i': case 'I': openImportModal(); break;
         case 'f': case 'F': toggleFullscreen(); break;
     }
