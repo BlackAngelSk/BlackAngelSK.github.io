@@ -238,16 +238,87 @@ function dP(ctx,ring,w,h){
   ctx.beginPath();ring.forEach((c,i)=>{const[x,y]=ll2c(c[0],c[1],w,h);i===0?ctx.moveTo(x,y):ctx.lineTo(x,y);});ctx.closePath();
 }
 
+let geoFeatures=[];let borderCanvas=null,borderCtx=null,borderW=0,borderH=0;
+let highlightedCountryIdx=-1;
+
+// Countries currently in conflict (as of 2025-2026)
+const CONFLICT_COUNTRIES=[
+  'ukraine','russia','syria','yemen','myanmar','burma','ethiopia',
+  'sudan','israel','palestine','gaza','somalia','mali',
+  'burkina faso','niger','haiti','colombia',
+  'democratic republic of the congo','dr congo','central african republic',
+  'libya','iraq','afghanistan','cameroon','mozambique',
+  'sahrawi arab democratic republic','western sahara',
+];
+
+function isConflictCountry(f){
+  if(!f.properties)return false;
+  const n=(f.properties.name||f.properties.NAME||f.properties.ADMIN||'').toLowerCase();
+  return CONFLICT_COUNTRIES.some(c=>n===c||n.includes(c)||c.includes(n));
+}
+
+function drawBorders(ctx,w,h,highlightIdx){
+  ctx.clearRect(0,0,w,h);
+  geoFeatures.forEach((f,idx)=>{
+    const g=f.geometry;if(!g)return;
+    const isHL=idx===highlightIdx;
+    const isConflict=isConflictCountry(f);
+    const dr=(rings)=>{
+      rings.forEach((ring,i)=>{
+        dP(ctx,ring,w,h);
+        if(i===0){
+          if(isHL){
+            ctx.fillStyle='rgba(100,200,255,0.35)';
+            ctx.fill();
+            ctx.strokeStyle='rgba(100,220,255,1.0)';
+            ctx.lineWidth=2.5;
+          }else if(isConflict){
+            ctx.fillStyle='rgba(255,60,60,0.25)';
+            ctx.fill();
+            ctx.strokeStyle='rgba(255,80,80,0.8)';
+            ctx.lineWidth=1.8;
+          }else{
+            ctx.fillStyle='rgba(220,255,200,0.08)';
+            ctx.fill();
+            ctx.strokeStyle='rgba(255,255,190,0.9)';
+            ctx.lineWidth=1.2;
+          }
+          ctx.stroke();
+        }else{
+          if(isHL){
+            ctx.strokeStyle='rgba(100,220,255,0.9)';
+            ctx.lineWidth=2.0;
+          }else if(isConflict){
+            ctx.strokeStyle='rgba(255,80,80,0.7)';
+            ctx.lineWidth=1.5;
+          }else{
+            ctx.strokeStyle='rgba(255,255,190,0.9)';
+            ctx.lineWidth=1.0;
+          }
+          ctx.stroke();
+        }
+      });
+    };
+    if(g.type==='Polygon')dr(g.coordinates);
+    else if(g.type==='MultiPolygon')g.coordinates.forEach(p=>dr(p));
+  });
+}
+
+function highlightCountry(idx){
+  highlightedCountryIdx=idx;
+  if(borderCanvas&&borderCtx)drawBorders(borderCtx,borderW,borderH,idx);
+  if(brM.map)brM.map.needsUpdate=true;
+}
+
 async function mkBorderTex(w=BDR_W,h=BDR_H){
-  const c=document.createElement('canvas');c.width=w;c.height=h;const x=c.getContext('2d');x.clearRect(0,0,w,h);
+  borderW=w;borderH=h;
+  const c=document.createElement('canvas');c.width=w;c.height=h;borderCanvas=c;borderCtx=c.getContext('2d');
   try{
     updateProgress('Loading country borders...');
     const r=await fetch(BDR_URL);if(!r.ok)throw new Error('HTTP '+r.status);const d=await r.json();
-    d.features.forEach(f=>{const g=f.geometry;if(!g)return;
-      const dr=(rings)=>{rings.forEach((ring,i)=>{dP(x,ring,w,h);if(i===0){x.fillStyle='rgba(220,255,200,0.08)';x.fill();x.strokeStyle='rgba(255,255,190,0.9)';x.lineWidth=1.2;x.stroke();}else{x.strokeStyle='rgba(255,255,190,0.9)';x.lineWidth=1.0;x.stroke();}});};
-      if(g.type==='Polygon')dr(g.coordinates);else if(g.type==='MultiPolygon')g.coordinates.forEach(p=>dr(p));
-    });
-    updateProgress('Loaded '+d.features.length+' countries.');
+    geoFeatures=d.features;
+    drawBorders(borderCtx,w,h,-1);
+    updateProgress('Loaded '+geoFeatures.length+' countries.');
   }catch(e){console.error('Borders failed:',e);updateProgress('Borders failed.');}
   return c;
 }
@@ -401,7 +472,7 @@ const countryPanel=document.getElementById('country-panel');
 const countryName=document.getElementById('country-name');
 const countryInfo=document.getElementById('country-info');
 const closeBtn=document.getElementById('close-country');
-closeBtn.addEventListener('click',()=>{countryPanel.classList.add('hidden');});
+closeBtn.addEventListener('click',()=>{countryPanel.classList.add('hidden');highlightCountry(-1);});
 
 const ray=new THREE.Raycaster();
 const ms=new THREE.Vector2();
@@ -424,6 +495,9 @@ renderer.domElement.addEventListener('dblclick',(e)=>{
       countryName.textContent=d.name;
       countryInfo.textContent=d.info;
       countryPanel.classList.remove('hidden');
+      highlightCountry(findCountryFeatureIdx(d.name));
+    }else{
+      highlightCountry(-1);
     }
   }
 });
@@ -433,7 +507,7 @@ function showCountryAt(lat,lon,dist){
   const tgt=latLonToV3(lat,lon,dist);
   gsap(tgt,camera.position,tgt,new THREE.Vector3(0,0,0),80);
 }
-
+ 
 let gsapDest=null,gsapOrigin=null,gsapT=0;
 function gsap(d,o,lookAt,lookOrigin,dur){
   gsapDest=d;gsapOrigin=o.clone();gsapT=0;gsapDur=dur;
@@ -446,6 +520,17 @@ function findCountry(lat,lon){
     if(d<bestDist&&d<30){bestDist=d;best={name:k,info:v.info};}
   }
   return best;
+}
+
+function findCountryFeatureIdx(countryName){
+  if(!countryName||!geoFeatures.length)return-1;
+  const lower=countryName.toLowerCase();
+  return geoFeatures.findIndex(f=>{
+    const p=f.properties;
+    if(!p)return false;
+    const n=(p.name||p.NAME||p.ADMIN||'').toLowerCase();
+    return n===lower||n.includes(lower)||lower.includes(n);
+  });
 }
 
 function latLonDist(l1,ln1,l2,ln2){
@@ -501,7 +586,11 @@ function zoomTo(lat,lon){
   gsapDest=tgt;gsapOrigin=camera.position.clone();gsapT=0;gsapDur=80;cntryMode=true;
   // Show info panel if country
   const cf=findCountry(lat,lon);
-  if(cf){countryName.textContent=cf.name;countryInfo.textContent=cf.info;countryPanel.classList.remove('hidden');}
+  if(cf){
+    countryName.textContent=cf.name;countryInfo.textContent=cf.info;
+    countryPanel.classList.remove('hidden');
+    highlightCountry(findCountryFeatureIdx(cf.name));
+  }
 }
 
 searchInput.addEventListener('input',()=>searchGlobe(searchInput.value));
@@ -532,28 +621,26 @@ const clockLocal=document.getElementById('clock-local');
 const clockCoords=document.getElementById('clock-coords');
 function updateClock(){
   // Get the point on Earth facing the camera
-  const camDir=camera.position.clone().normalize();
-  const subPoint=camDir.multiplyScalar(ER);
-  // Convert to lat/lon (inverse of latLonToV3)
   const n=camera.position.clone().normalize();
   const lat=90-Math.asin(n.y)*180/Math.PI;
   let lon=Math.atan2(n.z,-n.x)*180/Math.PI-180;
   if(lon<-180)lon+=360;if(lon>180)lon-=360;
   // UTC time
   const now=new Date();
-  const utcH=String(now.getUTCHours()).padStart(2,'0');
-  const utcM=String(now.getUTCMinutes()).padStart(2,'0');
-  const utcS=String(now.getUTCSeconds()).padStart(2,'0');
-  if(clockUtc)clockUtc.textContent='UTC  '+utcH+':'+utcM+':'+utcS;
-  // Local solar time based on longitude
-  const localOffset=lon/15; // hours offset from UTC
-  const localMs=now.getTime()+localOffset*3600000;
-  const localDate=new Date(localMs);
-  const locH=String(localDate.getUTCHours()).padStart(2,'0');
-  const locM=String(localDate.getUTCMinutes()).padStart(2,'0');
-  const locS=String(localDate.getUTCSeconds()).padStart(2,'0');
-  const tzName=lon>=0?'E':'W';
-  if(clockLocal)clockLocal.textContent=locH+':'+locM+':'+locS+' '+Math.abs(Math.round(lon))+'°'+tzName;
+  const utcH=now.getUTCHours();
+  const utcM=now.getUTCMinutes();
+  const utcS=now.getUTCSeconds();
+  if(clockUtc)clockUtc.textContent='UTC  '+String(utcH).padStart(2,'0')+':'+String(utcM).padStart(2,'0')+':'+String(utcS).padStart(2,'0');
+  // Local time for the camera-facing point based on longitude
+  const lonOffset=lon/15; // solar time offset from UTC
+  const totalSec=utcH*3600+utcM*60+utcS+lonOffset*3600;
+  const dayShift=Math.floor(totalSec/86400);
+  const localSec=((totalSec%86400)+86400)%86400;
+  const lH=Math.floor(localSec/3600);
+  const lM=Math.floor((localSec%3600)/60);
+  const lS=Math.floor(localSec%60);
+  const utcLabel=lon>=0?'+'+Math.round(lon/15):''+Math.round(lon/15);
+  if(clockLocal)clockLocal.textContent=String(lH).padStart(2,'0')+':'+String(lM).padStart(2,'0')+':'+String(lS).padStart(2,'0')+' UTC'+utcLabel;
   if(clockCoords)clockCoords.textContent=lat.toFixed(1)+'°'+(lat>=0?'N':'S')+'  '+Math.abs(lon).toFixed(1)+'°'+(lon>=0?'E':'W');
 }
 
