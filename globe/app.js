@@ -8,7 +8,22 @@ const TEX_URL = {
   bump: 'https://raw.githubusercontent.com/mrdoob/three.js/dev/examples/textures/planets/earth_normal_2048.jpg',
   spec: 'https://raw.githubusercontent.com/mrdoob/three.js/dev/examples/textures/planets/earth_specular_2048.jpg',
 };
-const SEG = 256;
+// --- LOD (Level of Detail) System ---
+// Dynamically adjusts polygon count based on camera distance
+const LOD_THRESHOLDS=[
+  {maxDist:200,segments:192},{maxDist:300,segments:128},
+  {maxDist:420,segments:64},{maxDist:Infinity,segments:32}
+];
+const _geoCache=new Map();
+function _getSphereGeo(radius,seg){
+  const k=radius.toFixed(4)+'_'+seg;
+  if(!_geoCache.has(k))_geoCache.set(k,new THREE.SphereGeometry(radius,seg,seg));
+  return _geoCache.get(k);
+}
+function getLODSegments(dist){
+  for(const t of LOD_THRESHOLDS)if(dist<t.maxDist)return t.segments;
+  return 32;
+}
 const BDR_W = 4096;
 const BDR_H = 2048;
 const BDR_URL = 'https://raw.githubusercontent.com/holtzy/D3-graph-gallery/master/DATA/world.geojson';
@@ -358,37 +373,50 @@ const fL=new THREE.DirectionalLight(0x304070,0.3);fL.position.set(-200,-50,-200)
 const ER=120;
 const gG=new THREE.Group();scene.add(gG);
 const loader=new THREE.TextureLoader();
-let ld=0;const tot=6;
+let ld=0;const tot=5;
 function onL(n){ld++;updateProgress('Loading textures... '+ld+'/'+tot);if(ld>=tot)hidLoad();}
 function onE(n,e){console.warn(n,e);ld++;if(ld>=tot)hidLoad();}
-function mkT(u,ok){return loader.load(u,t=>{t.colorSpace=THREE.SRGBColorSpace;if(ok)ok(t);onL(u);},undefined,e=>onE(u,e));}
+function mkT(u,ok){return loader.load(u,t=>{
+  t.colorSpace=THREE.SRGBColorSpace;
+  t.anisotropy=renderer.capabilities.getMaxAnisotropy();
+  t.minFilter=THREE.LinearMipmapLinearFilter;
+  t.magFilter=THREE.LinearFilter;
+  if(ok)ok(t);onL(u);
+},undefined,e=>onE(u,e));}
 
-const dT=mkT(TEX_URL.day,t=>{t.anisotropy=renderer.capabilities.getMaxAnisotropy();});
+const dT=mkT(TEX_URL.day);
 const nT=mkT(TEX_URL.night);
 const cT=mkT(TEX_URL.clouds);
 const bT=mkT(TEX_URL.bump);
 const sT=mkT(TEX_URL.spec);
 
-const eM=new THREE.MeshPhongMaterial({map:dT,bumpMap:bT,bumpScale:0.08,specularMap:sT,specular:new THREE.Color(0x333333),shininess:25});
-gG.add(new THREE.Mesh(new THREE.SphereGeometry(ER,SEG,SEG),eM));
+const eM=new THREE.MeshPhongMaterial({map:dT,bumpMap:bT,bumpScale:0.12,specularMap:sT,specular:new THREE.Color(0x333333),shininess:25});
+const earthMesh=new THREE.Mesh(_getSphereGeo(ER,64),eM);gG.add(earthMesh);
 
 const nlM=new THREE.MeshBasicMaterial({map:nT,transparent:true,opacity:0,blending:THREE.AdditiveBlending,depthWrite:false});
-gG.add(new THREE.Mesh(new THREE.SphereGeometry(ER*1.002,SEG,SEG),nlM));
+const nightMesh=new THREE.Mesh(_getSphereGeo(ER*1.002,64),nlM);gG.add(nightMesh);
 
 const brM=new THREE.MeshBasicMaterial({transparent:true,opacity:1,depthWrite:false,blending:THREE.NormalBlending});
-gG.add(new THREE.Mesh(new THREE.SphereGeometry(ER*1.005,SEG,SEG),brM));
+const borderMesh=new THREE.Mesh(_getSphereGeo(ER*1.005,64),brM);gG.add(borderMesh);
 (async()=>{const cv=await mkBorderTex();if(cv){brM.map=new THREE.CanvasTexture(cv);brM.needsUpdate=true;}})();
 
 const clM=new THREE.MeshPhongMaterial({map:cT,transparent:true,opacity:0.4,depthWrite:false});
-const clMh=new THREE.Mesh(new THREE.SphereGeometry(ER*1.01,SEG,SEG),clM);
-gG.add(clMh);
+const cloudMesh=new THREE.Mesh(_getSphereGeo(ER*1.01,64),clM);gG.add(cloudMesh);
 
 // Atmosphere
 const av=`varying vec3 vN;void main(){vN=normalize(normalMatrix*normal);gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0);}`;
 const af=`varying vec3 vN;uniform vec3 gC;void main(){float i=pow(0.65-dot(vN,vec3(0,0,1)),2.0);gl_FragColor=vec4(gC,1.0)*i*1.2;}`;
-const atM=new THREE.Mesh(new THREE.SphereGeometry(ER*1.15,SEG,SEG),new THREE.ShaderMaterial({vertexShader:av,fragmentShader:af,uniforms:{gC:{value:new THREE.Color(0.2,0.5,1.0)}},side:THREE.BackSide,blending:THREE.AdditiveBlending,transparent:true}));
+const atM=new THREE.Mesh(_getSphereGeo(ER*1.15,64),new THREE.ShaderMaterial({vertexShader:av,fragmentShader:af,uniforms:{gC:{value:new THREE.Color(0.2,0.5,1.0)}},side:THREE.BackSide,blending:THREE.AdditiveBlending,transparent:true}));
 gG.add(atM);
-gG.add(new THREE.Mesh(new THREE.SphereGeometry(ER*1.08,SEG,SEG),new THREE.MeshBasicMaterial({color:0x3388ff,transparent:true,opacity:0.05,side:THREE.FrontSide,blending:THREE.AdditiveBlending,depthWrite:false})));
+const atFrontMesh=new THREE.Mesh(_getSphereGeo(ER*1.08,64),new THREE.MeshBasicMaterial({color:0x3388ff,transparent:true,opacity:0.05,side:THREE.FrontSide,blending:THREE.AdditiveBlending,depthWrite:false}));
+gG.add(atFrontMesh);
+
+// LOD mesh registry: spheres that swap geometry based on camera distance
+const lodMeshes=[
+  {mesh:earthMesh,radius:ER},{mesh:nightMesh,radius:ER*1.002},
+  {mesh:borderMesh,radius:ER*1.005},{mesh:cloudMesh,radius:ER*1.01},
+  {mesh:atM,radius:ER*1.15},{mesh:atFrontMesh,radius:ER*1.08}
+];
 
 // Cities
 const ctG=new THREE.Group();gG.add(ctG);
@@ -645,6 +673,17 @@ function updateClock(){
 }
 
 // Animation
+let _lastLODSeg=-1;
+function updateLOD(){
+  const dist=camera.position.length();
+  const seg=getLODSegments(dist);
+  if(seg===_lastLODSeg)return;
+  _lastLODSeg=seg;
+  for(const{mesh,radius}of lodMeshes)mesh.geometry=_getSphereGeo(radius,seg);
+  const el=document.getElementById('lod-hud');
+  if(el){const lb={192:'Ultra',128:'High',64:'Medium',32:'Low'};el.textContent='LOD: '+(lb[seg]||seg)+' ('+seg+' seg)';}
+}
+
 let time=0;
 function animate(){
   requestAnimationFrame(animate);time+=0.001;
@@ -653,10 +692,10 @@ function animate(){
     const utcH=(now%SOLAR_DAY_MS)/3600000; // hours since UTC midnight
     gG.rotation.y=-SUN_XZ_ANGLE+(utcH-12)*Math.PI/12; // align sun with correct longitude
   }
-  clMh.rotation.y+=0.0008;
+  cloudMesh.rotation.y+=0.0008;
   if(nMde){nlM.opacity=Math.min(nlM.opacity+0.015,1.0);aL.intensity=Math.max(aL.intensity-0.02,0.2);}
   else{nlM.opacity=Math.max(nlM.opacity-0.015,0.0);aL.intensity=Math.min(aL.intensity+0.02,1.0);}
-  atM.visible=shAtm;clMh.visible=shCloud;ctG.visible=shCt;
+  atM.visible=shAtm;cloudMesh.visible=shCloud;ctG.visible=shCt;
   
   if(cntryMode&&gsapDest){
     gsapT++;
@@ -675,6 +714,7 @@ function animate(){
   const zoomK=Math.min(Math.max(Math.pow(350/camDist,0.3),0.85),1.8);
   ctLabels.forEach(lb=>{lb.scale.set(5*zoomK,1.25*zoomK,1);});
 
+  updateLOD();
   updateClock();
   ctrl.update();renderer.render(scene,camera);
 }
