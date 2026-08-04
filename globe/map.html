@@ -14,33 +14,48 @@
     <!-- Drawing Toolbar (left) -->
     <div id="toolbar" data-draggable="toolbar">
         <div class="drag-handle" title="Drag to reposition">⋮</div>
-        <button class="tool-btn active" data-tool="pan" title="Pan & Navigate (1)">
-            <span class="tool-icon">✋</span><span class="tool-label">Pan</span>
-        </button>
-        <button class="tool-btn" data-tool="freehand" title="Freehand Drawing (2)">
-            <span class="tool-icon">✏️</span><span class="tool-label">Draw</span>
-        </button>
-        <button class="tool-btn" data-tool="polyline" title="Polyline Tool (3)">
-            <span class="tool-icon">📐</span><span class="tool-label">Line</span>
-        </button>
-        <button class="tool-btn" data-tool="arrow" title="Draw Arrow (4)">
-            <span class="tool-icon">➡️</span><span class="tool-label">Arrow</span>
-        </button>
-        <button class="tool-btn" data-tool="marker" title="Drop Pin (5)">
-            <span class="tool-icon">📌</span><span class="tool-label">Pin</span>
-        </button>
-        <button class="tool-btn" data-tool="label" title="Text Label (6)">
-            <span class="tool-icon">🏷️</span><span class="tool-label">Label</span>
-        </button>
-        <button class="tool-btn" data-tool="measure" title="Distance Measure (7)">
-            <span class="tool-icon">📏</span><span class="tool-label">Measure</span>
-        </button>
-        <button class="tool-btn" data-tool="eraser" title="Eraser (8)">
-            <span class="tool-icon">🧹</span><span class="tool-label">Erase</span>
-        </button>
-        <button class="tool-btn" data-tool="fire" title="Place Fire (9)">
-            <span class="tool-icon">🔥</span><span class="tool-label">Fire</span>
-        </button>
+        <div class="tool-group">
+            <div class="tool-group-label">Nav</div>
+            <button class="tool-btn active" data-tool="pan" title="Pan & Navigate (1)">
+                <span class="tool-icon">✋</span><span class="tool-label">Pan</span>
+            </button>
+        </div>
+        <div class="tool-sep"></div>
+        <div class="tool-group">
+            <div class="tool-group-label">Draw</div>
+            <button class="tool-btn" data-tool="freehand" title="Freehand Drawing (2)">
+                <span class="tool-icon">✏️</span><span class="tool-label">Draw</span>
+            </button>
+            <button class="tool-btn" data-tool="polyline" title="Polyline Tool (3)">
+                <span class="tool-icon">📐</span><span class="tool-label">Line</span>
+            </button>
+            <button class="tool-btn" data-tool="arrow" title="Draw Arrow (4)">
+                <span class="tool-icon">➡️</span><span class="tool-label">Arrow</span>
+            </button>
+        </div>
+        <div class="tool-sep"></div>
+        <div class="tool-group">
+            <div class="tool-group-label">Mark</div>
+            <button class="tool-btn" data-tool="marker" title="Drop Pin (5)">
+                <span class="tool-icon">📌</span><span class="tool-label">Pin</span>
+            </button>
+            <button class="tool-btn" data-tool="label" title="Text Label (6)">
+                <span class="tool-icon">🏷️</span><span class="tool-label">Label</span>
+            </button>
+            <button class="tool-btn" data-tool="fire" title="Place Fire (9)">
+                <span class="tool-icon">🔥</span><span class="tool-label">Fire</span>
+            </button>
+        </div>
+        <div class="tool-sep"></div>
+        <div class="tool-group">
+            <div class="tool-group-label">Util</div>
+            <button class="tool-btn" data-tool="measure" title="Distance Measure (7)">
+                <span class="tool-icon">📏</span><span class="tool-label">Measure</span>
+            </button>
+            <button class="tool-btn" data-tool="eraser" title="Eraser (8)">
+                <span class="tool-icon">🧹</span><span class="tool-label">Erase</span>
+            </button>
+        </div>
     </div>
 
     <!-- Label Text Input Popup -->
@@ -272,20 +287,24 @@
     <!-- Bottom Bar -->
     <div id="bottom-bar" data-draggable="bottom-bar">
         <span class="drag-grip bar-grip" title="Drag to reposition">⋮</span>
-        <button id="btn-undo" class="bar-btn" title="Undo (Ctrl+Z)">↩ Undo</button>
-        <button id="btn-redo" class="bar-btn" title="Redo (Ctrl+Y)">↪ Redo</button>
+        <div class="bar-group bar-group-nav">
+            <button id="btn-undo" class="bar-btn bar-btn-nav" title="Undo (Ctrl+Z)">↩ Undo</button>
+            <button id="btn-redo" class="bar-btn bar-btn-nav" title="Redo (Ctrl+Y)">↪ Redo</button>
+        </div>
         <div class="bar-sep"></div>
-        <button id="btn-import" class="bar-btn" title="Import GeoJSON (I)">📂 Import</button>
-        <button id="btn-save-map" class="bar-btn" title="Save current annotations">💾 Save</button>
-        <button id="btn-clear" class="bar-btn" title="Clear all annotations">🗑️ Clear</button>
+        <div class="bar-group bar-group-data">
+            <button id="btn-import" class="bar-btn bar-btn-data" title="Import GeoJSON (I)">📂 Import</button>
+            <button id="btn-save-map" class="bar-btn bar-btn-data" title="Save current annotations">💾 Save</button>
+            <button id="btn-clear" class="bar-btn bar-btn-data" title="Clear all annotations">🗑️ Clear</button>
+        </div>
         <div class="bar-sep"></div>
-        <button id="btn-png" class="bar-btn" title="Export view as PNG">📷 PNG</button>
-        <button id="btn-geojson" class="bar-btn" title="Export annotations as GeoJSON">📦 GeoJSON</button>
+        <div class="bar-group bar-group-export">
+            <button id="btn-png" class="bar-btn bar-btn-export" title="Export view as PNG">📷 PNG</button>
+            <button id="btn-geojson" class="bar-btn bar-btn-export" title="Export annotations as GeoJSON">📦 GeoJSON</button>
+        </div>
         <div class="bar-sep"></div>
-        <button id="btn-lang" class="bar-btn" title="Change map language">🌍 EN</button>
-        <!-- Fullscreen button moved to Leaflet control near zoom buttons -->
-        <div class="bar-sep"></div>
-        <button id="btn-settings" class="bar-btn" title="Open layout settings">⚙ Layout</button>
+        <button id="btn-lang" class="bar-btn bar-btn-util" title="Change map language">🌍 EN</button>
+        <button id="btn-settings" class="bar-btn bar-btn-util" title="Open layout settings">⚙</button>
         <div class="bar-sep"></div>
         <span id="ann-count">0 annotations</span>
         <span id="zoom-display">Zoom: 6</span>

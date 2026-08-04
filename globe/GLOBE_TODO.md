@@ -36,7 +36,7 @@ Feature ideas and improvements for globe/index.html.
 - [ ] **Major Rivers** — Overlay major world river paths
 - [ ] **Airport Markers** — Show major international airports with IATA codes
 - [ ] **GDP / HDI Choropleth** — Color countries by economic or development data
-- [ ] **Live Clock** — Show current UTC + local time for the point facing the camera
+- [x] **Live Clock** — Show current UTC + local time for the point facing the camera
 - [ ] **Sun Position Indicator** — Show where the sun is right now relative to Earth
 - [ ] **Country Flags** — Show small flag icons next to city labels
 - [ ] **Wikipedia Quick Info** — On country click, fetch brief summary from Wikipedia API

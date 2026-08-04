@@ -2484,19 +2484,61 @@ function clampDraggablePanels() {
     const viewportHeight = document.documentElement.clientHeight || window.innerHeight;
     let changed = false;
 
+    /* Collect all draggable panels and their rects first */
+    const panels = [];
     document.querySelectorAll('[data-draggable]').forEach(el => {
-        /* Only clamp panels that have been manually positioned. CSS-anchored
-           panels should keep their responsive default positions. */
-        if (!el.style.left && !el.style.top) return;
-        const rect = el.getBoundingClientRect();
-        const left = Math.max(0, Math.min(viewportWidth - el.offsetWidth, rect.left));
-        const top = Math.max(0, Math.min(viewportHeight - el.offsetHeight, rect.top));
-        if (Math.round(rect.left) !== Math.round(left) || Math.round(rect.top) !== Math.round(top)) {
-            el.style.left = left + 'px';
-            el.style.top = top + 'px';
+        const isManuallyPos = el.style.left || el.style.top;
+        panels.push({ el, isManuallyPos, rect: el.getBoundingClientRect() });
+    });
+
+    /* Step 1: Clamp each manually-positioned panel inside the viewport */
+    panels.forEach(p => {
+        if (!p.isManuallyPos) return;
+        const left = Math.max(0, Math.min(viewportWidth - p.el.offsetWidth, p.rect.left));
+        const top = Math.max(0, Math.min(viewportHeight - p.el.offsetHeight, p.rect.top));
+        if (Math.round(p.rect.left) !== Math.round(left) || Math.round(p.rect.top) !== Math.round(top)) {
+            p.el.style.left = left + 'px';
+            p.el.style.top = top + 'px';
+            p.rect = p.el.getBoundingClientRect(); /* refresh after move */
             changed = true;
         }
     });
+
+    /* Step 2: Prevent overlap between draggable panels.
+       If two manually-positioned panels overlap, push the second one down
+       so it sits just below the first. */
+    const GAP = 8; /* minimum gap between panels in px */
+    for (let i = 0; i < panels.length; i++) {
+        const a = panels[i];
+        if (!a.isManuallyPos) continue;
+        const aRect = a.el.getBoundingClientRect();
+        for (let j = 0; j < panels.length; j++) {
+            if (i === j) continue;
+            const b = panels[j];
+            if (!b.isManuallyPos) continue;
+            const bRect = b.el.getBoundingClientRect();
+            /* Check if rectangles overlap */
+            const overlaps =
+                aRect.left < bRect.right  &&
+                aRect.right > bRect.left  &&
+                aRect.top  < bRect.bottom &&
+                aRect.bottom > bRect.top;
+            if (overlaps) {
+                /* Push panel b below panel a */
+                const newTop = Math.round(aRect.bottom + GAP);
+                if (newTop + b.el.offsetHeight <= viewportHeight) {
+                    b.el.style.top = newTop + 'px';
+                } else {
+                    /* Not enough room below — push b to the right of a */
+                    const newLeft = Math.round(aRect.right + GAP);
+                    if (newLeft + b.el.offsetWidth <= viewportWidth) {
+                        b.el.style.left = newLeft + 'px';
+                    }
+                }
+                changed = true;
+            }
+        }
+    }
 
     if (changed) saveLayout();
 }
