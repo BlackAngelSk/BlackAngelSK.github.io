@@ -316,11 +316,26 @@ function computeArrowAngle(startLatLng, endLatLng) {
     return (Math.atan2(y, x) * 180 / Math.PI + 360) % 360;
 }
 
+/* ── Emoji → Twemoji SVG img ─────────────────────────── */
+var TWEMOJI_BASE = 'https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/svg/';
+function emojiToCodePoint(str) {
+    var codes = [];
+    for (var i = 0; i < str.length; i++) {
+        var cp = str.codePointAt(i);
+        if (cp > 0xFFFF) i++; /* skip surrogate pair */
+        codes.push(cp.toString(16));
+    }
+    return codes.join('-');
+}
+function flagEmojiToImgHtml(emoji) {
+    return '<img src="' + TWEMOJI_BASE + emojiToCodePoint(emoji) + '.svg" draggable="false" alt="' + emoji + '">';
+}
+
 function createArrowheadIcon(color, preview, flag) {
     var size = 24;
     var svgNs = 'http://www.w3.org/2000/svg';
     var flagHtml = flag
-        ? '<span class="arrowhead-flag">' + flag + '</span>'
+        ? '<span class="arrowhead-flag">' + flagEmojiToImgHtml(flag) + '</span>'
         : '';
     return L.divIcon({
         className: '',
@@ -398,7 +413,6 @@ function finishArrow() {
         if (inner) inner.style.transform = 'rotate(' + angle + 'deg)';
         var flagEl = headEl.querySelector('.arrowhead-flag');
         if (flagEl) flagEl.style.transform = 'translateY(-50%) rotate(' + (-angle) + 'deg)';
-        parseEmoji(headEl);
     }
     storeAnnotation(S.arrowLine, 'arrow', coords, { headLatLng: [endLL.lat, endLL.lng], angle: angle, flag: currentFlag || null });
     addArrowHeadToAnnotation(S.annotations[S.annotations.length - 1], headMarker);

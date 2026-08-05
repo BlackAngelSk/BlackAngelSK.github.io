@@ -779,6 +779,11 @@ body.tool-measure #map { cursor: crosshair !important; }
     border-color: rgba(120, 200, 255, 0.6); color: #fff;
 }
 .flag-btn[data-flag=""] { font-size: 0.75rem; }
+.flag-btn img {
+    width: 1.4em;
+    height: 1.4em;
+    vertical-align: -0.15em;
+}
 .fire-marker {
     font-size: 28px;
     line-height: 1;
