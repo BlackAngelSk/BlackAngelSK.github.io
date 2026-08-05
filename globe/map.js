@@ -398,6 +398,7 @@ function finishArrow() {
         if (inner) inner.style.transform = 'rotate(' + angle + 'deg)';
         var flagEl = headEl.querySelector('.arrowhead-flag');
         if (flagEl) flagEl.style.transform = 'translateY(-50%) rotate(' + (-angle) + 'deg)';
+        parseEmoji(headEl);
     }
     storeAnnotation(S.arrowLine, 'arrow', coords, { headLatLng: [endLL.lat, endLL.lng], angle: angle, flag: currentFlag || null });
     addArrowHeadToAnnotation(S.annotations[S.annotations.length - 1], headMarker);
@@ -563,7 +564,7 @@ function cancelMeasure() {
    ===================================================== */
 function enableEraser() {
     S.annotations.forEach(ann => {
-        const isPoint = ann.type === 'marker' || ann.type === 'label';
+        const isPoint = ann.type === 'marker' || ann.type === 'label' || ann.type === 'fire';
         const origWeight = ann.weight;
         /* Force interactive mode so eraser can receive clicks (measurement lines are non-interactive by default) */
         if (ann.layer && ann.layer.options) {
@@ -583,7 +584,7 @@ function enableEraser() {
             over: function () {
                 if (isPoint) {
                     const el = this.getElement();
-                    if (el) { const inner = el.querySelector('.marker-pin, .label-marker'); if (inner) inner.classList.add('eraser-hover'); }
+                    if (el) { const inner = el.querySelector('.marker-pin, .label-marker, .fire-marker'); if (inner) inner.classList.add('eraser-hover'); }
                 } else if (this.setStyle) {
                     this.setStyle({ color: '#ff4444', weight: Math.max(10, origWeight + 6) });
                     this.bringToFront();
@@ -592,7 +593,7 @@ function enableEraser() {
             out: function () {
                 if (isPoint) {
                     const el = this.getElement();
-                    if (el) { const inner = el.querySelector('.marker-pin, .label-marker'); if (inner) inner.classList.remove('eraser-hover'); }
+                    if (el) { const inner = el.querySelector('.marker-pin, .label-marker, .fire-marker'); if (inner) inner.classList.remove('eraser-hover'); }
                 } else if (this.setStyle) {
                     this.setStyle({ color: ann.color, weight: Math.max(8, origWeight + 5) });
                 }
@@ -622,11 +623,11 @@ function restoreEraserState(ann, h) {
     ann.layer.off('mouseout', h.out);
     ann.layer.off('click', h.click);
     /* Restore original style (weight, color) that was changed for eraser visibility */
-    const isPoint = ann.type === 'marker' || ann.type === 'label';
+    const isPoint = ann.type === 'marker' || ann.type === 'label' || ann.type === 'fire';
     if (isPoint && ann.layer.getElement) {
         const el = ann.layer.getElement();
         if (el) {
-            const inner = el.querySelector('.marker-pin, .label-marker');
+            const inner = el.querySelector('.marker-pin, .label-marker, .fire-marker');
             if (inner) inner.classList.remove('eraser-hover');
         }
     }
@@ -654,7 +655,7 @@ function removeEraserHandlersFor(ann) {
 }
 
 /* ── Eraser drag-to-erase ──────────────────────── */
-const ERASE_RADIUS_PX = 20;
+const ERASE_RADIUS_PX = 25;
 
 function eraserDragStart() {
     if (S.tool !== 'eraser') return;
@@ -668,7 +669,7 @@ function eraserDragMove(e) {
     S.annotations.slice().forEach(function (ann) {
         if (S.eraserErasedIds.has(ann.id)) return;
         var hit = false;
-        var isPoint = ann.type === 'marker' || ann.type === 'label';
+        var isPoint = ann.type === 'marker' || ann.type === 'label' || ann.type === 'fire';
         if (isPoint) {
             /* For point annotations, check distance from cursor to the annotation's latlng */
             var annLatLng = ann.coords;
@@ -2894,5 +2895,15 @@ $('#cfg-snap-edge').addEventListener('change', () => {
 $('#btn-preset-save').addEventListener('click', savePreset);
 $('#preset-name-input').addEventListener('keydown', (e) => { if (e.key === 'Enter') savePreset(); });
 $('#btn-reset-layout2').addEventListener('click', resetLayout);
+
+/* ── Twemoji: render flag emoji as images on Windows ──── */
+function parseEmoji(el) {
+    if (window.twemoji && el) {
+        try { twemoji.parse(el, { folder: 'svg', ext: '.svg' }); } catch (_) {}
+    }
+}
+
+/* Parse flag panel emoji on load (for flag selector buttons) */
+parseEmoji(document.getElementById('flag-grid'));
 
 console.log('Interactive Map loaded.');

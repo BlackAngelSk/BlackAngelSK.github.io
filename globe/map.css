@@ -604,6 +604,11 @@ body.tool-measure #map { cursor: crosshair !important; }
     white-space: nowrap;
     margin-right: 2px;
 }
+.arrowhead-flag img {
+    width: 1.1em !important;
+    height: 1.1em !important;
+    vertical-align: -0.15em;
+}
 
 /* ── Marker Pin ─────────────────────────────────── */
 .marker-pin {
