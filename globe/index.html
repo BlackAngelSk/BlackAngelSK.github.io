@@ -15,11 +15,12 @@
         </div>
     </div>
     <div id="header">
-        <h1>🌍 Earth Globe</h1>
-        <p>Drag to rotate · Scroll to zoom · Click a country to zoom in</p>
-        <div id="search-wrap">
-            <input type="text" id="search" placeholder="Search city or country..." autocomplete="off" />
-            <div id="search-results" class="hidden"></div>
+        <div class="header-bar">
+            <h1>🌍 Globe</h1>
+            <div id="search-wrap">
+                <input type="text" id="search" placeholder="Search..." autocomplete="off" />
+                <div id="search-results" class="hidden"></div>
+            </div>
         </div>
     </div>
     <div id="country-panel" class="hidden">
@@ -28,6 +29,21 @@
         <p id="country-info"></p>
     </div>
     <div id="lod-hud">LOD: Medium (64 seg)</div>
+    <div id="conflict-legend" class="hidden">
+        <div class="cl-title">⚔ Conflicts</div>
+        <div class="cl-item"><span class="cl-dot cl-critical"></span> Critical — Active high-intensity war</div>
+        <div class="cl-item"><span class="cl-dot cl-high"></span> High — Major armed conflict</div>
+        <div class="cl-item"><span class="cl-dot cl-medium"></span> Medium — Ongoing instability</div>
+        <div class="cl-item"><span class="cl-dot cl-low"></span> Low / Frozen — Dormant or frozen conflict</div>
+    </div>
+    <div id="conflict-panel" class="hidden">
+        <button id="close-conflict" title="Close">&times;</button>
+        <div id="conflict-status-badge"></div>
+        <h2 id="conflict-name"></h2>
+        <div id="conflict-meta"></div>
+        <p id="conflict-parties"></p>
+        <p id="conflict-desc"></p>
+    </div>
     <div id="clock-hud">
         <div id="clock-utc"></div>
         <div id="clock-local"></div>
@@ -41,6 +57,9 @@
         <button id="btn-night" title="Toggle day/night">🌙 Night</button>
         <button id="btn-cities" class="active" title="Toggle cities">🏙 Cities</button>
         <button id="btn-timezones" title="Toggle timezone lines">🕐 TZ</button>
+        <button id="btn-conflicts" title="Toggle conflict hotspots">⚔ Conflicts</button>
+        <button id="btn-rivers" title="Toggle major world rivers">🌊 Rivers</button>
+        <button id="btn-fullscreen" title="Toggle fullscreen">⛶ Full</button>
         <a href="map.html" style="text-decoration:none;background:rgba(20,40,80,0.7);border:1px solid rgba(100,160,255,0.3);color:#c0d8ff;padding:8px 16px;border-radius:8px;cursor:pointer;font-size:0.85rem;letter-spacing:0.5px;transition:all 0.3s ease;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);" title="Open Interactive Map with Annotations">🗺 Map</a>
     </div>
     <script type="importmap">

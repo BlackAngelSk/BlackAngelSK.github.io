@@ -29,25 +29,27 @@ canvas {
     top: 0;
     left: 0;
     width: 100%;
-    text-align: center;
-    padding: 20px;
     z-index: 10;
     pointer-events: none;
-    background: linear-gradient(to bottom, rgba(0,0,0,0.6) 0%, transparent 100%);
+    padding: 10px 14px;
+    background: linear-gradient(to bottom, rgba(0,0,0,0.45) 0%, transparent 100%);
+}
+
+.header-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    max-width: 100%;
 }
 
 #header h1 {
-    font-size: 2.2rem;
-    font-weight: 700;
-    letter-spacing: 3px;
-    text-shadow: 0 0 20px rgba(100, 180, 255, 0.6);
-    margin-bottom: 4px;
-}
-
-#header p {
-    font-size: 0.85rem;
-    color: rgba(180, 210, 255, 0.6);
-    letter-spacing: 1px;
+    font-size: 1.1rem;
+    font-weight: 600;
+    letter-spacing: 1.5px;
+    text-shadow: 0 0 12px rgba(100, 180, 255, 0.4);
+    margin: 0;
+    white-space: nowrap;
+    pointer-events: auto;
 }
 
 #controls {
@@ -208,31 +210,30 @@ canvas {
 
 /* Search */
 #search-wrap {
-    margin-top: 10px;
     position: relative;
     display: inline-block;
-    width: 320px;
-    max-width: 90vw;
+    width: 220px;
+    max-width: 45vw;
     pointer-events: auto;
 }
 #search {
     width: 100%;
-    padding: 8px 14px;
-    border-radius: 8px;
-    border: 1px solid rgba(100, 160, 255, 0.4);
-    background: rgba(10, 20, 50, 0.85);
+    padding: 5px 12px;
+    border-radius: 6px;
+    border: 1px solid rgba(100, 160, 255, 0.25);
+    background: rgba(10, 20, 50, 0.75);
     color: #c0d8ff;
-    font-size: 0.9rem;
+    font-size: 0.82rem;
     outline: none;
-    backdrop-filter: blur(10px);
-    -webkit-backdrop-filter: blur(10px);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
     transition: border-color 0.3s;
 }
 #search:focus {
-    border-color: rgba(100, 180, 255, 0.8);
+    border-color: rgba(100, 180, 255, 0.7);
 }
 #search::placeholder {
-    color: rgba(160, 190, 255, 0.5);
+    color: rgba(160, 190, 255, 0.4);
 }
 #search-results {
     position: absolute;
@@ -276,7 +277,7 @@ canvas {
 /* LOD HUD */
 #lod-hud {
     position: fixed;
-    top: 16px;
+    top: 50px;
     left: 16px;
     background: rgba(10, 20, 50, 0.85);
     border: 1px solid rgba(100, 160, 255, 0.3);
@@ -331,9 +332,191 @@ canvas {
     letter-spacing: 0.5px;
 }
 
+/* Conflict Legend */
+#conflict-legend {
+    position: fixed;
+    bottom: 70px;
+    left: 16px;
+    background: rgba(10, 20, 50, 0.92);
+    border: 1px solid rgba(255, 80, 80, 0.3);
+    border-radius: 10px;
+    padding: 10px 14px;
+    z-index: 15;
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    font-size: 0.75rem;
+    color: rgba(220, 200, 200, 0.85);
+    pointer-events: none;
+    min-width: 200px;
+    transition: opacity 0.3s ease;
+}
+
+#conflict-legend.hidden {
+    opacity: 0;
+    pointer-events: none;
+}
+
+.cl-title {
+    font-weight: 700;
+    font-size: 0.85rem;
+    color: #ff6b6b;
+    margin-bottom: 6px;
+    letter-spacing: 0.5px;
+}
+
+.cl-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 3px;
+    line-height: 1.4;
+}
+
+.cl-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    display: inline-block;
+}
+
+.cl-critical {
+    background: #ff3333;
+    box-shadow: 0 0 6px #ff3333, 0 0 12px rgba(255, 51, 51, 0.5);
+    animation: clPulse 1s ease-in-out infinite;
+}
+
+.cl-high {
+    background: #ff8800;
+    box-shadow: 0 0 4px #ff8800;
+}
+
+.cl-medium {
+    background: #ccaa00;
+    box-shadow: 0 0 3px rgba(204, 170, 0, 0.5);
+}
+
+.cl-low {
+    background: #888899;
+    box-shadow: 0 0 2px rgba(136, 136, 153, 0.4);
+}
+
+@keyframes clPulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.6; transform: scale(1.3); }
+}
+
+/* Conflict Info Panel */
+#conflict-panel {
+    position: fixed;
+    top: 50%;
+    left: 20px;
+    transform: translateY(-50%);
+    width: 320px;
+    max-height: 80vh;
+    overflow-y: auto;
+    background: rgba(30, 10, 10, 0.92);
+    border: 1px solid rgba(255, 80, 80, 0.35);
+    border-radius: 12px;
+    padding: 20px;
+    z-index: 15;
+    backdrop-filter: blur(15px);
+    -webkit-backdrop-filter: blur(15px);
+    transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+#conflict-panel.hidden {
+    opacity: 0;
+    pointer-events: none;
+    transform: translateY(-50%) translateX(-20px);
+}
+
+#conflict-panel h2 {
+    font-size: 1.15rem;
+    margin-bottom: 8px;
+    color: #ff9999;
+    padding-right: 24px;
+}
+
+#conflict-panel p {
+    font-size: 0.82rem;
+    line-height: 1.5;
+    color: rgba(255, 200, 200, 0.8);
+    margin-bottom: 6px;
+}
+
+#close-conflict {
+    position: absolute;
+    top: 8px;
+    right: 12px;
+    background: none;
+    border: none;
+    color: #aa7777;
+    font-size: 1.3rem;
+    cursor: pointer;
+    transition: color 0.2s;
+}
+
+#close-conflict:hover {
+    color: #fff;
+}
+
+#conflict-status-badge {
+    display: inline-block;
+    padding: 3px 10px;
+    border-radius: 12px;
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 8px;
+}
+
+#conflict-status-badge.badge-critical {
+    background: rgba(255, 50, 50, 0.25);
+    border: 1px solid rgba(255, 50, 50, 0.5);
+    color: #ff6666;
+}
+
+#conflict-status-badge.badge-high {
+    background: rgba(255, 136, 0, 0.2);
+    border: 1px solid rgba(255, 136, 0, 0.5);
+    color: #ffaa44;
+}
+
+#conflict-status-badge.badge-medium {
+    background: rgba(204, 170, 0, 0.2);
+    border: 1px solid rgba(204, 170, 0, 0.4);
+    color: #ccbb44;
+}
+
+#conflict-status-badge.badge-low {
+    background: rgba(136, 136, 153, 0.2);
+    border: 1px solid rgba(136, 136, 153, 0.4);
+    color: #999aaa;
+}
+
+#conflict-meta {
+    font-size: 0.75rem;
+    color: rgba(255, 180, 180, 0.6);
+    margin-bottom: 10px;
+    line-height: 1.5;
+}
+
+#conflict-parties {
+    font-size: 0.78rem;
+    color: rgba(255, 160, 160, 0.7);
+    font-style: italic;
+    margin-bottom: 8px;
+    border-left: 2px solid rgba(255, 80, 80, 0.3);
+    padding-left: 8px;
+}
+
 @media (max-width: 600px) {
-    #header h1 { font-size: 1.4rem; }
+    #header h1 { font-size: 0.95rem; }
+    #search-wrap { width: 50vw; }
     #controls { flex-wrap: wrap; justify-content: center; }
     #controls button { font-size: 0.75rem; padding: 6px 12px; }
-    #search-wrap { width: 90vw; }
+    #conflict-panel { width: calc(100vw - 40px); left: 20px; }
+    #conflict-legend { bottom: 80px; }
 }

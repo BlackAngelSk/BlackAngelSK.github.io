@@ -284,6 +284,48 @@
         </div>
     </div>
 
+    <!-- Image Overlay Modal -->
+    <div id="overlay-modal" class="hidden">
+        <div id="overlay-modal-content">
+            <div class="overlay-header">
+                <h3>🖼️ Image Overlay</h3>
+                <button id="overlay-modal-close" title="Close (Esc)">✕</button>
+            </div>
+            <div class="overlay-body">
+                <div class="overlay-tabs">
+                    <button class="overlay-tab active" data-tab="file">📁 Upload</button>
+                    <button class="overlay-tab" data-tab="url">🔗 URL</button>
+                    <button class="overlay-tab" data-tab="list">📋 Manage</button>
+                </div>
+                <!-- Upload Tab -->
+                <div class="overlay-tab-content active" id="overlay-tab-file">
+                    <div id="overlay-dropzone">
+                        <span class="dropzone-icon">🖼️</span>
+                        <p>Drop an image here (PNG, JPG, WebP, GIF…)</p>
+                        <p class="dropzone-sub">or</p>
+                        <button id="overlay-browse-btn" class="import-action-btn">Browse Files</button>
+                        <input type="file" id="overlay-file-input" accept="image/*" class="hidden">
+                    </div>
+                </div>
+                <!-- URL Tab -->
+                <div class="overlay-tab-content" id="overlay-tab-url">
+                    <div class="overlay-url-wrap">
+                        <label>Image URL:</label>
+                        <input type="text" id="overlay-url-input" placeholder="https://example.com/old-map.png" autocomplete="off" spellcheck="false">
+                        <button id="overlay-url-btn" class="import-action-btn">Load Image</button>
+                        <p class="import-url-hint">Paste a direct link to an image file.</p>
+                    </div>
+                </div>
+                <!-- Manage Tab -->
+                <div class="overlay-tab-content" id="overlay-tab-list">
+                    <div id="overlay-list-container">
+                        <div class="overlay-empty">No overlays added yet</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Bottom Bar -->
     <div id="bottom-bar" data-draggable="bottom-bar">
         <span class="drag-grip bar-grip" title="Drag to reposition">⋮</span>
@@ -294,6 +336,7 @@
         <div class="bar-sep"></div>
         <div class="bar-group bar-group-data">
             <button id="btn-import" class="bar-btn bar-btn-data" title="Import GeoJSON (I)">📂 Import</button>
+            <button id="btn-overlay" class="bar-btn bar-btn-data" title="Image Overlay">🖼️ Overlay</button>
             <button id="btn-save-map" class="bar-btn bar-btn-data" title="Save current annotations">💾 Save</button>
             <button id="btn-clear" class="bar-btn bar-btn-data" title="Clear all annotations">🗑️ Clear</button>
         </div>

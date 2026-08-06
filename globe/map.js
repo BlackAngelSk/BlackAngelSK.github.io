@@ -2304,7 +2304,9 @@ document.addEventListener('keydown', e => {
         case 'Escape':
             if (!$('#proxy-modal').classList.contains('hidden')) { closeProxyModal(); break; }
             if (!$('#import-modal').classList.contains('hidden')) { closeImportModal(); break; }
+            if (!$('#overlay-modal').classList.contains('hidden')) { closeOverlayModal(); break; }
             if (!$('#save-modal').classList.contains('hidden')) { $('#save-modal').classList.add('hidden'); break; }
+            if (overlayPlacement) { cancelOverlayPlacement(); break; }
             if (S.tool === 'polyline') cancelPolyline();
             if (S.tool === 'measure') cancelMeasure();
             if (S.tool === 'label') hideLabelInput();
@@ -2836,6 +2838,307 @@ function retryProxyImport() {
     }
 }
 
+/* =====================================================
+   Image Overlay Feature
+   ===================================================== */
+const OVERLAY_LS_KEY = 'map_image_overlays';
+let imageOverlays = [];
+let overlayNextId = 1;
+let overlayPendingImage = null;
+let overlayPlacement = null;
+
+function openOverlayModal() {
+    $('#overlay-modal').classList.remove('hidden');
+    overlayRefreshList();
+}
+function closeOverlayModal() {
+    $('#overlay-modal').classList.add('hidden');
+    if (overlayPlacement) cancelOverlayPlacement();
+}
+
+function wireOverlayTabs() {
+    $$('.overlay-tab').forEach(tab => {
+        tab.addEventListener('click', () => {
+            $$('.overlay-tab').forEach(t => t.classList.remove('active'));
+            $$('.overlay-tab-content').forEach(c => c.classList.remove('active'));
+            tab.classList.add('active');
+            const target = $('#overlay-tab-' + tab.dataset.tab);
+            if (target) target.classList.add('active');
+        });
+    });
+}
+
+function handleOverlayImageSource(src, name) {
+    closeOverlayModal();
+    overlayPendingImage = { src: src, name: name };
+    overlayPlacement = { step: 0, firstLatLng: null };
+    showOverlayPlacementBanner('Click on the map to set the first corner (top-left)');
+    map.getContainer().style.cursor = 'crosshair';
+}
+
+function showOverlayPlacementBanner(text) {
+    var banner = document.getElementById('overlay-placement-banner');
+    if (!banner) {
+        banner = document.createElement('div');
+        banner.id = 'overlay-placement-banner';
+        banner.innerHTML = '<span class="banner-text"></span><button class="banner-cancel">Cancel</button>';
+        document.body.appendChild(banner);
+        banner.querySelector('.banner-cancel').addEventListener('click', cancelOverlayPlacement);
+    }
+    banner.querySelector('.banner-text').textContent = text;
+    banner.style.display = '';
+}
+
+function hideOverlayPlacementBanner() {
+    var banner = document.getElementById('overlay-placement-banner');
+    if (banner) banner.style.display = 'none';
+}
+
+function cancelOverlayPlacement() {
+    overlayPlacement = null;
+    overlayPendingImage = null;
+    hideOverlayPlacementBanner();
+    map.getContainer().style.cursor = '';
+}
+
+function handleOverlayMapClick(e) {
+    if (!overlayPlacement || !overlayPendingImage) return false;
+    if (overlayPlacement.step === 0) {
+        overlayPlacement.firstLatLng = e.latlng;
+        overlayPlacement.step = 1;
+        showOverlayPlacementBanner('Click to set the second corner (bottom-right), then the image will be placed');
+        return true;
+    } else if (overlayPlacement.step === 1) {
+        var bounds = L.latLngBounds(overlayPlacement.firstLatLng, e.latlng);
+        addImageOverlay(overlayPendingImage.src, overlayPendingImage.name, bounds);
+        overlayPlacement = null;
+        overlayPendingImage = null;
+        hideOverlayPlacementBanner();
+        map.getContainer().style.cursor = '';
+        return true;
+    }
+    return false;
+}
+
+function addImageOverlay(src, name, bounds, opacity, visible) {
+    opacity = opacity !== undefined ? opacity : 0.7;
+    if (visible === undefined) visible = true;
+    var layer = L.imageOverlay(src, bounds, { opacity: opacity, interactive: true, crossOrigin: true });
+    if (visible) layer.addTo(map);
+    var entry = {
+        id: overlayNextId++,
+        name: name || ('Overlay ' + imageOverlays.length),
+        src: src,
+        bounds: [[bounds.getSouth(), bounds.getWest()], [bounds.getNorth(), bounds.getEast()]],
+        opacity: opacity,
+        visible: visible,
+        layer: layer
+    };
+    imageOverlays.push(entry);
+    saveOverlaysToStorage();
+    overlayRefreshList();
+    $('#status-text').textContent = 'Image overlay "' + entry.name + '" placed.';
+}
+
+function removeOverlay(id) {
+    var i = imageOverlays.findIndex(function(o) { return o.id === id; });
+    if (i === -1) return;
+    map.removeLayer(imageOverlays[i].layer);
+    imageOverlays.splice(i, 1);
+    saveOverlaysToStorage();
+    overlayRefreshList();
+}
+
+function toggleOverlayVisibility(id) {
+    var entry = imageOverlays.find(function(o) { return o.id === id; });
+    if (!entry) return;
+    entry.visible = !entry.visible;
+    if (entry.visible) entry.layer.addTo(map); else map.removeLayer(entry.layer);
+    saveOverlaysToStorage();
+    overlayRefreshList();
+}
+
+function setOverlayOpacity(id, opacity) {
+    var entry = imageOverlays.find(function(o) { return o.id === id; });
+    if (!entry) return;
+    entry.opacity = opacity;
+    entry.layer.setOpacity(opacity);
+    saveOverlaysToStorage();
+}
+
+function renameOverlay(id, newName) {
+    var entry = imageOverlays.find(function(o) { return o.id === id; });
+    if (!entry) return;
+    entry.name = newName || entry.name;
+    saveOverlaysToStorage();
+    overlayRefreshList();
+}
+
+function overlayRefreshList() {
+    var container = $('#overlay-list-container');
+    if (!container) return;
+    if (imageOverlays.length === 0) {
+        container.innerHTML = '<div class="overlay-empty">No overlays added yet</div>';
+        return;
+    }
+    container.innerHTML = '';
+    imageOverlays.forEach(function(entry) {
+        var item = document.createElement('div');
+        item.className = 'overlay-item';
+        var thumb = document.createElement('img');
+        thumb.className = 'overlay-item-thumb';
+        thumb.src = entry.src;
+        thumb.alt = entry.name;
+        thumb.onerror = function() { this.style.display = 'none'; };
+        item.appendChild(thumb);
+        var info = document.createElement('div');
+        info.className = 'overlay-item-info';
+        var nameEl = document.createElement('div');
+        nameEl.className = 'overlay-item-name';
+        nameEl.textContent = entry.name;
+        nameEl.title = 'Click to rename';
+        nameEl.addEventListener('click', (function(eid) {
+            return function() {
+                var input = document.createElement('input');
+                input.className = 'overlay-item-name-input';
+                input.type = 'text';
+                input.value = entry.name;
+                input.maxLength = 40;
+                nameEl.replaceWith(input);
+                input.focus();
+                input.select();
+                function commit() { renameOverlay(eid, input.value.trim()); }
+                input.addEventListener('blur', commit);
+                input.addEventListener('keydown', function(ev) {
+                    if (ev.key === 'Enter') { ev.preventDefault(); input.blur(); }
+                    if (ev.key === 'Escape') { input.value = entry.name; input.blur(); }
+                    ev.stopPropagation();
+                });
+            };
+        })(entry.id));
+        info.appendChild(nameEl);
+        var opacityLabel = document.createElement('div');
+        opacityLabel.className = 'overlay-item-opacity';
+        opacityLabel.textContent = 'Opacity: ' + Math.round(entry.opacity * 100) + '%';
+        info.appendChild(opacityLabel);
+        item.appendChild(info);
+        var actions = document.createElement('div');
+        actions.className = 'overlay-item-actions';
+        var hideBtn = document.createElement('button');
+        hideBtn.className = 'overlay-item-btn hide-btn' + (entry.visible ? '' : ' hidden-overlay');
+        hideBtn.textContent = entry.visible ? '\uD83D\uDC41\uFE0F' : '\uD83D\uDEAB';
+        hideBtn.title = entry.visible ? 'Hide overlay' : 'Show overlay';
+        hideBtn.addEventListener('click', (function(eid) { return function() { toggleOverlayVisibility(eid); }; })(entry.id));
+        actions.appendChild(hideBtn);
+        var delBtn = document.createElement('button');
+        delBtn.className = 'overlay-item-btn delete-btn';
+        delBtn.textContent = '\u2715';
+        delBtn.title = 'Delete overlay';
+        delBtn.addEventListener('click', (function(eid, ename) {
+            return function() { if (confirm('Delete overlay "' + ename + '"?')) removeOverlay(eid); };
+        })(entry.id, entry.name));
+        actions.appendChild(delBtn);
+        item.appendChild(actions);
+        container.appendChild(item);
+        var sliderRow = document.createElement('div');
+        sliderRow.className = 'overlay-opacity-row';
+        var slider = document.createElement('input');
+        slider.type = 'range';
+        slider.min = '0';
+        slider.max = '100';
+        slider.value = Math.round(entry.opacity * 100);
+        var valSpan = document.createElement('span');
+        valSpan.className = 'overlay-opacity-val';
+        valSpan.textContent = Math.round(entry.opacity * 100) + '%';
+        slider.addEventListener('input', (function(eid, opLabel) {
+            return function() {
+                var v = parseInt(slider.value, 10) / 100;
+                setOverlayOpacity(eid, v);
+                valSpan.textContent = slider.value + '%';
+                if (opLabel) opLabel.textContent = 'Opacity: ' + slider.value + '%';
+            };
+        })(entry.id, opacityLabel));
+        slider.addEventListener('mousedown', function(e) { e.stopPropagation(); });
+        slider.addEventListener('click', function(e) { e.stopPropagation(); });
+        sliderRow.appendChild(slider);
+        sliderRow.appendChild(valSpan);
+        container.appendChild(sliderRow);
+    });
+}
+
+function saveOverlaysToStorage() {
+    var data = imageOverlays.map(function(o) {
+        return { name: o.name, src: o.src, bounds: o.bounds, opacity: o.opacity, visible: o.visible };
+    });
+    try { localStorage.setItem(OVERLAY_LS_KEY, JSON.stringify(data)); } catch (_) {}
+}
+
+function loadOverlaysFromStorage() {
+    try {
+        var raw = localStorage.getItem(OVERLAY_LS_KEY);
+        if (!raw) return;
+        var data = JSON.parse(raw);
+        if (!Array.isArray(data)) return;
+        data.forEach(function(d) {
+            if (!d.src || !d.bounds) return;
+            var bounds = L.latLngBounds(d.bounds[0], d.bounds[1]);
+            addImageOverlay(d.src, d.name, bounds, d.opacity, d.visible);
+        });
+    } catch (_) {}
+}
+
+function wireOverlayModal() {
+    $('#btn-overlay').addEventListener('click', openOverlayModal);
+    $('#overlay-modal-close').addEventListener('click', closeOverlayModal);
+    $('#overlay-modal').addEventListener('click', function(e) {
+        if (e.target === $('#overlay-modal')) closeOverlayModal();
+    });
+    wireOverlayTabs();
+    $('#overlay-browse-btn').addEventListener('click', function() { $('#overlay-file-input').click(); });
+    $('#overlay-file-input').addEventListener('change', function(e) {
+        if (e.target.files.length > 0) {
+            var file = e.target.files[0];
+            var reader = new FileReader();
+            reader.onload = function(ev) {
+                handleOverlayImageSource(ev.target.result, file.name.replace(/\.[^.]+$/, ''));
+            };
+            reader.readAsDataURL(file);
+            e.target.value = '';
+        }
+    });
+    var dz = $('#overlay-dropzone');
+    if (dz) {
+        dz.addEventListener('dragover', function(e) { e.preventDefault(); dz.classList.add('drag-over'); });
+        dz.addEventListener('dragleave', function() { dz.classList.remove('drag-over'); });
+        dz.addEventListener('drop', function(e) {
+            e.preventDefault(); dz.classList.remove('drag-over');
+            if (e.dataTransfer.files.length > 0) {
+                var file = e.dataTransfer.files[0];
+                if (!file.type.startsWith('image/')) { alert('Please drop an image file.'); return; }
+                var reader = new FileReader();
+                reader.onload = function(ev) {
+                    handleOverlayImageSource(ev.target.result, file.name.replace(/\.[^.]+$/, ''));
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+    }
+    $('#overlay-url-btn').addEventListener('click', function() {
+        var url = $('#overlay-url-input').value.trim();
+        if (!url) { alert('Please enter an image URL.'); return; }
+        handleOverlayImageSource(url, url.split('/').pop().replace(/\.[^.]+$/, '') || 'Overlay');
+    });
+    $('#overlay-url-input').addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') $('#overlay-url-btn').click();
+        e.stopPropagation();
+    });
+    map.on('click', function overlayPlacementClick(e) {
+        if (handleOverlayMapClick(e)) {
+            L.DomEvent.stop(e);
+        }
+    });
+}
+
 /* Wire up proxy modal buttons */
 (function wireProxyModal() {
     $('#proxy-modal-close').addEventListener('click', closeProxyModal);
@@ -2854,6 +3157,8 @@ updateCount();
 updateUndoRedoUI();
 wireImportModal();
 wireSaveModal();
+wireOverlayModal();
+loadOverlaysFromStorage();
 setTool('pan');
 
 /* Style panel toggle */

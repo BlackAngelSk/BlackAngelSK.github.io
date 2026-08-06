@@ -9,7 +9,7 @@ Feature ideas and improvements for globe/index.html.
 - [ ] **Coordinates Display** — Show lat/lon of cursor position in real-time (bottom-left HUD)
 - [ ] **Keyboard Shortcuts** — Arrow keys to rotate, +/- to zoom, number keys to toggle layers
 - [ ] **Equator / Tropics / Arctic Circles** — Toggle guide lines (great circles at 0°, ±23.5°, ±66.5°)
-- [ ] **Fullscreen Button** — Toggle browser fullscreen mode
+- [x] **Fullscreen Button** — Toggle browser fullscreen mode
 - [ ] **URL State** — Encode camera position, active layers in URL hash so views are shareable via link
 - [ ] **Compass Rose** — Show N/S/E/W orientation indicator that updates as globe rotates
 
@@ -33,13 +33,26 @@ Feature ideas and improvements for globe/index.html.
 - [ ] **Tectonic Plate Boundaries** — Overlay showing plate edges
 - [ ] **Population Density Heatmap** — Color-coded overlay showing population density
 - [ ] **Time Zones** — Show timezone boundaries as lines
-- [ ] **Major Rivers** — Overlay major world river paths
+- [x] **Major Rivers** — Overlay major world river paths (19 rivers with toggle)
+- [x] **Fullscreen Button** — Toggle browser fullscreen mode with ⛶ Full button
 - [ ] **Airport Markers** — Show major international airports with IATA codes
 - [ ] **GDP / HDI Choropleth** — Color countries by economic or development data
 - [x] **Live Clock** — Show current UTC + local time for the point facing the camera
 - [ ] **Sun Position Indicator** — Show where the sun is right now relative to Earth
 - [ ] **Country Flags** — Show small flag icons next to city labels
 - [ ] **Wikipedia Quick Info** — On country click, fetch brief summary from Wikipedia API
+
+## 🔴 Conflict Visualization
+
+- [x] **Conflict Hotspot Markers** — 28 conflict locations with pulsing markers at exact coordinates
+- [x] **Conflict Data Structure** — Structured data with name, lat/lon, status, severity, type, start date, parties, description
+- [x] **Severity-Based Visuals** — Critical (red fast pulse), High (orange), Medium (amber), Low/Frozen (gray)
+- [x] **Conflict Info Panel** — Click a marker to see full conflict details (left-side panel)
+- [x] **Conflict Toggle Button** — ⚔ Conflicts button to show/hide the conflict layer
+- [x] **Conflict Legend** — Color-coded legend showing severity levels
+- [x] **Conflict Hover Tooltip** — Red-themed tooltip showing conflict name, severity, and status
+- [x] **Click-to-Zoom** — Clicking a conflict marker zooms to its location
+- [x] **Country Border Highlight** — Conflict countries shown with red-tinted borders (existing feature)
 
 ## 🔧 Technical Improvements
 
@@ -72,3 +85,4 @@ Feature ideas and improvements for globe/index.html.
 - [x] Dynamic label scaling based on zoom
 - [x] Loading screen with progress
 - [x] Link to 2D map page
+- [x] Conflict visualization layer with 28 hotspots, severity levels, pulsing markers, info panel, toggle, legend

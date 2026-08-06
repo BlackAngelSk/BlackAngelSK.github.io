@@ -17,7 +17,7 @@ Feature ideas and improvements for globe/map.html.
 - [ ] **Coordinate Display on Hover** — Show lat/lng in the status bar as the cursor moves
 - [ ] **Annotation Editing** — Click existing annotations to change color, weight, or label text after creation
 - [ ] **Multi-select and Group** — Select multiple annotations and move/rotate/delete as a group
-- [ ] **Image Overlay** — Attach custom images to map regions (screenshots, old maps, overlays)
+- [x] **Image Overlay** — Attach custom images to map regions (screenshots, old maps, overlays)
 - [ ] **Snap-to-Grid** — Optionally snap points to a grid or to existing vertices for precision drawing
 - [ ] **Print-friendly / PDF Export** — Generate a clean printable version without UI chrome
 
