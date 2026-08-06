@@ -17,10 +17,6 @@ const S = {
     /* freehand */
     fhPoints: [],
     fhLine: null,
-    /* polyline */
-    plPoints: [],
-    plLine: null,
-    plPreview: null,
     /* eraser */
     eraserHandlers: [],
     eraserDragging: false,
@@ -46,8 +42,6 @@ const S = {
     /* region highlight */
     highlighted: null,
     highlightedOrigStyle: null,
-    /* ghost arrow (right-click arrow) */
-    ghostArrow: { drawing: false, start: null }
 };
 const UNDO_LIMIT = 50;
 
@@ -59,7 +53,6 @@ const DASH = { solid: null, dashed: '12, 8', dotted: '4, 8' };
 const STATUS = {
     pan: 'Ready — Pan mode',
     freehand: 'Click and drag to draw',
-    polyline: 'Click to add points · Dbl-click / Enter to finish · Esc to cancel',
     arrow: 'Click and drag to draw an arrow',
     marker: 'Click to drop a pin on the map',
     label: 'Click to place a text label',
@@ -169,7 +162,6 @@ $('#btn-lang').textContent = LANGUAGES[0].flag + ' ' + LANGUAGES[0].code;
    ===================================================== */
 function setTool(tool) {
     /* finish any in-progress drawing */
-    if (S.tool === 'polyline' && S.plPoints.length > 0) finishPolyline();
     if (S.tool === 'freehand' && S.drawing) finishFreehand();
     if (S.tool === 'arrow' && S.arrowDrawing) finishArrow();
     if (S.tool === 'measure' && S.msPoints.length > 0) finishMeasure();
@@ -194,7 +186,7 @@ function setTool(tool) {
     $$('.tool-btn').forEach(b => b.classList.toggle('active', b.dataset.tool === tool));
     $('#status-text').textContent = STATUS[tool];
     const icons = {
-        pan: '\u{1F4CD}', freehand: '\u270F\uFE0F', polyline: '\u{1F4D0}',
+        pan: '\u{1F4CD}', freehand: '\u270F\uFE0F',
         arrow: '\u27A1\uFE0F', marker: '\u{1F4CC}', label: '\u{1F3F7}\uFE0F', measure: '\u{1F4CF}', eraser: '\u{1F9F9}'
     };
     $('#status-icon').textContent = icons[tool] || '\u{1F4CD}';
@@ -202,7 +194,7 @@ function setTool(tool) {
         .filter(className => className.indexOf('tool-') === 0)
         .forEach(className => document.body.classList.remove(className));
     document.body.classList.add('tool-' + tool);
-    if (tool !== 'polyline' && tool !== 'measure') $('#btn-finish').classList.add('hidden');
+    if (tool !== 'measure') $('#btn-finish').classList.add('hidden');
     /* show/hide flag panel when arrow tool is active */
     const flagPanel = $('#flag-panel');
     if (flagPanel) flagPanel.classList.toggle('hidden', tool !== 'arrow');
@@ -249,61 +241,6 @@ function finishFreehand() {
 
 function resetFreehand() {
     S.fhPoints = []; S.fhLine = null; S.drawing = false;
-}
-
-/* =====================================================
-   Polyline Drawing
-   ===================================================== */
-function addPolylinePoint(e) {
-    if (S.tool !== 'polyline') return;
-    S.plPoints.push([e.latlng.lat, e.latlng.lng]);
-    if (!S.plLine) {
-        S.plLine = L.polyline(S.plPoints, {
-            color: S.color, weight: S.weight,
-            dashArray: DASH[S.dashStyle], opacity: 1,
-            lineCap: 'round', lineJoin: 'round'
-        }).addTo(map);
-    } else {
-        S.plLine.addLatLng(e.latlng);
-    }
-    if (S.plPoints.length >= 2) $('#btn-finish').classList.remove('hidden');
-    updatePlPreview(e);
-}
-
-function updatePlPreview(e) {
-    if (S.plPoints.length === 0) return;
-    const last = S.plPoints[S.plPoints.length - 1];
-    const cur = [e.latlng.lat, e.latlng.lng];
-    if (!S.plPreview) {
-        S.plPreview = L.polyline([last, cur], {
-            color: S.color, weight: S.weight,
-            dashArray: '6, 10', opacity: 0.5, interactive: false
-        }).addTo(map);
-    } else {
-        S.plPreview.setLatLngs([last, cur]);
-    }
-}
-
-function movePolyPreview(e) {
-    if (S.tool === 'polyline' && S.plPoints.length > 0) {
-        S.lastLatLng = e.latlng;
-        updatePlPreview(e);
-    }
-}
-
-function finishPolyline() {
-    if (S.plPreview) { map.removeLayer(S.plPreview); S.plPreview = null; }
-    if (S.plPoints.length < 2) { cancelPolyline(); return; }
-    storeAnnotation(S.plLine, 'polyline', [...S.plPoints]);
-    S.plPoints = []; S.plLine = null;
-    $('#btn-finish').classList.add('hidden');
-}
-
-function cancelPolyline() {
-    if (S.plLine) map.removeLayer(S.plLine);
-    if (S.plPreview) map.removeLayer(S.plPreview);
-    S.plPoints = []; S.plLine = null; S.plPreview = null;
-    $('#btn-finish').classList.add('hidden');
 }
 
 /* =====================================================
@@ -845,8 +782,27 @@ function clearAll() {
     updateCount();
 }
 
+function updateLockButton() {
+    const allLocked = S.annotations.length > 0 && S.annotations.every(a => a.locked);
+    const btn = $('#btn-lock');
+    if (btn) {
+        btn.textContent = allLocked ? '🔓 Unlock' : '🔒 Lock';
+        btn.title = allLocked ? 'Unlock all annotations (erasable)' : 'Lock all annotations (eraser-proof)';
+    }
+}
+
+function toggleLockAll() {
+    if (S.annotations.length === 0) return;
+    const allLocked = S.annotations.every(a => a.locked);
+    S.annotations.forEach(a => { a.locked = !allLocked; });
+    updateLockButton();
+    if (S.tool === 'eraser') { disableEraser(); enableEraser(); }
+    $('#status-text').textContent = allLocked ? 'All annotations unlocked' : 'All annotations locked';
+}
+
 function updateCount() {
     $('#ann-count').textContent = S.annotations.length + ' annotation' + (S.annotations.length !== 1 ? 's' : '');
+    updateLockButton();
 }
 
 /* =====================================================
@@ -959,7 +915,7 @@ function exportPNG() {
     }).finally(() => {
         btn.disabled = false;
         btn.textContent = '\uD83D\uDCF7 PNG';
-        if (!finishWasHidden && S.plPoints.length >= 2) {
+        if (false) {
             $('#btn-finish').classList.remove('hidden');
         }
     });
@@ -2160,17 +2116,10 @@ function wireSaveModal() {
 let mouseDown = false;
 
 map.on('mousedown', e => {
+    if (e.originalEvent && e.originalEvent.button !== 0) return; /* only left button */
     mouseDown = true;
     if (S.tool === 'freehand') startFreehand(e);
-    if (S.tool === 'arrow') {
-        /* Right-click → ghost arrow (arrowhead only, no line) */
-        if (e.originalEvent.button === 2) {
-            S.ghostArrow.drawing = true;
-            S.ghostArrow.start = e.latlng;
-        } else {
-            startArrow(e);
-        }
-    }
+    if (S.tool === 'arrow') startArrow(e);
     if (S.tool === 'eraser') eraserDragStart();
 });
 
@@ -2179,34 +2128,7 @@ map.on('mousemove', e => {
     if (S.tool === 'freehand' && S.drawing) moveFreehand(e);
     if (S.tool === 'arrow' && S.arrowDrawing) moveArrow(e);
     if (S.tool === 'eraser' && S.eraserDragging) eraserDragMove(e);
-    if (S.tool === 'polyline') movePolyPreview(e);
     if (S.tool === 'measure') moveMeasurePreview(e);
-    /* Ghost arrow: update preview line from start to current mouse */
-    if (S.tool === 'arrow' && S.ghostArrow.drawing && S.ghostArrow.start) {
-        if (!S.ghostArrow.previewLine) {
-            S.ghostArrow.previewLine = L.polyline([S.ghostArrow.start, e.latlng], {
-                color: S.color, weight: S.weight,
-                dashArray: '4, 8', opacity: 0.4, interactive: false
-            }).addTo(map);
-        } else {
-            S.ghostArrow.previewLine.setLatLngs([S.ghostArrow.start, e.latlng]);
-        }
-        /* Update preview arrowhead rotation */
-        if (S.ghostArrow.previewHead) {
-            S.ghostArrow.previewHead.setLatLng(e.latlng);
-            var angle = computeArrowAngle(S.ghostArrow.start, e.latlng);
-            var el = S.ghostArrow.previewHead.getElement();
-            if (el) {
-                var inner = el.querySelector('.arrowhead-wrap');
-                if (inner) inner.style.transform = 'rotate(' + angle + 'deg)';
-            }
-        } else {
-            S.ghostArrow.previewHead = L.marker(e.latlng, {
-                icon: createArrowheadIcon(S.color, true, S.flag),
-                interactive: false
-            }).addTo(map);
-        }
-    }
 });
 
 map.on('mouseup', e => {
@@ -2214,35 +2136,9 @@ map.on('mouseup', e => {
     if (S.tool === 'freehand' && S.drawing) finishFreehand();
     if (S.tool === 'arrow' && S.arrowDrawing) finishArrow();
     if (S.tool === 'eraser') eraserDragEnd();
-    /* Ghost arrow: right-click release creates arrowhead-only annotation */
-    if (S.tool === 'arrow' && S.ghostArrow.drawing) {
-        var ga = S.ghostArrow;
-        ga.drawing = false;
-        /* Remove preview elements */
-        if (ga.previewLine) { map.removeLayer(ga.previewLine); ga.previewLine = null; }
-        if (ga.previewHead) { map.removeLayer(ga.previewHead); ga.previewHead = null; }
-        if (ga.start && S.lastLatLng) {
-            var angle = computeArrowAngle(ga.start, S.lastLatLng);
-            var headIcon = createArrowheadIcon(S.color, false, S.flag);
-            var headMarker = L.marker(S.lastLatLng, { icon: headIcon, interactive: false }).addTo(map);
-            var headEl = headMarker.getElement();
-            if (headEl) {
-                var inner = headEl.querySelector('.arrowhead-wrap');
-                if (inner) inner.style.transform = 'rotate(' + angle + 'deg)';
-                var flagEl = headEl.querySelector('.arrowhead-flag');
-                if (flagEl) flagEl.style.transform = 'translateY(-50%) rotate(' + (-angle) + 'deg)';
-            }
-            /* Store as ghost_arrow — locked, so eraser cannot remove it */
-            storeAnnotation(headMarker, 'ghost_arrow', [ga.start.lat, ga.start.lng],
-                { headLatLng: [S.lastLatLng.lat, S.lastLatLng.lng], angle: angle, flag: S.flag || null },
-                { locked: true });
-        }
-        ga.start = null;
-    }
 });
 
 map.on('click', e => {
-    if (S.tool === 'polyline') addPolylinePoint(e);
     if (S.tool === 'marker') placeMarker(e);
     if (S.tool === 'fire') placeFire(e);
     if (S.tool === 'measure') startMeasure(e);
@@ -2253,14 +2149,6 @@ map.on('click', e => {
 });
 
 map.on('dblclick', e => {
-    if (S.tool === 'polyline') {
-        if (e && e.originalEvent) L.DomEvent.stop(e.originalEvent);
-        if (S.plPoints.length > 0) {
-            S.plPoints.pop();
-            if (S.plLine) { const ll = S.plLine.getLatLngs(); if (ll.length > 0) ll.pop(); S.plLine.setLatLngs(ll); }
-        }
-        finishPolyline();
-    }
     if (S.tool === 'measure') {
         if (e && e.originalEvent) L.DomEvent.stop(e.originalEvent);
         finishMeasure();
@@ -2346,11 +2234,11 @@ $$('.style-btn').forEach(btn => {
 /* =====================================================
    UI — Action Buttons
    ===================================================== */
+$('#btn-lock').addEventListener('click', toggleLockAll);
 $('#btn-clear').addEventListener('click', clearAll);
 $('#btn-png').addEventListener('click', exportPNG);
 $('#btn-geojson').addEventListener('click', exportGeoJSON);
 $('#btn-finish').addEventListener('click', () => {
-    if (S.tool === 'polyline') finishPolyline();
     if (S.tool === 'measure') finishMeasure();
 });
 $('#btn-undo').addEventListener('click', undo);
@@ -2371,18 +2259,15 @@ document.addEventListener('keydown', e => {
             if (!$('#overlay-modal').classList.contains('hidden')) { closeOverlayModal(); break; }
             if (!$('#save-modal').classList.contains('hidden')) { $('#save-modal').classList.add('hidden'); break; }
             if (overlayPlacement) { cancelOverlayPlacement(); break; }
-            if (S.tool === 'polyline') cancelPolyline();
-            if (S.tool === 'measure') cancelMeasure();
+                if (S.tool === 'measure') cancelMeasure();
             if (S.tool === 'label') hideLabelInput();
             break;
         case 'Enter':
             if (!$('#import-modal').classList.contains('hidden')) { confirmImport(); break; }
-            if (S.tool === 'polyline') finishPolyline();
             if (S.tool === 'measure') finishMeasure();
             break;
         case '1': setTool('pan');      break;
         case '2': setTool('freehand'); break;
-        case '3': setTool('polyline'); break;
         case '4': setTool('arrow');    break;
         case '5': setTool('marker');   break;
         case '6': setTool('label');    break;
