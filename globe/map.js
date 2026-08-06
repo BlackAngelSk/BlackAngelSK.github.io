@@ -45,7 +45,9 @@ const S = {
     labelLatLng: null,
     /* region highlight */
     highlighted: null,
-    highlightedOrigStyle: null
+    highlightedOrigStyle: null,
+    /* ghost arrow (right-click arrow) */
+    ghostArrow: { drawing: false, start: null }
 };
 const UNDO_LIMIT = 50;
 
@@ -578,6 +580,7 @@ function cancelMeasure() {
    ===================================================== */
 function enableEraser() {
     S.annotations.forEach(ann => {
+        if (ann.locked) return; /* skip locked annotations */
         const isPoint = ann.type === 'marker' || ann.type === 'label' || ann.type === 'fire';
         const origWeight = ann.weight;
         /* Force interactive mode so eraser can receive clicks (measurement lines are non-interactive by default) */
@@ -682,6 +685,7 @@ function eraserDragMove(e) {
     var containerPoint = map.latLngToContainerPoint(e.latlng);
     S.annotations.slice().forEach(function (ann) {
         if (S.eraserErasedIds.has(ann.id)) return;
+        if (ann.locked) return; /* skip locked annotations */
         var hit = false;
         var isPoint = ann.type === 'marker' || ann.type === 'label' || ann.type === 'fire';
         if (isPoint) {
@@ -793,7 +797,7 @@ function updateUndoRedoUI() {
 /* =====================================================
    Annotation Management
    ===================================================== */
-function storeAnnotation(layer, type, coords, extra) {
+function storeAnnotation(layer, type, coords, extra, options) {
     const ann = {
         id: S.nextId++,
         layer, type, coords,
@@ -801,7 +805,8 @@ function storeAnnotation(layer, type, coords, extra) {
         weight: S.weight,
         dashStyle: S.dashStyle,
         dashArray: DASH[S.dashStyle],
-        extra: extra || null
+        extra: extra || null,
+        locked: (options && options.locked) || false
     };
     layer._annId = ann.id;
     S.annotations.push(ann);
@@ -1464,10 +1469,10 @@ function confirmImport() {
             });
             /* Hover tooltip with name */
             layer.bindTooltip(f.name || '', { sticky: true, className: 'import-tooltip' });
-            /* Store annotation */
+            /* Store annotation — imported maps are locked (cannot be erased) */
             const prevColor = S.color, prevW = S.weight, prevDS = S.dashStyle;
             S.color = f.color; S.weight = f.weight; S.dashStyle = f.dashStyle;
-            storeAnnotation(layer, f.type, coords);
+            storeAnnotation(layer, f.type, coords, null, { locked: true });
             S.color = prevColor; S.weight = prevW; S.dashStyle = prevDS;
             layer.addTo(grp);
             count++;
@@ -1481,7 +1486,7 @@ function confirmImport() {
             layer.bindTooltip(f.name || '', { sticky: true, className: 'import-tooltip' });
             const prevColor = S.color;
             S.color = f.fillColor || f.color;
-            storeAnnotation(layer, 'polygon', f.geometry.coordinates, { text: f.text || f.name });
+            storeAnnotation(layer, 'polygon', f.geometry.coordinates, { text: f.text || f.name }, { locked: true });
             S.color = prevColor;
             layer.addTo(grp);
             attachHighlightHandler(layer);
@@ -1497,7 +1502,7 @@ function confirmImport() {
             if (text) marker.bindPopup('<b>' + escapeHtml(text) + '</b>', { maxWidth: 250 });
             const prevColor = S.color;
             S.color = f.color;
-            storeAnnotation(marker, f.type || 'marker', ll, { text });
+            storeAnnotation(marker, f.type || 'marker', ll, { text }, { locked: true });
             S.color = prevColor;
             marker.addTo(grp);
             count++;
@@ -2157,7 +2162,15 @@ let mouseDown = false;
 map.on('mousedown', e => {
     mouseDown = true;
     if (S.tool === 'freehand') startFreehand(e);
-    if (S.tool === 'arrow') startArrow(e);
+    if (S.tool === 'arrow') {
+        /* Right-click → ghost arrow (arrowhead only, no line) */
+        if (e.originalEvent.button === 2) {
+            S.ghostArrow.drawing = true;
+            S.ghostArrow.start = e.latlng;
+        } else {
+            startArrow(e);
+        }
+    }
     if (S.tool === 'eraser') eraserDragStart();
 });
 
@@ -2168,13 +2181,64 @@ map.on('mousemove', e => {
     if (S.tool === 'eraser' && S.eraserDragging) eraserDragMove(e);
     if (S.tool === 'polyline') movePolyPreview(e);
     if (S.tool === 'measure') moveMeasurePreview(e);
+    /* Ghost arrow: update preview line from start to current mouse */
+    if (S.tool === 'arrow' && S.ghostArrow.drawing && S.ghostArrow.start) {
+        if (!S.ghostArrow.previewLine) {
+            S.ghostArrow.previewLine = L.polyline([S.ghostArrow.start, e.latlng], {
+                color: S.color, weight: S.weight,
+                dashArray: '4, 8', opacity: 0.4, interactive: false
+            }).addTo(map);
+        } else {
+            S.ghostArrow.previewLine.setLatLngs([S.ghostArrow.start, e.latlng]);
+        }
+        /* Update preview arrowhead rotation */
+        if (S.ghostArrow.previewHead) {
+            S.ghostArrow.previewHead.setLatLng(e.latlng);
+            var angle = computeArrowAngle(S.ghostArrow.start, e.latlng);
+            var el = S.ghostArrow.previewHead.getElement();
+            if (el) {
+                var inner = el.querySelector('.arrowhead-wrap');
+                if (inner) inner.style.transform = 'rotate(' + angle + 'deg)';
+            }
+        } else {
+            S.ghostArrow.previewHead = L.marker(e.latlng, {
+                icon: createArrowheadIcon(S.color, true, S.flag),
+                interactive: false
+            }).addTo(map);
+        }
+    }
 });
 
-map.on('mouseup', () => {
+map.on('mouseup', e => {
     mouseDown = false;
     if (S.tool === 'freehand' && S.drawing) finishFreehand();
     if (S.tool === 'arrow' && S.arrowDrawing) finishArrow();
     if (S.tool === 'eraser') eraserDragEnd();
+    /* Ghost arrow: right-click release creates arrowhead-only annotation */
+    if (S.tool === 'arrow' && S.ghostArrow.drawing) {
+        var ga = S.ghostArrow;
+        ga.drawing = false;
+        /* Remove preview elements */
+        if (ga.previewLine) { map.removeLayer(ga.previewLine); ga.previewLine = null; }
+        if (ga.previewHead) { map.removeLayer(ga.previewHead); ga.previewHead = null; }
+        if (ga.start && S.lastLatLng) {
+            var angle = computeArrowAngle(ga.start, S.lastLatLng);
+            var headIcon = createArrowheadIcon(S.color, false, S.flag);
+            var headMarker = L.marker(S.lastLatLng, { icon: headIcon, interactive: false }).addTo(map);
+            var headEl = headMarker.getElement();
+            if (headEl) {
+                var inner = headEl.querySelector('.arrowhead-wrap');
+                if (inner) inner.style.transform = 'rotate(' + angle + 'deg)';
+                var flagEl = headEl.querySelector('.arrowhead-flag');
+                if (flagEl) flagEl.style.transform = 'translateY(-50%) rotate(' + (-angle) + 'deg)';
+            }
+            /* Store as ghost_arrow — locked, so eraser cannot remove it */
+            storeAnnotation(headMarker, 'ghost_arrow', [ga.start.lat, ga.start.lng],
+                { headLatLng: [S.lastLatLng.lat, S.lastLatLng.lng], angle: angle, flag: S.flag || null },
+                { locked: true });
+        }
+        ga.start = null;
+    }
 });
 
 map.on('click', e => {
@@ -3138,6 +3202,11 @@ function wireOverlayModal() {
         }
     });
 }
+
+/* ── Prevent context menu during arrow tool ─────── */
+map.getContainer().addEventListener('contextmenu', function (e) {
+    if (S.tool === 'arrow') e.preventDefault();
+});
 
 /* Wire up proxy modal buttons */
 (function wireProxyModal() {

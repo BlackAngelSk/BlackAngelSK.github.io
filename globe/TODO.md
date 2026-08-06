@@ -13,7 +13,7 @@ Feature ideas and improvements for globe/map.html.
 
 ## 🟡 Medium Priority
 
-- [ ] **Right-click Context Menu** — Copy coordinates, delete annotation, edit properties, zoom to location
+- [x] **Right-click Context Menu** — Copy coordinates, delete annotation, edit properties, zoom to location (ghost arrow)
 - [ ] **Coordinate Display on Hover** — Show lat/lng in the status bar as the cursor moves
 - [ ] **Annotation Editing** — Click existing annotations to change color, weight, or label text after creation
 - [ ] **Multi-select and Group** — Select multiple annotations and move/rotate/delete as a group
