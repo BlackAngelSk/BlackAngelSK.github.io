@@ -42,8 +42,36 @@ const S = {
     /* region highlight */
     highlighted: null,
     highlightedOrigStyle: null,
+    /* border/region pulse */
+    _pulseTimer: null,
+    _pulsePhase: 0,
+    /* rivers */
+    _riversData: null,
+    _riversLayer: null,
+    _riversVisible: false,
+    _riversLoading: false,
 };
 const UNDO_LIMIT = 50;
+
+/* ── Highlight Pulse Animation ─────────────────── */
+function _startPulse(layer, baseStyle) {
+    _stopPulse();
+    S._pulsePhase = 0;
+    S._pulseTimer = setInterval(function () {
+        S._pulsePhase = (S._pulsePhase + 1) % 40;
+        var t = S._pulsePhase / 20;          // 0 → 1 → 0
+        if (t > 1) t = 2 - t;
+        var w = baseStyle.weight + t * 2;     // weight oscillates ±2
+        var a = baseStyle.fillOpacity + t * 0.08;
+        layer.setStyle({
+            weight: w,
+            fillOpacity: Math.min(a, 0.50)
+        });
+    }, 60);
+}
+function _stopPulse() {
+    if (S._pulseTimer) { clearInterval(S._pulseTimer); S._pulseTimer = null; }
+}
 
 const COLORS = [
     '#ff0000', '#ff8800', '#ffdd00', '#00cc44', '#00bbff',
@@ -226,21 +254,23 @@ function _selectCountry(layer, name) {
     _selCountryOrig = Object.assign({}, layer.options);
     _selCountryLayer = layer;
     _selCountryName = name;
-    layer.setStyle({ color: '#ffdd00', weight: 7, opacity: 1, fillOpacity: 0.30, dashArray: '' });
+    layer.setStyle({ color: '#ffdd00', weight: 8, opacity: 1, fillOpacity: 0.32, dashArray: '' });
     layer.bringToFront();
     _hideAllCountries();
-    $('#status-text').textContent = 'Selected: ' + name + ' — zoom in to see regions';
+    _startPulse(layer, { weight: 8, fillOpacity: 0.32 });
+    $('#status-text').textContent = '📍 Selected: ' + name + ' — zoom in to see regions';
     _updateRegionVis();
 }
 
 function _deselectCountry() {
     if (!_selCountryLayer) return;
+    _stopPulse();
     if (_selCountryOrig) _selCountryLayer.setStyle(_selCountryOrig);
     _selCountryLayer.bringToBack();
     _selCountryLayer = null; _selCountryName = null; _selCountryOrig = null;
     _hideRegions();
     _showAllCountries();
-    $('#status-text').textContent = 'Borders — double-click a country to select';
+    $('#status-text').textContent = '🌍 Borders — hover to preview, double-click to select';
 }
 
 /* --- region select / deselect ----------------------------- */
@@ -249,14 +279,16 @@ function _selectRegion(layer, name) {
     if (_selRegionLayer) _deselectRegion();
     _selRegionOrig = Object.assign({}, layer.options);
     _selRegionLayer = layer;
-    layer.setStyle({ color: '#ff6600', weight: 7, opacity: 1, fillOpacity: 0.35, dashArray: '' });
+    layer.setStyle({ color: '#ff8800', weight: 8, opacity: 1, fillOpacity: 0.38, dashArray: '' });
     layer.bringToFront();
     _hideAllRegions(layer);
-    $('#status-text').textContent = 'Region: ' + name + ' (' + _selCountryName + ')';
+    _startPulse(layer, { weight: 8, fillOpacity: 0.38 });
+    $('#status-text').textContent = '📍 Region: ' + name + ' (' + _selCountryName + ') — double-click again to deselect';
 }
 
 function _deselectRegion() {
     if (!_selRegionLayer) return;
+    _stopPulse();
     if (_selRegionOrig) _selRegionLayer.setStyle(_selRegionOrig);
     _selRegionLayer.bringToBack();
     _selRegionLayer = null; _selRegionOrig = null;
@@ -286,8 +318,8 @@ function _buildRegionsLayer() {
     _regionsLayer = L.geoJSON({ type: 'FeatureCollection', features: feats }, {
         style: function () {
             return {
-                color: 'rgba(255, 160, 60, 0.55)', weight: 1.5,
-                fillColor: 'rgba(255, 160, 60, 0.08)', fillOpacity: 0.12,
+                color: 'rgba(255, 170, 70, 0.65)', weight: 2,
+                fillColor: 'rgba(255, 170, 70, 0.12)', fillOpacity: 0.20,
                 dashArray: '', renderer: canvasRenderer
             };
         },
@@ -296,6 +328,16 @@ function _buildRegionsLayer() {
             layer._isRegion = true;
             var rn = _regionNameOf(feature);
             if (rn) layer.bindTooltip(rn, { sticky: true, className: 'import-tooltip' });
+            layer.on('mouseover', function (e) {
+                if (_selRegionLayer === this) return;
+                this.setStyle({ weight: 4, color: '#ffaa44', fillOpacity: 0.30, opacity: 1 });
+                this.bringToFront();
+                $('#status-text').textContent = '🗺️ ' + rn + ' (' + _selCountryName + ') — double-click to select';
+            });
+            layer.on('mouseout', function (e) {
+                if (_selRegionLayer === this) return;
+                _regionsLayer.resetStyle(this);
+            });
             layer.on('dblclick', function (e) {
                 if (e && e.originalEvent) L.DomEvent.stop(e.originalEvent);
                 _selectRegion(this, rn);
@@ -354,8 +396,8 @@ function toggleBorders() {
             _bordersLayer = L.geoJSON(data, {
                 style: function () {
                     return {
-                        color: 'rgba(120, 180, 255, 0.6)', weight: 1.2,
-                        fillColor: 'rgba(120, 180, 255, 0.06)', fillOpacity: 0.15,
+                        color: 'rgba(120, 180, 255, 0.7)', weight: 1.5,
+                        fillColor: 'rgba(120, 180, 255, 0.08)', fillOpacity: 0.18,
                         dashArray: '', renderer: canvasRenderer
                     };
                 },
@@ -363,6 +405,17 @@ function toggleBorders() {
                     layer._isBorder = true;
                     var cn = _countryNameOf(feature);
                     if (cn) layer.bindTooltip(cn, { sticky: true, className: 'import-tooltip' });
+                    layer.on('mouseover', function (e) {
+                        if (_selCountryLayer === this) return;
+                        this.setStyle({ weight: 4, color: '#78b4ff', fillOpacity: 0.22, opacity: 1 });
+                        this.bringToFront();
+                        $('#status-text').textContent = '🗺️ ' + cn + ' — double-click to select';
+                    });
+                    layer.on('mouseout', function (e) {
+                        if (_selCountryLayer === this) return;
+                        if (this._hiddenBySel) return;
+                        _bordersLayer.resetStyle(this);
+                    });
                     layer.on('dblclick', function (e) {
                         if (e && e.originalEvent) L.DomEvent.stop(e.originalEvent);
                         _selectCountry(this, cn);
@@ -387,6 +440,79 @@ function toggleBorders() {
 }
 
 $('#btn-borders').addEventListener('click', toggleBorders);
+
+/* =====================================================
+   Rivers Overlay — fetches Natural Earth rivers GeoJSON
+   ===================================================== */
+var RIVERS_URL = 'https://raw.githubusercontent.com/nvkelso/natural-earth-vector/master/geojson/ne_50m_rivers_lake_centerlines.geojson';
+
+function toggleRivers() {
+    if (S._riversVisible && S._riversLayer) {
+        map.removeLayer(S._riversLayer);
+        S._riversLayer = null; S._riversVisible = false;
+        $('#btn-rivers').classList.remove('active');
+        $('#status-text').textContent = 'Rivers hidden';
+        return;
+    }
+    if (S._riversLayer) {
+        S._riversLayer.addTo(map);
+        S._riversVisible = true;
+        $('#btn-rivers').classList.add('active');
+        $('#status-text').textContent = '🌊 Rivers — hover to see name';
+        return;
+    }
+    if (S._riversLoading) return;
+    S._riversLoading = true;
+    var btn = $('#btn-rivers');
+    btn.textContent = '⏳ Rivers'; btn.disabled = true;
+
+    fetch(RIVERS_URL)
+        .then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+        .then(function (data) {
+            S._riversData = data;
+            S._riversLayer = L.geoJSON(data, {
+                style: function (feature) {
+                    var sc = feature && feature.properties ? (feature.properties.scalerank || 5) : 5;
+                    var w = sc <= 2 ? 2.5 : sc <= 4 ? 1.8 : 1.3;
+                    var o = sc <= 2 ? 0.85 : sc <= 4 ? 0.70 : 0.55;
+                    return {
+                        color: 'rgba(80, 160, 255, ' + o + ')',
+                        weight: w, opacity: 1,
+                        lineCap: 'round', lineJoin: 'round',
+                        renderer: canvasRenderer
+                    };
+                },
+                onEachFeature: function (feature, layer) {
+                    var rn = feature && feature.properties ? (feature.properties.name || '') : '';
+                    if (rn) layer.bindTooltip(rn, { sticky: true, className: 'import-tooltip' });
+                    layer.on('mouseover', function () {
+                        var sc = feature && feature.properties ? (feature.properties.scalerank || 5) : 5;
+                        var bw = sc <= 2 ? 4 : sc <= 4 ? 3 : 2.5;
+                        this.setStyle({ weight: bw, color: 'rgba(100, 220, 255, 0.95)' });
+                        this.bringToFront();
+                        $('#status-text').textContent = '🌊 ' + (rn || 'River');
+                    });
+                    layer.on('mouseout', function () {
+                        S._riversLayer.resetStyle(this);
+                    });
+                }
+            });
+            S._riversLayer.addTo(map);
+            S._riversVisible = true;
+            btn.classList.add('active');
+            $('#status-text').textContent = '🌊 Rivers — hover to see name';
+        })
+        .catch(function (err) {
+            console.error('Failed to load rivers:', err);
+            alert('Failed to load rivers.\n' + err.message);
+        })
+        .finally(function () {
+            S._riversLoading = false;
+            btn.textContent = '🌊 Rivers'; btn.disabled = false;
+        });
+}
+
+$('#btn-rivers').addEventListener('click', toggleRivers);
 
 /* =====================================================
    Tool Management
