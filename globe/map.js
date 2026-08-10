@@ -158,6 +158,237 @@ $('#btn-lang').addEventListener('click', () => setMapLanguage(langIdx + 1));
 $('#btn-lang').textContent = LANGUAGES[0].flag + ' ' + LANGUAGES[0].code;
 
 /* =====================================================
+   Country Borders & Regions — progressive drill-down
+   =====================================================
+   Click  "Borders"    → show all country outlines
+   Dbl-click a country → only that country visible
+   Zoom in (≥ 6)       → admin-1 regions appear inside it
+   Dbl-click a region  → only that region visible
+   Dbl-click again     → go back one level
+   ===================================================== */
+var BORDERS_GEOJSON_URL = 'https://raw.githubusercontent.com/holtzy/D3-graph-gallery/master/DATA/world.geojson';
+var REGIONS_GEOJSON_URL = 'https://raw.githubusercontent.com/nvkelso/natural-earth-vector/master/geojson/ne_10m_admin_1_states_provinces.geojson';
+var REGION_MIN_ZOOM = 6;
+
+/* --- state ------------------------------------------------ */
+var _bordersData   = null, _bordersLayer = null;
+var _bordersLoading = false, _bordersVisible = false;
+var _allCountryLayers = [];
+
+var _selCountryLayer = null, _selCountryName = null, _selCountryOrig = null;
+
+var _regionsData   = null, _regionsLoading = false;
+var _regionsLayer  = null, _allRegionLayers = [];
+
+var _selRegionLayer = null, _selRegionOrig = null;
+
+/* --- property helpers ------------------------------------- */
+function _countryNameOf(f) {
+    var p = f && f.properties; if (!p) return '';
+    return p.name || p.NAME || p.ADMIN || p.name_en || '';
+}
+function _regionAdminOf(f) {
+    var p = f && f.properties; if (!p) return '';
+    return p.admin || p.ADMIN || '';
+}
+function _regionNameOf(f) {
+    var p = f && f.properties; if (!p) return '';
+    return p.name || p.NAME || p.name_en || '';
+}
+
+/* --- hide / show helpers ---------------------------------- */
+function _hideAllCountries() {
+    _allCountryLayers.forEach(function (l) {
+        if (l !== _selCountryLayer) { map.removeLayer(l); l._hiddenBySel = true; }
+    });
+}
+function _showAllCountries() {
+    _allCountryLayers.forEach(function (l) {
+        if (l._hiddenBySel) { l.addTo(map); l._hiddenBySel = false; }
+    });
+}
+function _hideAllRegions(except) {
+    _allRegionLayers.forEach(function (l) {
+        if (l !== except) { map.removeLayer(l); l._hiddenBySel = true; }
+    });
+}
+function _showAllRegions() {
+    _allRegionLayers.forEach(function (l) {
+        if (l._hiddenBySel) { l.addTo(map); l._hiddenBySel = false; }
+    });
+}
+
+/* --- country select / deselect ---------------------------- */
+function _selectCountry(layer, name) {
+    if (_selCountryLayer === layer) { _deselectCountry(); return; }
+    if (_selCountryLayer) _deselectCountry();
+
+    _selCountryOrig = Object.assign({}, layer.options);
+    _selCountryLayer = layer;
+    _selCountryName = name;
+    layer.setStyle({ color: '#ffdd00', weight: 7, opacity: 1, fillOpacity: 0.30, dashArray: '' });
+    layer.bringToFront();
+    _hideAllCountries();
+    $('#status-text').textContent = 'Selected: ' + name + ' — zoom in to see regions';
+    _updateRegionVis();
+}
+
+function _deselectCountry() {
+    if (!_selCountryLayer) return;
+    if (_selCountryOrig) _selCountryLayer.setStyle(_selCountryOrig);
+    _selCountryLayer.bringToBack();
+    _selCountryLayer = null; _selCountryName = null; _selCountryOrig = null;
+    _hideRegions();
+    _showAllCountries();
+    $('#status-text').textContent = 'Borders — double-click a country to select';
+}
+
+/* --- region select / deselect ----------------------------- */
+function _selectRegion(layer, name) {
+    if (_selRegionLayer === layer) { _deselectRegion(); return; }
+    if (_selRegionLayer) _deselectRegion();
+    _selRegionOrig = Object.assign({}, layer.options);
+    _selRegionLayer = layer;
+    layer.setStyle({ color: '#ff6600', weight: 7, opacity: 1, fillOpacity: 0.35, dashArray: '' });
+    layer.bringToFront();
+    _hideAllRegions(layer);
+    $('#status-text').textContent = 'Region: ' + name + ' (' + _selCountryName + ')';
+}
+
+function _deselectRegion() {
+    if (!_selRegionLayer) return;
+    if (_selRegionOrig) _selRegionLayer.setStyle(_selRegionOrig);
+    _selRegionLayer.bringToBack();
+    _selRegionLayer = null; _selRegionOrig = null;
+    _showAllRegions();
+}
+
+/* --- fetch & build regions -------------------------------- */
+function _fetchRegions() {
+    if (_regionsData) { _buildRegionsLayer(); return; }
+    if (_regionsLoading) return;
+    _regionsLoading = true;
+    fetch(REGIONS_GEOJSON_URL)
+        .then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+        .then(function (d) { _regionsData = d; _buildRegionsLayer(); })
+        .catch(function (e) { console.error('Failed to load admin-1 regions:', e); })
+        .finally(function () { _regionsLoading = false; });
+}
+
+function _buildRegionsLayer() {
+    if (!_regionsData || !_selCountryName) return;
+    _hideRegions();
+    var cl = _selCountryName.toLowerCase();
+    var feats = _regionsData.features.filter(function (f) {
+        return _regionAdminOf(f).toLowerCase() === cl;
+    });
+    if (!feats.length) return;
+    _regionsLayer = L.geoJSON({ type: 'FeatureCollection', features: feats }, {
+        style: function () {
+            return {
+                color: 'rgba(255, 160, 60, 0.55)', weight: 1.5,
+                fillColor: 'rgba(255, 160, 60, 0.08)', fillOpacity: 0.12,
+                dashArray: '', renderer: canvasRenderer
+            };
+        },
+        onEachFeature: function (feature, layer) {
+            layer._isBorder = true;
+            layer._isRegion = true;
+            var rn = _regionNameOf(feature);
+            if (rn) layer.bindTooltip(rn, { sticky: true, className: 'import-tooltip' });
+            layer.on('dblclick', function (e) {
+                if (e && e.originalEvent) L.DomEvent.stop(e.originalEvent);
+                _selectRegion(this, rn);
+            });
+        }
+    });
+    _regionsLayer.addTo(map);
+    _allRegionLayers = [];
+    _regionsLayer.eachLayer(function (l) { _allRegionLayers.push(l); });
+}
+
+function _hideRegions() {
+    if (_regionsLayer) { map.removeLayer(_regionsLayer); _regionsLayer = null; }
+    _allRegionLayers = [];
+    _deselectRegion();
+}
+
+/* --- zoom-based region visibility ------------------------- */
+function _updateRegionVis() {
+    var z = map.getZoom();
+    if (_selCountryLayer && z >= REGION_MIN_ZOOM) {
+        if (!_regionsLayer && !_regionsLoading) _fetchRegions();
+    } else {
+        if (_regionsLayer) _hideRegions();
+    }
+}
+map.on('zoomend', _updateRegionVis);
+
+/* --- main toggle ------------------------------------------ */
+function toggleBorders() {
+    var btn = $('#btn-borders');
+    if (_bordersVisible && _bordersLayer) {
+        _hideRegions();
+        map.removeLayer(_bordersLayer);
+        _bordersLayer = null; _bordersVisible = false;
+        _allCountryLayers = [];
+        _deselectCountry();
+        btn.classList.remove('active');
+        return;
+    }
+    if (_bordersLayer) {
+        _bordersLayer.addTo(map);
+        _bordersVisible = true;
+        btn.classList.add('active');
+        return;
+    }
+    if (_bordersLoading) return;
+    _bordersLoading = true;
+    btn.textContent = '⏳ Borders';
+    btn.disabled = true;
+
+    fetch(BORDERS_GEOJSON_URL)
+        .then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+        .then(function (data) {
+            _bordersData = data;
+            _bordersLayer = L.geoJSON(data, {
+                style: function () {
+                    return {
+                        color: 'rgba(120, 180, 255, 0.6)', weight: 1.2,
+                        fillColor: 'rgba(120, 180, 255, 0.06)', fillOpacity: 0.15,
+                        dashArray: '', renderer: canvasRenderer
+                    };
+                },
+                onEachFeature: function (feature, layer) {
+                    layer._isBorder = true;
+                    var cn = _countryNameOf(feature);
+                    if (cn) layer.bindTooltip(cn, { sticky: true, className: 'import-tooltip' });
+                    layer.on('dblclick', function (e) {
+                        if (e && e.originalEvent) L.DomEvent.stop(e.originalEvent);
+                        _selectCountry(this, cn);
+                    });
+                }
+            });
+            _bordersLayer.addTo(map);
+            _bordersVisible = true;
+            btn.classList.add('active');
+            _allCountryLayers = [];
+            _bordersLayer.eachLayer(function (l) { _allCountryLayers.push(l); });
+        })
+        .catch(function (err) {
+            console.error('Failed to load country borders:', err);
+            alert('Failed to load country borders.\n' + err.message);
+        })
+        .finally(function () {
+            _bordersLoading = false;
+            btn.textContent = '🌍 Borders';
+            btn.disabled = false;
+        });
+}
+
+$('#btn-borders').addEventListener('click', toggleBorders);
+
+/* =====================================================
    Tool Management
    ===================================================== */
 function setTool(tool) {
