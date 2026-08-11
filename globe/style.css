@@ -520,3 +520,147 @@ canvas {
     #conflict-panel { width: calc(100vw - 40px); left: 20px; }
     #conflict-legend { bottom: 80px; }
 }
+
+/* === Maritime Trade Routes — Glassmorphism Panels === */
+.glass {
+    background: rgba(10, 15, 30, 0.55);
+    backdrop-filter: blur(18px);
+    -webkit-backdrop-filter: blur(18px);
+    border: 1px solid rgba(78, 205, 196, 0.18);
+    border-radius: 14px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+#route-popup {
+    position: fixed;
+    z-index: 200;
+    padding: 18px 22px;
+    min-width: 280px;
+    max-width: 320px;
+    pointer-events: auto;
+}
+
+.popup-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 12px;
+}
+
+.popup-route {
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: #fff;
+}
+
+.popup-close {
+    background: none;
+    border: none;
+    color: rgba(200, 200, 200, 0.5);
+    font-size: 1.2rem;
+    cursor: pointer;
+    padding: 0 2px;
+    line-height: 1;
+    transition: color 0.2s;
+}
+
+.popup-close:hover { color: #ff6b6b; }
+
+.popup-cargo-badge {
+    display: inline-block;
+    padding: 3px 10px;
+    border-radius: 20px;
+    font-size: 0.65rem;
+    font-weight: 600;
+    letter-spacing: 0.8px;
+    text-transform: uppercase;
+    margin-bottom: 12px;
+}
+
+.popup-detail {
+    display: flex;
+    justify-content: space-between;
+    padding: 4px 0;
+    font-size: 0.72rem;
+}
+
+.pd-label { color: rgba(160, 190, 200, 0.6); }
+.pd-value { color: rgba(220, 235, 240, 0.9); font-weight: 500; }
+
+#maritime-legend {
+    position: fixed;
+    bottom: 150px;
+    left: 16px;
+    z-index: 16;
+    padding: 16px 20px;
+    min-width: 200px;
+}
+
+.ml-title {
+    font-size: 0.68rem;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    color: rgba(160, 190, 200, 0.6);
+    margin-bottom: 10px;
+    font-weight: 600;
+}
+
+.ml-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 4px 0;
+    font-size: 0.72rem;
+    color: rgba(200, 220, 230, 0.75);
+}
+
+.ml-swatch {
+    display: inline-block;
+    width: 24px;
+    height: 3px;
+    border-radius: 2px;
+    flex-shrink: 0;
+}
+
+#maritime-stats {
+    position: fixed;
+    bottom: 150px;
+    right: 16px;
+    z-index: 16;
+    padding: 16px 22px;
+    min-width: 200px;
+}
+
+.ms-title {
+    font-size: 0.68rem;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    color: rgba(160, 190, 200, 0.6);
+    margin-bottom: 12px;
+    font-weight: 600;
+}
+
+.ms-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 5px 0;
+    border-bottom: 1px solid rgba(78, 205, 196, 0.06);
+}
+
+.ms-row:last-child { border-bottom: none; }
+.ms-label { font-size: 0.7rem; color: rgba(160, 190, 200, 0.6); }
+.ms-value { font-size: 0.85rem; font-weight: 700; color: #4ecdc4; font-variant-numeric: tabular-nums; }
+.ms-health { color: #a8e6cf !important; }
+
+#btn-routes.active {
+    background: rgba(78, 205, 196, 0.15);
+    border-color: rgba(78, 205, 196, 0.5);
+    color: #4ecdc4;
+}
+
+@media (max-width: 600px) {
+    #maritime-legend { bottom: 150px; left: 10px; }
+    #maritime-stats { bottom: 150px; right: 10px; }
+    #route-popup { left: 10px !important; top: auto !important; bottom: 200px !important; right: 10px; max-width: none; min-width: 0; }
+}

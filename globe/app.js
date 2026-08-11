@@ -970,6 +970,21 @@ function animate(){
   const zoomK=Math.min(Math.max(Math.pow(350/camDist,0.3),0.85),1.8);
   ctLabels.forEach(lb=>{lb.scale.set(5*zoomK,1.25*zoomK,1);});
 
+  // Maritime arc dash animation
+  if(maritimeGroup.visible){
+    arcLines.forEach(line=>{
+      line.material.dashOffset -= 0.003;
+    });
+    // Pulse port rings
+    portGroup.children.forEach(sp=>{
+      if(sp.userData.isPortRing){
+        const pulse=Math.sin(time*3)*0.3+1.0;
+        sp.scale.set(6*pulse,6*pulse,1);
+        sp.material.opacity=0.5+Math.sin(time*3)*0.3;
+      }
+    });
+  }
+
   updateLOD();
   updateClock();
   ctrl.update();renderer.render(scene,camera);
@@ -982,5 +997,262 @@ function updateProgress(msg){const pe=document.getElementById('loading-progress'
 
 setTimeout(()=>{if(ld<tot){updateProgress('Some textures failed.');setTimeout(hidLoad,2000);}},20000);
 
+// ============================================================
+// MARITIME TRADE ROUTES — Data
+// ============================================================
+const MARITIME_CARGO = {
+    oil:       { color: '#ff6b6b', label: 'Crude Oil & Tankers' },
+    container: { color: '#4ecdc4', label: 'Container Ships' },
+    bulk:      { color: '#ffe66d', label: 'Bulk Cargo' },
+    lng:       { color: '#a8e6cf', label: 'LNG & Gas Carriers' }
+};
+const PORTS = [
+    { id:'rotterdam',  name:'Rotterdam',   lat:51.9225,  lng:4.4792,   country:'Netherlands' },
+    { id:'shanghai',   name:'Shanghai',    lat:31.2304,  lng:121.4737, country:'China' },
+    { id:'singapore',  name:'Singapore',   lat:1.2644,   lng:103.8220, country:'Singapore' },
+    { id:'dubai',      name:'Dubai',       lat:25.2048,  lng:55.2708,  country:'UAE' },
+    { id:'newyork',    name:'New York',    lat:40.7128,  lng:-74.0060, country:'USA' },
+    { id:'panama',     name:'Panama City', lat:9.0820,   lng:-79.5167, country:'Panama' },
+    { id:'suez',       name:'Port Said',   lat:31.2653,  lng:32.3019,  country:'Egypt' },
+    { id:'losangeles', name:'Los Angeles', lat:33.7405,  lng:-118.2608,country:'USA' },
+    { id:'hamburg',    name:'Hamburg',      lat:53.5511,  lng:9.9937,   country:'Germany' },
+    { id:'yokohama',   name:'Yokohama',    lat:35.4437,  lng:139.6380, country:'Japan' }
+];
+const portById = {};
+PORTS.forEach(p => portById[p.id] = p);
+
+// Maritime waypoints for ocean-only routing
+const W = {
+    GIB:    [36.0, -5.5],    // Strait of Gibraltar
+    SUEZ_S: [29.9, 32.5],    // Suez Canal south
+    BAB:    [12.6, 43.3],    // Bab el-Mandeb
+    HORMUZ: [26.5, 56.5],    // Strait of Hormuz
+    MALACCA:[2.0, 103.0],    // Strait of Malacca
+    SCS:    [12.0, 112.0],   // South China Sea
+    PANAMA: [9.0, -79.5],    // Panama Canal
+    CH:     [50.0, -1.0],    // English Channel
+    NS:     [55.0, 3.0],     // North Sea
+    RED_M:  [20.0, 38.0],    // Red Sea mid
+    GOA:    [12.0, 48.0],    // Gulf of Aden
+    ARAB:   [12.0, 60.0],    // Arabian Sea
+    CARIB:  [15.0, -75.0],   // Caribbean
+    ATL_E:  [35.0, -45.0],   // Mid-Atlantic east
+    ATL_W:  [35.0, -55.0],   // Mid-Atlantic west
+    PAC:    [35.0, -170.0],  // North Pacific mid
+};
+
+// Routes with ocean waypoints (via arrays)
+const ROUTES = [
+    // Oil (red)
+    { from:'dubai',to:'rotterdam',cargo:'oil',distanceNM:6300,travelDays:18,
+      via:[W.HORMUZ,W.GOA,W.BAB,W.RED_M,W.SUEZ_S,W.GIB,W.CH] },
+    { from:'dubai',to:'shanghai',cargo:'oil',distanceNM:6100,travelDays:16,
+      via:[W.HORMUZ,W.ARAB,W.MALACCA,W.SCS] },
+    { from:'suez',to:'rotterdam',cargo:'oil',distanceNM:3600,travelDays:12,
+      via:[W.GIB,W.CH] },
+    { from:'newyork',to:'suez',cargo:'oil',distanceNM:5500,travelDays:15,
+      via:[W.ATL_E,W.GIB,W.SUEZ_S] },
+    // Container (cyan)
+    { from:'shanghai',to:'rotterdam',cargo:'container',distanceNM:10500,travelDays:30,
+      via:[W.SCS,W.MALACCA,W.ARAB,W.GOA,W.BAB,W.RED_M,W.SUEZ_S,W.GIB,W.CH] },
+    { from:'singapore',to:'rotterdam',cargo:'container',distanceNM:8400,travelDays:24,
+      via:[W.ARAB,W.GOA,W.BAB,W.RED_M,W.SUEZ_S,W.GIB,W.CH] },
+    { from:'shanghai',to:'losangeles',cargo:'container',distanceNM:6300,travelDays:14,
+      via:[] }, // direct Pacific
+    { from:'singapore',to:'hamburg',cargo:'container',distanceNM:8400,travelDays:22,
+      via:[W.ARAB,W.GOA,W.BAB,W.RED_M,W.SUEZ_S,W.GIB,W.CH,W.NS] },
+    { from:'rotterdam',to:'newyork',cargo:'container',distanceNM:3400,travelDays:9,
+      via:[] }, // direct Atlantic
+    { from:'hamburg',to:'newyork',cargo:'container',distanceNM:3600,travelDays:10,
+      via:[W.NS,W.ATL_W] },
+    // Bulk (yellow)
+    { from:'losangeles',to:'yokohama',cargo:'bulk',distanceNM:5500,travelDays:13,
+      via:[] }, // direct Pacific
+    { from:'rotterdam',to:'hamburg',cargo:'bulk',distanceNM:350,travelDays:2,
+      via:[] }, // short North Sea
+    { from:'singapore',to:'shanghai',cargo:'bulk',distanceNM:2400,travelDays:6,
+      via:[W.SCS] },
+    // LNG (green)
+    { from:'dubai',to:'singapore',cargo:'lng',distanceNM:3900,travelDays:10,
+      via:[W.HORMUZ,W.ARAB,W.MALACCA] },
+    { from:'rotterdam',to:'yokohama',cargo:'lng',distanceNM:9500,travelDays:26,
+      via:[W.GIB,W.SUEZ_S,W.RED_M,W.BAB,W.GOA,W.ARAB,W.MALACCA,W.SCS] },
+    { from:'losangeles',to:'shanghai',cargo:'lng',distanceNM:6000,travelDays:15,
+      via:[] }, // direct Pacific
+    { from:'newyork',to:'panama',cargo:'lng',distanceNM:2000,travelDays:6,
+      via:[W.CARIB] },
+    { from:'panama',to:'losangeles',cargo:'lng',distanceNM:3100,travelDays:9,
+      via:[] }, // direct Pacific coast
+    { from:'suez',to:'dubai',cargo:'lng',distanceNM:1300,travelDays:4,
+      via:[W.RED_M,W.BAB,W.GOA,W.ARAB,W.HORMUZ] },
+    // Extra cross-links
+    { from:'panama',to:'rotterdam',cargo:'container',distanceNM:4700,travelDays:12,
+      via:[W.ATL_E] },
+    { from:'suez',to:'singapore',cargo:'container',distanceNM:5100,travelDays:14,
+      via:[W.RED_M,W.BAB,W.GOA,W.ARAB,W.MALACCA] },
+    { from:'yokohama',to:'singapore',cargo:'container',distanceNM:3300,travelDays:8,
+      via:[W.SCS,W.MALACCA] },
+    { from:'hamburg',to:'dubai',cargo:'bulk',distanceNM:5700,travelDays:16,
+      via:[W.CH,W.GIB,W.SUEZ_S,W.RED_M,W.BAB,W.GOA,W.ARAB,W.HORMUZ] },
+    { from:'newyork',to:'losangeles',cargo:'bulk',distanceNM:2800,travelDays:7,
+      via:[W.CARIB,W.PANAMA] },
+];
+
+// Great-circle segment between two points
+function gcSeg(lat1,lng1,lat2,lng2,segs){
+    const pts=[],toRad=Math.PI/180;
+    const p1=[lat1*toRad,lng1*toRad],p2=[lat2*toRad,lng2*toRad];
+    const d=2*Math.asin(Math.sqrt(Math.sin((p2[0]-p1[0])/2)**2+Math.cos(p1[0])*Math.cos(p2[0])*Math.sin((p2[1]-p1[1])/2)**2));
+    if(d<0.0001)return[latLonToV3(lat1,lng1,ER*1.03)];
+    for(let i=0;i<=segs;i++){
+        const f=i/segs,A=Math.sin((1-f)*d)/Math.sin(d),B=Math.sin(f*d)/Math.sin(d);
+        const x=A*Math.cos(p1[0])*Math.cos(p1[1])+B*Math.cos(p2[0])*Math.cos(p2[1]);
+        const y=A*Math.cos(p1[0])*Math.sin(p1[1])+B*Math.cos(p2[0])*Math.sin(p2[1]);
+        const z=A*Math.sin(p1[0])+B*Math.sin(p2[0]);
+        pts.push(latLonToV3(Math.atan2(z,Math.sqrt(x*x+y*y))/toRad,Math.atan2(y,x)/toRad,ER*1.03));
+    }
+    return pts;
+}
+
+// Build full path through waypoints
+function greatCirclePath(lat1,lng1,lat2,lng2,via,segs){
+    const allPts=[];
+    const stops=[[lat1,lng1]];
+    if(via&&via.length) stops.push(...via);
+    stops.push([lat2,lng2]);
+    for(let i=0;i<stops.length-1;i++){
+        const seg=gcSeg(stops[i][0],stops[i][1],stops[i+1][0],stops[i+1][1],segs);
+        if(i>0) seg.shift(); // avoid duplicate junction points
+        allPts.push(...seg);
+    }
+    return allPts;
+}
+
+// --- Maritime scene group ---
+const maritimeGroup = new THREE.Group();
+gG.add(maritimeGroup);
+maritimeGroup.visible = false;
+let shRoutes = false;
+
+// Port markers
+const portGroup = new THREE.Group();
+maritimeGroup.add(portGroup);
+PORTS.forEach(p => {
+    const c = document.createElement('canvas');
+    c.width=128; c.height=128;
+    const cx = c.getContext('2d');
+    const g = cx.createRadialGradient(64,64,0,64,64,64);
+    g.addColorStop(0,'rgba(78,205,196,1)'); g.addColorStop(0.3,'rgba(78,205,196,0.6)');
+    g.addColorStop(0.6,'rgba(78,205,196,0.15)'); g.addColorStop(1,'rgba(78,205,196,0)');
+    cx.fillStyle=g; cx.fillRect(0,0,128,128);
+    cx.fillStyle='#fff'; cx.beginPath(); cx.arc(64,64,6,0,Math.PI*2); cx.fill();
+    cx.fillStyle='#4ecdc4'; cx.beginPath(); cx.arc(64,64,4,0,Math.PI*2); cx.fill();
+    const sp = new THREE.Sprite(new THREE.SpriteMaterial({map:new THREE.CanvasTexture(c),transparent:true,blending:THREE.AdditiveBlending,depthWrite:false}));
+    sp.scale.set(4,4,1); sp.position.copy(latLonToV3(p.lat,p.lng,ER*1.035));
+    sp.userData={portId:p.id,portName:p.name,portCountry:p.country,portLat:p.lat,portLng:p.lng};
+    portGroup.add(sp);
+    // Radar ring
+    const rc=document.createElement('canvas'); rc.width=128; rc.height=128;
+    const rx=rc.getContext('2d');
+    const rg=rx.createRadialGradient(64,64,20,64,64,60);
+    rg.addColorStop(0,'rgba(78,205,196,0)'); rg.addColorStop(0.5,'rgba(78,205,196,0.3)');
+    rg.addColorStop(0.75,'rgba(78,205,196,0.1)'); rg.addColorStop(1,'rgba(78,205,196,0)');
+    rx.fillStyle=rg; rx.beginPath(); rx.arc(64,64,60,0,Math.PI*2); rx.fill();
+    const ring=new THREE.Sprite(new THREE.SpriteMaterial({map:new THREE.CanvasTexture(rc),transparent:true,blending:THREE.AdditiveBlending,depthWrite:false}));
+    ring.scale.set(6,6,1); ring.position.copy(latLonToV3(p.lat,p.lng,ER*1.035));
+    ring.userData={isPortRing:true}; portGroup.add(ring);
+    // Label
+    const lcv=document.createElement('canvas'); lcv.width=256; lcv.height=64;
+    const lx=lcv.getContext('2d'); lx.clearRect(0,0,256,64);
+    lx.font='bold 16px Arial,sans-serif'; lx.fillStyle='rgba(78,205,196,0.9)';
+    lx.textAlign='center'; lx.textBaseline='middle'; lx.fillText(p.name,128,32);
+    const lb=new THREE.Sprite(new THREE.SpriteMaterial({map:new THREE.CanvasTexture(lcv),transparent:true,depthTest:false,depthWrite:false,opacity:0.9}));
+    lb.scale.set(5,1.25,1); lb.position.copy(latLonToV3(p.lat,p.lng,ER*1.035+3));
+    portGroup.add(lb);
+});
+
+// Arc routes
+const arcGroup = new THREE.Group();
+maritimeGroup.add(arcGroup);
+const arcLines = [];
+ROUTES.forEach(r => {
+    const pts = greatCirclePath(portById[r.from].lat,portById[r.from].lng,portById[r.to].lat,portById[r.to].lng,r.via,16);
+    const mat = new THREE.LineDashedMaterial({color:new THREE.Color(MARITIME_CARGO[r.cargo].color),transparent:true,opacity:0.8,dashSize:0.8,gapSize:0.4,linewidth:1});
+    const line = new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), mat);
+    line.computeLineDistances();
+    line.userData={routeData:r,fromPort:portById[r.from],toPort:portById[r.to]};
+    arcGroup.add(line); arcLines.push(line);
+});
+document.getElementById('ms-routes').textContent = ROUTES.length;
+document.getElementById('ms-ports').textContent = PORTS.length;
+
+// --- Toggle button ---
+const btnRoutes = document.getElementById('btn-routes');
+const maritimeLegend = document.getElementById('maritime-legend');
+const maritimeStats = document.getElementById('maritime-stats');
+if(btnRoutes) btnRoutes.addEventListener('click',()=>{
+    shRoutes=!shRoutes; maritimeGroup.visible=shRoutes;
+    btnRoutes.classList.toggle('active',shRoutes);
+    if(maritimeLegend) maritimeLegend.classList.toggle('hidden',!shRoutes);
+    if(maritimeStats) maritimeStats.classList.toggle('hidden',!shRoutes);
+});
+
+// --- Route popup ---
+const routePopup = document.getElementById('route-popup');
+document.getElementById('popup-close').addEventListener('click',()=>routePopup.classList.add('hidden'));
+function showRoutePopup(r,x,y){
+    document.getElementById('popup-route').textContent=r.fromPort.name+' \u2192 '+r.toPort.name;
+    const b=document.getElementById('popup-cargo');
+    b.textContent=MARITIME_CARGO[r.cargo].label;
+    b.style.background=MARITIME_CARGO[r.cargo].color+'22';
+    b.style.color=MARITIME_CARGO[r.cargo].color;
+    b.style.border='1px solid '+MARITIME_CARGO[r.cargo].color+'55';
+    document.getElementById('popup-origin').textContent=r.fromPort.name+', '+r.fromPort.country;
+    document.getElementById('popup-dest').textContent=r.toPort.name+', '+r.toPort.country;
+    document.getElementById('popup-distance').textContent=r.distanceNM.toLocaleString()+' NM';
+    document.getElementById('popup-time').textContent=r.travelDays+' days';
+    document.getElementById('popup-cargo-text').textContent=MARITIME_CARGO[r.cargo].label;
+    let left=x+16,top=y-100;
+    if(left+320>window.innerWidth) left=x-336;
+    if(top<20)top=20; if(top+250>window.innerHeight)top=window.innerHeight-260;
+    routePopup.style.left=left+'px'; routePopup.style.top=top+'px';
+    routePopup.classList.remove('hidden');
+}
+
+// --- Maritime hover & click ---
+renderer.domElement.addEventListener('mousemove',(e)=>{
+    if(!maritimeGroup.visible)return;
+    ms.x=(e.clientX/window.innerWidth)*2-1; ms.y=-(e.clientY/window.innerHeight)*2+1;
+    ray.setFromCamera(ms,camera);
+    const pH=ray.intersectObjects(portGroup.children.filter(c=>c.userData.portId));
+    if(pH.length>0){
+        const p=pH[0].object.userData;
+        tooltip.style.display='block'; tooltip.style.left=(e.clientX+12)+'px'; tooltip.style.top=(e.clientY-20)+'px';
+        tooltip.style.background='rgba(10,25,30,0.92)'; tooltip.style.borderColor='rgba(78,205,196,0.5)';
+        tooltip.innerHTML='<strong>'+p.portName+'</strong><br><span style="font-size:0.7rem;color:rgba(160,200,195,0.8)">'+p.portLat.toFixed(2)+'\u00B0 '+(p.portLat>=0?'N':'S')+', '+Math.abs(p.portLng).toFixed(2)+'\u00B0 '+(p.portLng>=0?'E':'W')+'</span>';
+        renderer.domElement.style.cursor='pointer'; return;
+    }
+    const aH=ray.intersectObjects(arcGroup.children);
+    if(aH.length>0){
+        const r=aH[0].object.userData.routeData;
+        if(r){tooltip.style.display='block';tooltip.style.left=(e.clientX+12)+'px';tooltip.style.top=(e.clientY-20)+'px';
+        tooltip.style.background='rgba(10,20,25,0.92)';tooltip.style.borderColor=MARITIME_CARGO[r.cargo].color+'88';
+        tooltip.innerHTML='<strong style="color:'+MARITIME_CARGO[r.cargo].color+'">'+r.fromPort.name+' \u2192 '+r.toPort.name+'</strong><br><span style="font-size:0.7rem;color:rgba(180,200,200,0.7)">'+MARITIME_CARGO[r.cargo].label+' \u2022 '+r.distanceNM.toLocaleString()+' NM</span>';
+        renderer.domElement.style.cursor='pointer'; return;}
+    }
+});
+renderer.domElement.addEventListener('click',(e)=>{
+    if(!maritimeGroup.visible)return;
+    ms.x=(e.clientX/window.innerWidth)*2-1; ms.y=-(e.clientY/window.innerHeight)*2+1;
+    ray.setFromCamera(ms,camera);
+    const pH=ray.intersectObjects(portGroup.children.filter(c=>c.userData.portId));
+    if(pH.length>0){const p=pH[0].object.userData;
+        const tgt=latLonToV3(p.portLat,p.portLng,200);
+        gsapDest=tgt;gsapOrigin=camera.position.clone();gsapT=0;gsapDur=60;cntryMode=true;return;}
+    const aH=ray.intersectObjects(arcGroup.children);
+    if(aH.length>0){const r=aH[0].object.userData.routeData;
+        if(r)showRoutePopup(r,e.clientX,e.clientY);}
+});
+
 animate();
-console.log('🌍 Earth Globe loaded successfully!');
+console.log('🌍 Earth Globe loaded uccessfully!');s

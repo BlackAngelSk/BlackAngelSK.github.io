@@ -544,7 +544,8 @@ function setTool(tool) {
     $('#status-text').textContent = STATUS[tool];
     const icons = {
         pan: '\u{1F4CD}', freehand: '\u270F\uFE0F',
-        arrow: '\u27A1\uFE0F', marker: '\u{1F4CC}', label: '\u{1F3F7}\uFE0F', measure: '\u{1F4CF}', eraser: '\u{1F9F9}'
+        arrow: '\u27A1\uFE0F', marker: '\u{1F4CC}', label: '\u{1F3F7}\uFE0F', measure: '\u{1F4CF}', eraser: '\u{1F9F9}',
+        fire: '\u{1F525}'
     };
     $('#status-icon').textContent = icons[tool] || '\u{1F4CD}';
     Array.from(document.body.classList)
@@ -780,6 +781,7 @@ function placeFire(e) {
 function escapeHtml(s) {
     return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
+
 labelOkBtn.addEventListener('click', placeLabel);
 labelCancelBtn.addEventListener('click', hideLabelInput);
 labelInput.addEventListener('keydown', e => {

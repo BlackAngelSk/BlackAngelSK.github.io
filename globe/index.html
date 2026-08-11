@@ -59,9 +59,42 @@
         <button id="btn-timezones" title="Toggle timezone lines">🕐 TZ</button>
         <button id="btn-conflicts" title="Toggle conflict hotspots">⚔ Conflicts</button>
         <button id="btn-rivers" title="Toggle major world rivers">🌊 Rivers</button>
+        <button id="btn-routes" title="Toggle maritime trade routes">⚓ Routes</button>
         <button id="btn-fullscreen" title="Toggle fullscreen">⛶ Full</button>
         <a href="map.html" style="text-decoration:none;background:rgba(20,40,80,0.7);border:1px solid rgba(100,160,255,0.3);color:#c0d8ff;padding:8px 16px;border-radius:8px;cursor:pointer;font-size:0.85rem;letter-spacing:0.5px;transition:all 0.3s ease;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);" title="Open Interactive Map with Annotations">🗺 Map</a>
     </div>
+    <!-- Maritime Trade Route Popup -->
+    <div id="route-popup" class="glass hidden">
+        <div class="popup-header">
+            <span class="popup-route" id="popup-route"></span>
+            <button class="popup-close" id="popup-close">&times;</button>
+        </div>
+        <div class="popup-cargo-badge" id="popup-cargo"></div>
+        <div class="popup-detail"><span class="pd-label">Origin</span><span class="pd-value" id="popup-origin"></span></div>
+        <div class="popup-detail"><span class="pd-label">Destination</span><span class="pd-value" id="popup-dest"></span></div>
+        <div class="popup-detail"><span class="pd-label">Distance</span><span class="pd-value" id="popup-distance"></span></div>
+        <div class="popup-detail"><span class="pd-label">Avg. Transit Time</span><span class="pd-value" id="popup-time"></span></div>
+        <div class="popup-detail"><span class="pd-label">Cargo Type</span><span class="pd-value" id="popup-cargo-text"></span></div>
+    </div>
+
+    <!-- Maritime Legend -->
+    <div id="maritime-legend" class="glass hidden">
+        <div class="ml-title">⚓ Cargo Types</div>
+        <div class="ml-item"><span class="ml-swatch" style="background:#ff6b6b"></span>Crude Oil &amp; Tankers</div>
+        <div class="ml-item"><span class="ml-swatch" style="background:#4ecdc4"></span>Container Ships</div>
+        <div class="ml-item"><span class="ml-swatch" style="background:#ffe66d"></span>Bulk Cargo</div>
+        <div class="ml-item"><span class="ml-swatch" style="background:#a8e6cf"></span>LNG &amp; Gas Carriers</div>
+    </div>
+
+    <!-- Maritime Stats -->
+    <div id="maritime-stats" class="glass hidden">
+        <div class="ms-title">Network Overview</div>
+        <div class="ms-row"><span class="ms-label">Active Vessels</span><span class="ms-value" id="ms-ships">14,287</span></div>
+        <div class="ms-row"><span class="ms-label">Active Routes</span><span class="ms-value" id="ms-routes">24</span></div>
+        <div class="ms-row"><span class="ms-label">Hub Ports</span><span class="ms-value" id="ms-ports">10</span></div>
+        <div class="ms-row"><span class="ms-label">Network Health</span><span class="ms-value ms-health" id="ms-health">98.4%</span></div>
+    </div>
+
     <script type="importmap">
     {
         "imports": {
