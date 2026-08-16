@@ -87,6 +87,17 @@ canvas {
     color: #fff;
 }
 
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+    #controls button,
+    #country-panel,
+    #conflict-panel,
+    .spinner {
+        transition: none !important;
+        animation: none !important;
+    }
+}
+
 #country-panel {
     position: fixed;
     top: 50%;
@@ -335,7 +346,7 @@ canvas {
 /* Conflict Legend */
 #conflict-legend {
     position: fixed;
-    bottom: 70px;
+    bottom: 80px;
     left: 16px;
     background: rgba(10, 20, 50, 0.92);
     border: 1px solid rgba(255, 80, 80, 0.3);
@@ -589,7 +600,7 @@ canvas {
 
 #maritime-legend {
     position: fixed;
-    bottom: 150px;
+    bottom: 80px;
     left: 16px;
     z-index: 16;
     padding: 16px 20px;
@@ -624,7 +635,7 @@ canvas {
 
 #maritime-stats {
     position: fixed;
-    bottom: 150px;
+    bottom: 80px;
     right: 16px;
     z-index: 16;
     padding: 16px 22px;
@@ -660,7 +671,7 @@ canvas {
 }
 
 @media (max-width: 600px) {
-    #maritime-legend { bottom: 150px; left: 10px; }
-    #maritime-stats { bottom: 150px; right: 10px; }
-    #route-popup { left: 10px !important; top: auto !important; bottom: 200px !important; right: 10px; max-width: none; min-width: 0; }
+    #maritime-legend { bottom: 80px; left: 10px; }
+    #maritime-stats { bottom: 80px; right: 10px; }
+    #route-popup { left: 10px !important; top: auto !important; bottom: 140px !important; right: 10px; max-width: none; min-width: 0; }
 }

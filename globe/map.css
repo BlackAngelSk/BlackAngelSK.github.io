@@ -835,8 +835,10 @@ body.tool-measure #map { cursor: crosshair !important; }
         max-height: 45vh;
     }
     #bottom-bar {
+        left: 50%; transform: translateX(-50%);
         bottom: 8px;
-        flex-wrap: wrap; justify-content: center; max-width: 95vw;
+        flex-wrap: wrap; justify-content: center;
+        max-width: calc(100vw - 16px);
         gap: 4px;
     }
     .bar-btn { font-size: 0.72rem; padding: 5px 8px; }
@@ -1644,11 +1646,10 @@ body {
     }
 
     #bottom-bar {
-        left: max(8px, env(safe-area-inset-left));
-        right: max(8px, env(safe-area-inset-right));
+        left: 50%;
+        transform: translateX(-50%);
         bottom: max(8px, env(safe-area-inset-bottom));
-        transform: none;
-        max-width: none;
+        max-width: calc(100dvw - 16px);
         max-height: min(30dvh, 180px);
         overflow-y: auto;
     }

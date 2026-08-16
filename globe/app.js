@@ -707,6 +707,10 @@ document.addEventListener('fullscreenchange',()=>{
   if(btnFs)btnFs.classList.toggle('active',!!document.fullscreenElement);
 });
 
+// Map button — navigate to interactive map
+const btnMap=document.getElementById('btn-map');
+if(btnMap)btnMap.addEventListener('click',()=>{window.location.href='map.html';});
+
 const btnConflict=document.getElementById('btn-conflicts');
 const conflictLegend=document.getElementById('conflict-legend');
 let shConflict=false;
@@ -1255,4 +1259,4 @@ renderer.domElement.addEventListener('click',(e)=>{
 });
 
 animate();
-console.log('🌍 Earth Globe loaded uccessfully!');s
+console.log('🌍 Earth Globe loaded successfully!');

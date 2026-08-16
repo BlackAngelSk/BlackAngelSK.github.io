@@ -2780,6 +2780,11 @@ function loadLayout() {
         document.querySelectorAll('[data-draggable]').forEach(el => {
             const p = pos[el.dataset.draggable];
             if (!p) return;
+            /* bottom-bar stays centered via CSS — skip restoring its drag position */
+            if (el.dataset.draggable === 'bottom-bar') {
+                el.style.left = el.style.top = el.style.bottom = el.style.right = el.style.transform = '';
+                return;
+            }
             el.style.left      = p.left + 'px';
             el.style.top       = p.top  + 'px';
             el.style.bottom    = 'auto';
