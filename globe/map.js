@@ -179,11 +179,13 @@ function setMapLanguage(idx) {
         langOverlay.addTo(map);
     }
     $('#btn-lang').textContent = lang.flag + ' ' + lang.code;
+    parseEmoji($('#btn-lang'));
 }
 $('#btn-lang').addEventListener('click', () => setMapLanguage(langIdx + 1));
 
 /* Use the base map's native labels by default. Load the optional label overlay only on demand. */
 $('#btn-lang').textContent = LANGUAGES[0].flag + ' ' + LANGUAGES[0].code;
+parseEmoji($('#btn-lang'));
 
 /* =====================================================
    Country Borders & Regions — progressive drill-down
@@ -1261,6 +1263,10 @@ function exportPNG() {
     const finishWasHidden = $('#btn-finish').classList.contains('hidden');
     $('#btn-finish').classList.add('hidden');
 
+    /* Hide Leaflet controls so they don't appear in the screenshot */
+    const controls = document.querySelectorAll('#map .leaflet-control');
+    controls.forEach(c => { c.style.visibility = 'hidden'; });
+
     html2canvas(document.getElementById('map'), {
         useCORS: true, allowTaint: true, scale: 1
     }).then(canvas => {
@@ -1272,6 +1278,8 @@ function exportPNG() {
         console.error('PNG export failed:', err);
         alert('PNG export failed. Try using your browser\'s screenshot feature instead.');
     }).finally(() => {
+        /* Restore Leaflet controls */
+        controls.forEach(c => { c.style.visibility = ''; });
         btn.disabled = false;
         btn.textContent = '\uD83D\uDCF7 PNG';
         if (false) {
