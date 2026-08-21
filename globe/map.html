@@ -79,6 +79,13 @@
             </div>
         </div>
         <div class="panel-group">
+            <label>UI Scale <strong id="ui-scale-val">Auto</strong></label>
+            <div class="ui-scale-row">
+                <input type="range" id="cfg-ui-scale" min="80" max="150" value="100" step="5">
+                <label class="settings-check"><input type="checkbox" id="cfg-ui-auto" checked> Auto</label>
+            </div>
+        </div>
+        <div class="panel-group">
             <label>Presets</label>
             <div id="preset-save-row" class="settings-row">
                 <input type="text" id="preset-name-input" placeholder="Preset name…" maxlength="30" autocomplete="off" spellcheck="false">
@@ -363,6 +370,6 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/twemoji@14.0.2/dist/twemoji.min.js" crossorigin="anonymous"></script>
-    <script src="map.js?v=10"></script>
+    <script src="map.js?v=11"></script>
 </body>
 </html>

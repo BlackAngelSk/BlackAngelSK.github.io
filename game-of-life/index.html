@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Game of Life — BlackAngelSK</title>
+    <meta name="description" content="Interactive Conway's Game of Life simulator.">
+    <link rel="icon" href="../logo-mark.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <a href="#gol-canvas" class="skip-link">Skip to grid</a>
+    <header>
+        <h1>&#9724; Game of Life</h1>
+        <a href="../" class="back-link">&larr; Back</a>
+    </header>
+    <div class="controls" role="toolbar" aria-label="Simulation controls">
+        <button id="btn-play" title="Space">&#9654; Play</button>
+        <button id="btn-step" title="S">&#9197; Step</button>
+        <button id="btn-clear" title="C">&#10005; Clear</button>
+        <button id="btn-random" title="R">&#127922; Random</button>
+        <label>Speed <input type="range" id="speed" min="1" max="20" value="5"></label>
+        <select id="preset" title="Load a preset pattern">
+            <option value="">-- Presets --</option>
+            <option value="glider">Glider</option>
+            <option value="lwss">LWSS</option>
+            <option value="blinker">Blinker</option>
+            <option value="toad">Toad</option>
+            <option value="beacon">Beacon</option>
+            <option value="pulsar">Pulsar</option>
+            <option value="pentadecathlon">Pentadecathlon</option>
+            <option value="glider-gun">Gosper Glider Gun</option>
+            <option value="r-pentomino">R-pentomino</option>
+            <option value="diehard">Diehard</option>
+            <option value="acorn">Acorn</option>
+        </select>
+        <label><input type="checkbox" id="grid-toggle" checked> Grid</label>
+    </div>
+    <div class="status-bar" aria-live="polite">
+        <span>Gen: <span class="val" id="stat-gen">0</span></span>
+        <span>Alive: <span class="val" id="stat-alive">0</span></span>
+        <span>FPS: <span class="val" id="stat-fps">0</span></span>
+    </div>
+    <div class="canvas-wrap">
+        <canvas id="gol-canvas"></canvas>
+    </div>
+    <footer>BlackAngelSK.github.io</footer>
+    <script src="game.js"></script>
+</body>
+</html>

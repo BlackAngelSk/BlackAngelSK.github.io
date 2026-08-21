@@ -5,7 +5,8 @@
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 html {
-    font-size: clamp(12px, 1.5vw, 16px);
+    --ui-scale: 1;
+    font-size: clamp(calc(12px * var(--ui-scale)), 1.5vw, calc(16px * var(--ui-scale)));
 }
 
 body {
@@ -228,6 +229,32 @@ body.layout-editing #bottom-bar {
 .settings-action-btn:hover {
     background: rgba(160, 50, 50, 0.7);
     border-color: rgba(255, 100, 100, 0.5); color: #fff;
+}
+
+/* ── UI Scale Slider ────────────────────────────── */
+.ui-scale-row {
+    display: flex; align-items: center; gap: 8px;
+}
+#cfg-ui-scale {
+    flex: 1; height: 4px; -webkit-appearance: none; appearance: none;
+    background: rgba(100, 160, 255, 0.2); border-radius: 2px; outline: none;
+    cursor: pointer;
+}
+#cfg-ui-scale::-webkit-slider-thumb {
+    -webkit-appearance: none; appearance: none;
+    width: 14px; height: 14px; border-radius: 50%;
+    background: #4a9eff; border: 2px solid rgba(255, 255, 255, 0.3);
+    cursor: pointer; transition: background 0.15s;
+}
+#cfg-ui-scale::-webkit-slider-thumb:hover { background: #6ab4ff; }
+#cfg-ui-scale::-moz-range-thumb {
+    width: 14px; height: 14px; border-radius: 50%;
+    background: #4a9eff; border: 2px solid rgba(255, 255, 255, 0.3);
+    cursor: pointer;
+}
+#ui-scale-val {
+    font-size: 0.75rem; color: #4a9eff; min-width: 38px; text-align: right;
+    font-family: 'Courier New', monospace; font-weight: 600;
 }
 
 /* ── Style Panel ─────────────────────────────────── */

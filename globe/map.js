@@ -131,12 +131,12 @@ const osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a>'
 });
 const topo = L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', {
-    maxZoom: 17, crossOrigin: true,
+    maxZoom: 19, maxNativeZoom: 17, crossOrigin: true,
     attribution: '&copy; <a href="https://opentopomap.org">OpenTopoMap</a>'
 });
 const sat = L.tileLayer(
     'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
-    maxZoom: 18, crossOrigin: true,
+    maxZoom: 19, maxNativeZoom: 18, crossOrigin: true,
     attribution: '&copy; <a href="https://www.esri.com">Esri</a>'
 });
 /* ── Fullscreen Button (injected into zoom control) ─── */
@@ -2889,12 +2889,39 @@ function applyVisibility() {
     if (bb)  bb.style.display  = $('#cfg-show-bottombar').checked ? '' : 'none';
 }
 
+/* ── UI Scale ─────────────────────────────────────── */
+function getAutoScale() {
+    var dpr = window.devicePixelRatio || 1;
+    /* Map DPR to a gentle scale boost: DPR 1→1.0, 1.5→1.15, 2→1.3, capped */
+    return Math.min(+(1 + (dpr - 1) * 0.3).toFixed(2), 1.4);
+}
+
+function applyUIScale() {
+    var auto = $('#cfg-ui-auto').checked;
+    var scale;
+    if (auto) {
+        scale = getAutoScale();
+    } else {
+        scale = parseInt($('#cfg-ui-scale').value, 10) / 100;
+    }
+    document.documentElement.style.setProperty('--ui-scale', scale);
+    /* Update the label */
+    var label = $('#ui-scale-val');
+    if (label) {
+        label.textContent = auto ? 'Auto (' + Math.round(scale * 100) + '%)' : Math.round(scale * 100) + '%';
+    }
+    /* Disable slider when auto is on */
+    $('#cfg-ui-scale').disabled = auto;
+}
+
 function saveSettings() {
     const s = {
         showToolbar:   $('#cfg-show-toolbar').checked,
         showStyle:     $('#cfg-show-style').checked,
         showBottombar: $('#cfg-show-bottombar').checked,
-        snapEdge:      $('#cfg-snap-edge').checked
+        snapEdge:      $('#cfg-snap-edge').checked,
+        uiAuto:        $('#cfg-ui-auto').checked,
+        uiScale:       parseInt($('#cfg-ui-scale').value, 10)
     };
     localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(s));
 }
@@ -2908,7 +2935,10 @@ function loadSettings() {
         if (s.showStyle     !== undefined) $('#cfg-show-style').checked     = s.showStyle;
         if (s.showBottombar !== undefined) $('#cfg-show-bottombar').checked = s.showBottombar;
         if (s.snapEdge      !== undefined) { $('#cfg-snap-edge').checked = s.snapEdge; cfgSnapEdge = s.snapEdge; }
+        if (s.uiAuto        !== undefined) $('#cfg-ui-auto').checked = s.uiAuto;
+        if (s.uiScale       !== undefined) $('#cfg-ui-scale').value  = s.uiScale;
         applyVisibility();
+        applyUIScale();
     } catch (_) {}
 }
 
@@ -3011,6 +3041,7 @@ function savePreset() {
 
     loadLayout();
     loadSettings();
+    applyUIScale();   /* apply default auto-scale if no saved settings */
     renderPresets();
 })();
 
@@ -3535,6 +3566,10 @@ $('#cfg-snap-edge').addEventListener('change', () => {
     cfgSnapEdge = $('#cfg-snap-edge').checked;
     saveSettings();
 });
+
+/* Settings: UI scale */
+$('#cfg-ui-auto').addEventListener('change', () => { applyUIScale(); saveSettings(); });
+$('#cfg-ui-scale').addEventListener('input', () => { applyUIScale(); saveSettings(); });
 
 /* Settings: presets */
 $('#btn-preset-save').addEventListener('click', savePreset);

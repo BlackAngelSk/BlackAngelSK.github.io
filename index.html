@@ -32,7 +32,9 @@
     </header>
 
     <main id="main-content" class="container">
-        <div class="binary-background" aria-hidden="true"></div>
+        <div class="binary-background" aria-hidden="true">
+            <canvas id="gol-canvas"></canvas>
+        </div>
 
         <section class="hero">
 <pre class="ascii-title" aria-hidden="true">
@@ -75,6 +77,12 @@
                 <a href="globe/map.html" class="link-button">Annotated Map</a>
             </article>
             <article class="card">
+                <span class="card-category">Interactive</span>
+                <h2>Game of Life</h2>
+                <p>Conway's Game of Life — draw cells, run the simulation, explore classic patterns.</p>
+                <a href="game-of-life/index.html" class="link-button">Play</a>
+            </article>
+            <article class="card">
                 <span class="card-category">School</span>
                 <h2>Hviezdoslavov</h2>
                 <p>School project exploring the life &amp; work of Pavol Országh Hviezdoslav.</p>
@@ -107,16 +115,107 @@
         (function () {
             const container = document.querySelector('main.container');
             const bg = container.querySelector('.binary-background');
+            const golCanvas = document.getElementById('gol-canvas');
+            const golCtx = golCanvas.getContext('2d');
             let glitchStarted = false;
             let resizeTimer = null;
 
+            /* ── Game of Life Engine (Easter Egg) ───── */
+            const GOL_CELL = 8;
+            let golGrid = [], golCols = 0, golRows = 0;
+            let golActive = false;
+            let golStepTimer = null;
+            let golKeyBuffer = '';
+
+            function golInit() {
+                golCanvas.width = container.clientWidth;
+                golCanvas.height = container.clientHeight;
+                golCols = Math.ceil(golCanvas.width / GOL_CELL);
+                golRows = Math.ceil(golCanvas.height / GOL_CELL);
+                golGrid = [];
+                for (let r = 0; r < golRows; r++) {
+                    golGrid[r] = [];
+                    for (let c = 0; c < golCols; c++) {
+                        golGrid[r][c] = Math.random() < 0.15 ? 1 : 0;
+                    }
+                }
+            }
+
+            function golStep() {
+                const next = [];
+                for (let r = 0; r < golRows; r++) {
+                    next[r] = [];
+                    for (let c = 0; c < golCols; c++) {
+                        let n = 0;
+                        for (let dr = -1; dr <= 1; dr++) {
+                            for (let dc = -1; dc <= 1; dc++) {
+                                if (dr === 0 && dc === 0) continue;
+                                const nr = r + dr, nc = c + dc;
+                                if (nr >= 0 && nr < golRows && nc >= 0 && nc < golCols) {
+                                    n += golGrid[nr][nc];
+                                }
+                            }
+                        }
+                        next[r][c] = golGrid[r][c]
+                            ? (n === 2 || n === 3) ? 1 : 0
+                            : n === 3 ? 1 : 0;
+                    }
+                }
+                golGrid = next;
+            }
+
+            function golDraw() {
+                golCtx.clearRect(0, 0, golCanvas.width, golCanvas.height);
+                for (let r = 0; r < golRows; r++) {
+                    for (let c = 0; c < golCols; c++) {
+                        if (golGrid[r][c]) {
+                            golCtx.fillStyle = '#00ff44';
+                            golCtx.fillRect(
+                                c * GOL_CELL, r * GOL_CELL,
+                                GOL_CELL - 1, GOL_CELL - 1
+                            );
+                        }
+                    }
+                }
+            }
+
+            function golTick() { golStep(); golDraw(); }
+
+            function golActivate() {
+                golActive = true;
+                golInit();
+                golDraw();
+                golCanvas.classList.add('visible');
+                golStepTimer = setInterval(golTick, 200);
+            }
+
+            function golDeactivate() {
+                golActive = false;
+                if (golStepTimer) { clearInterval(golStepTimer); golStepTimer = null; }
+                golCanvas.classList.remove('visible');
+            }
+
+            document.addEventListener('keydown', function (e) {
+                if (e.key === 'Escape' && golActive) { golDeactivate(); return; }
+                golKeyBuffer += e.key.toLowerCase();
+                if (golKeyBuffer.length > 10) golKeyBuffer = golKeyBuffer.slice(-10);
+                if (golKeyBuffer.includes('gol')) {
+                    golKeyBuffer = '';
+                    if (golActive) golDeactivate();
+                    else golActivate();
+                }
+            });
+
+            /* ── Binary Rain Setup ──────────────────── */
             function setup() {
                 const height = container.clientHeight;
                 const width = container.clientWidth;
                 bg.style.top = '0px';
                 bg.style.height = height + 'px';
                 bg.style.setProperty('--binary-area-height', height + 'px');
+                const canvas = golCanvas;
                 bg.innerHTML = '';
+                bg.appendChild(canvas);
                 const isMobile = window.matchMedia('(max-width: 600px)').matches;
                 const count = isMobile
                     ? Math.max(60, Math.floor(width / 18))
@@ -134,6 +233,8 @@
                     bg.appendChild(digit);
                 }
             }
+
+            /* ── Glitch ─────────────────────────────── */
             function triggerGlitchBurst() {
                 const digits = bg.querySelectorAll('.binary-digit');
                 if (!digits.length) return;
@@ -143,26 +244,38 @@
                     if (!d) continue;
                     d.classList.add('glitch');
                     const original = d.textContent;
-                    d.textContent = Math.random() > 0.5 ? '1' : '0';
+                    /* ~3% chance: replace with GoL cell char when active */
+                    if (golActive && Math.random() < 0.03) {
+                        const pickR = Math.floor(Math.random() * golRows);
+                        const pickC = Math.floor(Math.random() * golCols);
+                        d.textContent = golGrid[pickR][pickC] ? '\u2588' : '\u2591';
+                        d.classList.add('gol-cell');
+                    } else {
+                        d.textContent = Math.random() > 0.5 ? '1' : '0';
+                    }
                     setTimeout(() => {
-                        d.classList.remove('glitch');
+                        d.classList.remove('glitch', 'gol-cell');
                         d.textContent = original;
                     }, 260);
                 }
             }
+
             function startGlitchLoop() {
                 if (glitchStarted) return;
                 glitchStarted = true;
                 const loop = () => {
                     triggerGlitchBurst();
-                    const nextInMs = 8 + Math.random() * 700;
-                    setTimeout(loop, nextInMs);
+                    setTimeout(loop, 8 + Math.random() * 700);
                 };
                 setTimeout(loop, 1200);
             }
+
             window.addEventListener('resize', function () {
                 clearTimeout(resizeTimer);
-                resizeTimer = setTimeout(setup, 200);
+                resizeTimer = setTimeout(function () {
+                    setup();
+                    if (golActive) { golInit(); golDraw(); }
+                }, 200);
             });
             document.addEventListener('DOMContentLoaded', setup);
             if (document.readyState === 'complete' || document.readyState === 'interactive') setup();
