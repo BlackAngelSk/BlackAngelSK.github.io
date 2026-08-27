@@ -153,6 +153,8 @@ map.whenReady(function () {
 });
 
 osm.addTo(map);
+
+/* Layer control — Standard, Topographic, Satellite (all free, no API keys) */
 L.control.layers({
     '\u{1F5FA} Standard': osm,
     '\u{1F3D4} Topographic': topo,
@@ -178,13 +180,13 @@ function setMapLanguage(idx) {
         langOverlay = L.tileLayer(lang.url, { maxZoom: lang.max, crossOrigin: true, attribution: lang.attr, pane: 'overlayPane' });
         langOverlay.addTo(map);
     }
-    $('#btn-lang').textContent = lang.flag + ' ' + lang.code;
+    $('#btn-lang').innerHTML = '<span class="lang-flag">' + lang.flag + '</span><span class="lang-code">' + lang.code + '</span>';
     parseEmoji($('#btn-lang'));
 }
 $('#btn-lang').addEventListener('click', () => setMapLanguage(langIdx + 1));
 
 /* Use the base map's native labels by default. Load the optional label overlay only on demand. */
-$('#btn-lang').textContent = LANGUAGES[0].flag + ' ' + LANGUAGES[0].code;
+$('#btn-lang').innerHTML = '<span class="lang-flag">' + LANGUAGES[0].flag + '</span><span class="lang-code">' + LANGUAGES[0].code + '</span>';
 parseEmoji($('#btn-lang'));
 
 /* =====================================================
@@ -442,6 +444,143 @@ function toggleBorders() {
 }
 
 $('#btn-borders').addEventListener('click', toggleBorders);
+
+/* =====================================================
+   Political Map overlay — colored fills + centroid labels
+   =====================================================
+   Works as a standalone overlay (bottom bar button)
+   AND auto-loads when "🗺️ Political" base layer is selected.
+   ===================================================== */
+var _politicalData = null, _politicalLayer = null, _politicalLabelsLayer = null;
+var _politicalLoading = false, _politicalVisible = false;
+
+/* Palette: 24 distinct hues for dark-map readability */
+var _POLITICAL_PALETTE = [
+    '#3b82f6', '#ef4444', '#22c55e', '#eab308', '#a855f7',
+    '#ec4899', '#14b8a6', '#f97316', '#06b6d4', '#8b5cf6',
+    '#f43f5e', '#84cc16', '#0ea5e9', '#d946ef', '#f59e0b',
+    '#10b981', '#6366f1', '#e11d48', '#65a30d', '#0891b2',
+    '#7c3aed', '#fb923c', '#2dd4bf', '#c026d3'
+];
+
+function _politicalColor(name) {
+    var h = 0;
+    for (var i = 0; i < name.length; i++) { h = ((h << 5) - h + name.charCodeAt(i)) | 0; }
+    return _POLITICAL_PALETTE[Math.abs(h) % _POLITICAL_PALETTE.length];
+}
+
+function _hexToRGBA(hex, alpha) {
+    var r = parseInt(hex.slice(1, 3), 16);
+    var g = parseInt(hex.slice(3, 5), 16);
+    var b = parseInt(hex.slice(5, 7), 16);
+    return 'rgba(' + r + ',' + g + ',' + b + ',' + alpha + ')';
+}
+
+function _labelFontSize(zoom) {
+    if (zoom <= 2) return '0.55rem';
+    if (zoom <= 3) return '0.65rem';
+    if (zoom <= 4) return '0.78rem';
+    if (zoom <= 5) return '0.9rem';
+    return '1.05rem';
+}
+
+/* Load the GeoJSON + create layers (called once, then toggled) */
+function _loadPoliticalOverlay() {
+    if (_politicalLoading) return;
+    _politicalLoading = true;
+    var btn = $('#btn-political');
+    btn.textContent = '⏳ Political';
+    btn.disabled = true;
+
+    var src = _bordersData ? Promise.resolve(_bordersData) :
+        fetch(BORDERS_GEOJSON_URL).then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); });
+
+    src.then(function (data) {
+        _politicalData = data;
+        _politicalLabelsLayer = L.layerGroup();
+
+        _politicalLayer = L.geoJSON(data, {
+            style: function (feature) {
+                var cn = _countryNameOf(feature);
+                var c = _politicalColor(cn);
+                return {
+                    color: '#ffffff', weight: 1.2, opacity: 0.55,
+                    fillColor: _hexToRGBA(c, 0.35), fillOpacity: 0.35,
+                    dashArray: '', renderer: canvasRenderer
+                };
+            },
+            onEachFeature: function (feature, layer) {
+                layer._isPolitical = true;
+                var cn = _countryNameOf(feature);
+                if (cn) layer.bindTooltip(cn, { sticky: true, className: 'import-tooltip' });
+                var c = _politicalColor(cn);
+                layer.on('mouseover', function (e) {
+                    this.setStyle({ weight: 2.5, color: '#ffffff', opacity: 0.9,
+                        fillColor: _hexToRGBA(c, 0.55), fillOpacity: 0.55 });
+                    this.bringToFront();
+                    $('#status-text').textContent = '🗺️ ' + cn;
+                });
+                layer.on('mouseout', function (e) {
+                    _politicalLayer.resetStyle(this);
+                });
+                /* Permanent centroid label */
+                try {
+                    var centroid = layer.getBounds().getCenter();
+                    var fs = _labelFontSize(map.getZoom());
+                    var label = L.marker(centroid, {
+                        icon: L.divIcon({
+                            className: 'political-label',
+                            html: '<span style="font-size:' + fs + '">' + cn + '</span>',
+                            iconSize: [0, 0],
+                            iconAnchor: [0, 0]
+                        }),
+                        interactive: false
+                    });
+                    _politicalLabelsLayer.addLayer(label);
+                } catch (_) {}
+            }
+        });
+
+        _politicalLayer.addTo(map);
+        _politicalLabelsLayer.addTo(map);
+        _politicalVisible = true;
+        btn.classList.add('active');
+        btn.textContent = '🗺️ Political';
+        btn.disabled = false;
+        $('#status-text').textContent = '🗺️ Political map — colored countries with labels';
+    })
+    .catch(function (err) {
+        console.error('Failed to load political map:', err);
+        alert('Failed to load political map.\n' + err.message);
+        _politicalLoading = false;
+        btn.textContent = '🗺️ Political';
+        btn.disabled = false;
+    });
+}
+
+function togglePolitical() {
+    var btn = $('#btn-political');
+    if (_politicalVisible && _politicalLayer) {
+        map.removeLayer(_politicalLayer);
+        if (_politicalLabelsLayer) map.removeLayer(_politicalLabelsLayer);
+        _politicalLayer = null; _politicalVisible = false;
+        _politicalLabelsLayer = null;
+        btn.classList.remove('active');
+        $('#status-text').textContent = 'Political map hidden';
+        return;
+    }
+    if (_politicalLayer) {
+        _politicalLayer.addTo(map);
+        if (_politicalLabelsLayer) _politicalLabelsLayer.addTo(map);
+        _politicalVisible = true;
+        btn.classList.add('active');
+        $('#status-text').textContent = '🗺️ Political map — colored countries with labels';
+        return;
+    }
+    _loadPoliticalOverlay();
+}
+
+$('#btn-political').addEventListener('click', togglePolitical);
 
 /* =====================================================
    Rivers Overlay — fetches Natural Earth rivers GeoJSON
