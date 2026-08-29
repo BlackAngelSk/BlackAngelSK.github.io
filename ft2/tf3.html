@@ -763,8 +763,11 @@
             specials: [
                 { name: "Sentry Buster", file: "sentry_buster", class: "Special", special: true },
                 { name: "Tank", file: "tank", class: "Special", special: true },
-                { name: "Blimp", file: "blimp", class: "Special", special: true },
-            ]
+                
+            ],
+            secret : [
+                { name: "Blimp", file: "blimp", class: "Secret", special: true },
+            ]     
         };
 
         // ============ POPULATE ENEMY GRID ============
@@ -808,6 +811,17 @@
                 `;
             });
 
+            //secret
+            html += '<div class="enemy-category">secret</div>';
+            enemyData.secret.forEach(enemy => {
+                html += `
+                    <div class="enemy-card${enemy.special ? ' special' : ''}">
+                        <img src="images/robots/${enemy.file}.png" alt="${enemy.name}">
+                        <div class="enemy-name">${enemy.name}</div>
+                        <div class="enemy-class">${enemy.class}</div>
+                    </div>
+                `;
+            });
             grid.innerHTML = html;
         }
 
