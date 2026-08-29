@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive Map — BlackAngelSK</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="icon" href="../logo-mark.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="map-new.css">
+</head>
+<body>
+    <div id="map"></div>
+
+    <!-- Top Header Bar -->
+    <div id="top-bar">
+        <div class="top-bar-left">
+            <a href="../" class="back-link" title="Back to main site">← Back</a>
+            <div class="top-title">🗺️ Interactive Map</div>
+        </div>
+        <div class="top-bar-center">
+            <div class="top-tool-group">
+                <button class="top-tool-btn active" data-tool="pan" title="Pan & Navigate (1)">
+                    <span class="top-tool-icon">✋</span><span class="top-tool-label">Pan</span>
+                </button>
+                <button class="top-tool-btn" data-tool="freehand" title="Freehand Drawing (2)">
+                    <span class="top-tool-icon">✏️</span><span class="top-tool-label">Draw</span>
+                </button>
+                <button class="top-tool-btn" data-tool="arrow" title="Draw Arrow (4)">
+                    <span class="top-tool-icon">➡️</span><span class="top-tool-label">Arrow</span>
+                </button>
+                <button class="top-tool-btn" data-tool="marker" title="Drop Pin (5)">
+                    <span class="top-tool-icon">📌</span><span class="top-tool-label">Pin</span>
+                </button>
+                <button class="top-tool-btn" data-tool="label" title="Text Label (6)">
+                    <span class="top-tool-icon">🏷️</span><span class="top-tool-label">Label</span>
+                </button>
+                <button class="top-tool-btn" data-tool="fire" title="Place Fire (9)">
+                    <span class="top-tool-icon">🔥</span><span class="top-tool-label">Fire</span>
+                </button>
+                <div class="top-tool-sep"></div>
+                <button class="top-tool-btn" data-tool="measure" title="Distance Measure (7)">
+                    <span class="top-tool-icon">📏</span><span class="top-tool-label">Measure</span>
+                </button>
+                <button class="top-tool-btn" data-tool="eraser" title="Eraser (8)">
+                    <span class="top-tool-icon">🧹</span><span class="top-tool-label">Erase</span>
+                </button>
+            </div>
+        </div>
+        <div class="top-bar-right">
+            <button id="btn-lang" class="top-btn top-btn-util" title="Change map language"><span class="lang-flag">🇬🇧</span><span class="lang-code">EN</span></button>
+            <button id="btn-settings" class="top-btn top-btn-util" title="Open layout settings">⚙</button>
+        </div>
+    </div>
+
+    <!-- Right Sidebar — Layers & Actions -->
+    <div id="sidebar">
+        <div class="sidebar-section">
+            <div class="sidebar-title">Layers</div>
+            <button id="btn-borders" class="sidebar-btn" title="Toggle world country borders">🌍 Borders</button>
+            <button id="btn-political" class="sidebar-btn" title="Toggle political map">🗺️ Political</button>
+            <button id="btn-rivers" class="sidebar-btn" title="Toggle major world rivers">🌊 Rivers</button>
+        </div>
+        <div class="sidebar-section">
+            <div class="sidebar-title">Data</div>
+            <button id="btn-import" class="sidebar-btn" title="Import GeoJSON (I)">📂 Import</button>
+            <button id="btn-overlay" class="sidebar-btn" title="Image Overlay">🖼️ Overlay</button>
+            <button id="btn-save-map" class="sidebar-btn" title="Save current annotations">💾 Save</button>
+        </div>
+        <div class="sidebar-section">
+            <div class="sidebar-title">Actions</div>
+            <button id="btn-undo" class="sidebar-btn" title="Undo (Ctrl+Z)">↩ Undo</button>
+            <button id="btn-redo" class="sidebar-btn" title="Redo (Ctrl+Y)">↪ Redo</button>
+            <button id="btn-lock" class="sidebar-btn" title="Lock/Unlock all annotations">🔒 Lock</button>
+            <button id="btn-clear" class="sidebar-btn" title="Clear all annotations">🗑️ Clear</button>
+        </div>
+        <div class="sidebar-section">
+            <div class="sidebar-title">Export</div>
+            <button id="btn-png" class="sidebar-btn" title="Export view as PNG">📷 PNG</button>
+            <button id="btn-geojson" class="sidebar-btn" title="Export annotations as GeoJSON">📦 GeoJSON</button>
+        </div>
+        <div class="sidebar-section sidebar-info">
+            <span id="ann-count">0 annotations</span>
+            <span id="zoom-display">Zoom: 6</span>
+        </div>
+    </div>
+
+    <!-- Style Panel (floating, left side) -->
+    <div id="style-panel" data-draggable="style-panel">
+        <div class="panel-title" id="style-toggle"><span class="drag-grip" title="Drag to reposition">⋮</span> 🎨 Style <span class="toggle-arrow">▸</span></div>
+        <div class="panel-body">
+        <div class="panel-group">
+            <label>Color</label>
+            <div id="color-grid"></div>
+            <div class="hex-row">
+                <span>#</span>
+                <input type="text" id="hex-input" maxlength="6" value="ff0000" spellcheck="false" autocomplete="off">
+            </div>
+        </div>
+        <div class="panel-group">
+            <label>Width: <strong id="weight-val">3</strong>px</label>
+            <input type="range" id="weight-slider" min="1" max="10" value="3">
+        </div>
+        <div class="panel-group">
+            <label>Line Style</label>
+            <div id="style-btns">
+                <button class="style-btn active" data-style="solid" title="Solid line">━</button>
+                <button class="style-btn" data-style="dashed" title="Dashed line">┅</button>
+                <button class="style-btn" data-style="dotted" title="Dotted line">┈</button>
+            </div>
+        </div>
+        </div>
+    </div>
+
+    <!-- Label Text Input Popup -->
+    <div id="label-input-wrap" class="hidden">
+        <input type="text" id="label-text-input" placeholder="Enter label text…" maxlength="80" autocomplete="off" spellcheck="false">
+        <button id="label-ok" title="Place label (Enter)">✓</button>
+        <button id="label-cancel" title="Cancel (Esc)">✕</button>
+    </div>
+
+    <!-- Layout Settings Popup -->
+    <div id="settings-panel" class="hidden">
+        <div class="panel-group">
+            <label>Panels</label>
+            <div class="settings-row">
+                <label class="settings-check"><input type="checkbox" id="cfg-show-toolbar" checked> Toolbar</label>
+                <label class="settings-check"><input type="checkbox" id="cfg-show-style" checked> Style</label>
+                <label class="settings-check"><input type="checkbox" id="cfg-show-bottombar" checked> Bottom Bar</label>
+            </div>
+        </div>
+        <div class="panel-group">
+            <label>Drag Options</label>
+            <div class="settings-row">
+                <label class="settings-check"><input type="checkbox" id="cfg-snap-edge" checked> Snap to edges</label>
+            </div>
+        </div>
+        <div class="panel-group">
+            <label>UI Scale <strong id="ui-scale-val">Auto</strong></label>
+            <div class="ui-scale-row">
+                <input type="range" id="cfg-ui-scale" min="80" max="150" value="100" step="5">
+                <label class="settings-check"><input type="checkbox" id="cfg-ui-auto" checked> Auto</label>
+            </div>
+        </div>
+        <div class="panel-group">
+            <label>Presets</label>
+            <div id="preset-save-row" class="settings-row">
+                <input type="text" id="preset-name-input" placeholder="Preset name…" maxlength="30" autocomplete="off" spellcheck="false">
+                <button id="btn-preset-save" class="settings-sm-btn" title="Save current layout as preset">💾</button>
+            </div>
+            <div id="preset-list-settings"></div>
+        </div>
+        <div class="panel-group">
+            <button id="btn-reset-layout2" class="settings-action-btn">↺ Reset to Defaults</button>
+        </div>
+    </div>
+
+    <!-- Finish Button (shown when polyline tool active) -->
+    <button id="btn-finish" class="hidden" title="Finish polyline (Enter)">✓ Finish</button>
+
+    <!-- Flag Selector (shown when arrow tool active) -->
+    <div id="flag-panel" class="hidden">
+        <div class="flag-panel-title">🏳️ Flag</div>
+        <div id="flag-grid">
+            <button class="flag-btn" data-flag="" title="No flag">✕</button>
+            <button class="flag-btn" data-flag="🇷🇺" title="Russia"><img src="https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/svg/1f1f7-1f1fa.svg" draggable="false"></button>
+            <button class="flag-btn" data-flag="🇺🇦" title="Ukraine"><img src="https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/svg/1f1fa-1f1e6.svg" draggable="false"></button>
+            <button class="flag-btn" data-flag="🇮🇱" title="Israel"><img src="https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/svg/1f1ee-1f1f1.svg" draggable="false"></button>
+            <button class="flag-btn" data-flag="🇺🇸" title="USA"><img src="https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/svg/1f1fa-1f1f8.svg" draggable="false"></button>
+            <button class="flag-btn" data-flag="🇮🇷" title="Iran"><img src="https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/svg/1f1ee-1f1f7.svg" draggable="false"></button>
+            <button class="flag-btn" data-flag="🇪🇺" title="EU"><img src="https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/svg/1f1ea-1f1fa.svg" draggable="false"></button>
+            <button class="flag-btn" data-flag="🇸🇰" title="Slovakia"><img src="https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/svg/1f1f8-1f1f0.svg" draggable="false"></button>
+            <button class="flag-btn" data-flag="🇬🇧" title="Great Britain"><img src="https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/svg/1f1ec-1f1e7.svg" draggable="false"></button>
+        </div>
+    </div>
+
+    <!-- Save Modal -->
+    <div id="save-modal" class="hidden">
+        <div class="save-modal-content">
+            <h3>💾 Save Map Annotations</h3>
+            <label for="save-name-input">Map Name</label>
+            <input type="text" id="save-name-input" placeholder="e.g. Eastern Front War Lines" maxlength="60" autocomplete="off" spellcheck="false">
+            <div class="save-modal-actions">
+                <button id="save-cancel-btn" class="import-action-btn import-btn-secondary">Cancel</button>
+                <button id="save-confirm-btn" class="import-action-btn import-btn-primary">Save</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Proxy Setup Modal -->
+    <div id="proxy-modal" class="hidden">
+        <div id="proxy-modal-content">
+            <div class="proxy-header">
+                <h3>🔧 Proxy Setup Required</h3>
+                <button id="proxy-modal-close" title="Close (Esc)">✕</button>
+            </div>
+            <div class="proxy-body">
+                <p class="proxy-explain">To import Google Maps, a local proxy server is needed to bypass CORS restrictions. This script will <strong>auto-install Node.js</strong> if you don't have it, download the proxy, and start it.</p>
+                <div class="proxy-os-section">
+                    <div class="proxy-os-label">Your platform: <strong id="proxy-os-name">Detecting…</strong></div>
+                </div>
+                <div class="proxy-step">
+                    <div class="proxy-step-num">1</div>
+                    <div class="proxy-step-content">
+                        <div class="proxy-step-title">Download the setup script</div>
+                        <div class="proxy-step-desc">Click the button for your OS. It handles everything automatically.</div>
+                        <div class="proxy-download-row">
+                            <a id="proxy-dl-bat" class="proxy-download-btn proxy-dl-win" href="setup-proxy.bat" download>
+                                <span class="proxy-dl-icon">🪟</span>
+                                <span>Windows (.bat)</span>
+                            </a>
+                            <a id="proxy-dl-sh" class="proxy-download-btn proxy-dl-unix" href="setup-proxy.sh" download>
+                                <span class="proxy-dl-icon">🐧</span>
+                                <span>Linux / Mac (.sh)</span>
+                            </a>
+                            <a class="proxy-download-btn proxy-dl-all" href="proxy.js" download title="Download proxy.js directly">
+                                <span class="proxy-dl-icon">📄</span>
+                                <span>proxy.js</span>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+                <div class="proxy-step">
+                    <div class="proxy-step-num">2</div>
+                    <div class="proxy-step-content">
+                        <div class="proxy-step-title">Run the script</div>
+                        <div class="proxy-step-desc" id="proxy-run-instructions">
+                            <span class="proxy-cmd-win">Double-click <code>setup-proxy.bat</code> or run in CMD:<br><code>setup-proxy.bat</code></span>
+                            <span class="proxy-cmd-unix">Open a terminal and run:<br><code>bash setup-proxy.sh</code></span>
+                        </div>
+                    </div>
+                </div>
+                <div class="proxy-step">
+                    <div class="proxy-step-num">3</div>
+                    <div class="proxy-step-content">
+                        <div class="proxy-step-title">Come back here</div>
+                        <div class="proxy-step-desc">Once the script says "Proxy is running", click the button below to check and retry your import.</div>
+                    </div>
+                </div>
+                <div class="proxy-status-area">
+                    <div id="proxy-status-text">⏳ Waiting for proxy…</div>
+                    <div class="proxy-status-actions">
+                        <button id="proxy-check-btn" class="import-action-btn">🔍 Check Proxy Status</button>
+                        <button id="proxy-retry-btn" class="import-action-btn import-btn-primary" style="display:none">🔄 Retry Import</button>
+                    </div>
+                    <div id="proxy-status-detail" class="proxy-status-detail"></div>
+                </div>
+                <div class="proxy-footer-links">
+                    <span>Manual: <code>node proxy.js</code> (port 8080)</span>
+                    <span>·</span>
+                    <a href="https://nodejs.org" target="_blank" rel="noopener">Get Node.js</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Import Modal -->
+    <div id="import-modal" class="hidden">
+        <div id="import-modal-content">
+            <div class="import-header">
+                <h3>📂 Import Map Annotations</h3>
+                <button id="import-modal-close" title="Close (Esc)">✕</button>
+            </div>
+            <div class="import-tabs">
+                <button class="import-tab active" data-tab="file">📁 File</button>
+                <button class="import-tab" data-tab="url">🔗 URL</button>
+                <button class="import-tab" data-tab="preset">🗺️ Presets</button>
+            </div>
+            <div class="import-tab-content active" id="import-tab-file">
+                <div id="import-dropzone">
+                    <span class="dropzone-icon">📄</span>
+                    <p>Drop a GeoJSON, KML, or GPX file here</p>
+                    <p class="dropzone-sub">or</p>
+                    <button id="import-browse-btn" class="import-action-btn">Browse Files</button>
+                    <input type="file" id="file-input" accept=".geojson,.json,.kml,.kmz,.gpx" class="hidden">
+                </div>
+            </div>
+            <div class="import-tab-content" id="import-tab-url">
+                <div class="import-url-wrap">
+                    <label>Paste a URL:</label>
+                    <input type="text" id="import-url-input" placeholder="Google Maps URL or GeoJSON URL" autocomplete="off" spellcheck="false">
+                    <button id="import-url-btn" class="import-action-btn">Fetch & Import</button>
+                    <p class="import-url-hint">Supports GeoJSON, KML/KMZ, and GPX URLs. Google Maps URLs are auto-detected.</p>
+                </div>
+            </div>
+            <div class="import-tab-content" id="import-tab-preset">
+                <p class="preset-desc">Import saved maps or built-in annotation presets:</p>
+                <div id="preset-list"></div>
+                <div id="preset-saved-section" class="hidden">
+                    <div class="preset-section-title">💾 Your Saved Maps</div>
+                    <div id="preset-saved-list"></div>
+                </div>
+                <div class="preset-section-title">📦 Built-in Presets</div>
+                <div id="preset-built-in-list"></div>
+            </div>
+            <div id="import-preview" class="hidden">
+                <div class="import-preview-header">
+                    <span id="import-preview-count">0 features found</span>
+                    <label class="import-select-all"><input type="checkbox" id="import-select-all" checked> Select All</label>
+                </div>
+                <div id="import-preview-list"></div>
+            </div>
+            <div id="import-actions" class="hidden">
+                <button id="import-cancel-btn" class="import-action-btn import-btn-secondary">Cancel</button>
+                <button id="import-confirm-btn" class="import-action-btn import-btn-primary">Import Selected</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Image Overlay Modal -->
+    <div id="overlay-modal" class="hidden">
+        <div id="overlay-modal-content">
+            <div class="overlay-header">
+                <h3>🖼️ Image Overlay</h3>
+                <button id="overlay-modal-close" title="Close (Esc)">✕</button>
+            </div>
+            <div class="overlay-body">
+                <div class="overlay-tabs">
+                    <button class="overlay-tab active" data-tab="file">📁 Upload</button>
+                    <button class="overlay-tab" data-tab="url">🔗 URL</button>
+                    <button class="overlay-tab" data-tab="list">📋 Manage</button>
+                </div>
+                <div class="overlay-tab-content active" id="overlay-tab-file">
+                    <div id="overlay-dropzone">
+                        <span class="dropzone-icon">🖼️</span>
+                        <p>Drop an image here (PNG, JPG, WebP, GIF…)</p>
+                        <p class="dropzone-sub">or</p>
+                        <button id="overlay-browse-btn" class="import-action-btn">Browse Files</button>
+                        <input type="file" id="overlay-file-input" accept="image/*" class="hidden">
+                    </div>
+                </div>
+                <div class="overlay-tab-content" id="overlay-tab-url">
+                    <div class="overlay-url-wrap">
+                        <label>Image URL:</label>
+                        <input type="text" id="overlay-url-input" placeholder="https://example.com/old-map.png" autocomplete="off" spellcheck="false">
+                        <button id="overlay-url-btn" class="import-action-btn">Load Image</button>
+                        <p class="import-url-hint">Paste a direct link to an image file.</p>
+                    </div>
+                </div>
+                <div class="overlay-tab-content" id="overlay-tab-list">
+                    <div id="overlay-list-container">
+                        <div class="overlay-empty">No overlays added yet</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Hidden compatibility elements for JS -->
+    <div id="toolbar" class="hidden" data-draggable="toolbar" style="display:none"></div>
+    <div id="bottom-bar" class="hidden" data-draggable="bottom-bar" style="display:none"></div>
+
+    <!-- Status Bar (bottom) -->
+    <div id="status-bar">
+        <span id="status-icon">📍</span>
+        <span id="status-text">Ready — Pan mode</span>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/twemoji@14.0.2/dist/twemoji.min.js" crossorigin="anonymous"></script>
+    <script src="map-new.js?v=11"></script>
+</body>
+</html>

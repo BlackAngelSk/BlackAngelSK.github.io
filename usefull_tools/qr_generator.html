@@ -1,0 +1,701 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>QR Code Generator — BlackAngelSK</title>
+  <script src="https://cdn.jsdelivr.net/npm/qrious@4.0.2/dist/qrious.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; }
+
+    :root {
+      --green: #00ff00;
+      --green-dim: #006600;
+      --green-mid: #00cc00;
+      --green-glow: rgba(0, 255, 0, 0.15);
+      --bg: #000;
+      --card: #0a0a0a;
+      --border: #00ff00;
+      --input-bg: #0d0d0d;
+    }
+
+    body {
+      font-family: 'Courier New', monospace;
+      background: var(--bg);
+      color: var(--green);
+      margin: 0;
+      padding: 0;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ── Header ────────────────────────────────── */
+    header {
+      width: 100%;
+      background: #111;
+      padding: 16px 24px;
+      font-size: 18px;
+      font-weight: bold;
+      text-transform: uppercase;
+      border-bottom: 2px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+    header a { color: var(--green); text-decoration: none; }
+    header a:hover { text-decoration: underline; }
+    header .sep { color: var(--green-dim); }
+    header .title { color: var(--green-mid); font-size: 14px; letter-spacing: 1px; }
+
+    /* ── Layout ────────────────────────────────── */
+    .app {
+      flex: 1;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0;
+      max-width: 1100px;
+      width: 100%;
+      margin: 0 auto;
+    }
+
+    /* ── Left Panel: Controls ──────────────────── */
+    .panel-left {
+      padding: 32px 28px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+      border-right: 1px solid #1a1a1a;
+    }
+
+    .section-label {
+      font-size: 11px;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      color: var(--green-dim);
+      margin-bottom: 4px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .section-label::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: linear-gradient(90deg, #1a1a1a, transparent);
+    }
+
+    /* ── Preset Chips ──────────────────────────── */
+    .presets { display: flex; flex-wrap: wrap; gap: 8px; }
+    .preset {
+      padding: 6px 14px;
+      background: var(--input-bg);
+      border: 1px solid #1e1e1e;
+      color: var(--green-mid);
+      font-family: inherit;
+      font-size: 12px;
+      cursor: pointer;
+      transition: all 0.2s;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+    .preset:hover {
+      border-color: var(--green);
+      color: var(--green);
+      background: #111;
+      box-shadow: 0 0 10px var(--green-glow);
+    }
+    .preset.active {
+      border-color: var(--green);
+      color: #000;
+      background: var(--green);
+    }
+
+    /* ── Input ─────────────────────────────────── */
+    .input-wrap { position: relative; }
+    .input-prefix {
+      position: absolute;
+      top: 12px;
+      left: 12px;
+      color: var(--green-dim);
+      font-size: 14px;
+      pointer-events: none;
+      user-select: none;
+    }
+    textarea {
+      width: 100%;
+      min-height: 100px;
+      background: var(--input-bg);
+      color: var(--green);
+      border: 1px solid #1e1e1e;
+      padding: 12px 12px 12px 28px;
+      font-family: inherit;
+      font-size: 14px;
+      resize: vertical;
+      outline: none;
+      transition: border-color 0.2s, box-shadow 0.2s;
+      line-height: 1.6;
+    }
+    textarea:focus {
+      border-color: var(--green);
+      box-shadow: 0 0 12px var(--green-glow), inset 0 0 12px rgba(0,255,0,0.03);
+    }
+    textarea::placeholder { color: #1a3a1a; }
+
+    /* ── Options Grid ──────────────────────────── */
+    .opts-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+    .opt-group label {
+      display: block;
+      font-size: 11px;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: var(--green-dim);
+      margin-bottom: 6px;
+    }
+    select {
+      width: 100%;
+      background: var(--input-bg);
+      color: var(--green);
+      border: 1px solid #1e1e1e;
+      padding: 8px 10px;
+      font-family: inherit;
+      font-size: 13px;
+      cursor: pointer;
+      outline: none;
+      transition: border-color 0.2s;
+      appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath d='M2 4l4 4 4-4' fill='none' stroke='%2300ff00' stroke-width='1.5'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 10px center;
+    }
+    select:focus { border-color: var(--green); }
+    select option { background: #111; color: var(--green); }
+
+    /* ── Color Pickers ─────────────────────────── */
+    .color-pickers { display: flex; gap: 16px; }
+    .color-pick { flex: 1; }
+    .color-pick label {
+      display: block;
+      font-size: 11px;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: var(--green-dim);
+      margin-bottom: 6px;
+    }
+    .color-input-row { display: flex; align-items: center; gap: 8px; }
+    input[type="color"] {
+      width: 36px;
+      height: 36px;
+      border: 1px solid #1e1e1e;
+      cursor: pointer;
+      padding: 2px;
+      background: var(--input-bg);
+      flex-shrink: 0;
+    }
+    input[type="color"]:hover { border-color: var(--green); }
+    input[type="color"]::-webkit-color-swatch-wrapper { padding: 2px; }
+    input[type="color"]::-webkit-color-swatch { border: none; }
+    .color-hex {
+      font-size: 12px;
+      color: var(--green-mid);
+      font-family: inherit;
+      background: none;
+      border: none;
+      width: 70px;
+      outline: none;
+    }
+    .color-hex:focus { color: var(--green); }
+
+    /* ── Action Buttons ────────────────────────── */
+    .actions { display: flex; gap: 10px; }
+    .btn {
+      flex: 1;
+      padding: 10px 16px;
+      background: var(--input-bg);
+      color: var(--green);
+      border: 1px solid #1e1e1e;
+      font-family: inherit;
+      font-size: 13px;
+      cursor: pointer;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+    }
+    .btn:hover:not(:disabled) {
+      border-color: var(--green);
+      box-shadow: 0 0 10px var(--green-glow);
+      background: #111;
+    }
+    .btn:active:not(:disabled) { transform: scale(0.97); }
+    .btn:disabled { opacity: 0.3; cursor: not-allowed; }
+    .btn .icon { font-size: 15px; }
+
+    /* ── Error ─────────────────────────────────── */
+    .error-msg {
+      color: #ff4444;
+      font-size: 12px;
+      display: none;
+      padding: 8px 12px;
+      border: 1px solid #ff444433;
+      background: #ff444408;
+    }
+    .error-msg.visible { display: block; }
+
+    /* ── Right Panel: Preview ──────────────────── */
+    .panel-right {
+      padding: 32px 28px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 24px;
+      background: var(--card);
+      position: relative;
+    }
+
+    .preview-label {
+      font-size: 11px;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      color: var(--green-dim);
+      align-self: flex-start;
+    }
+
+    .qr-stage {
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 280px;
+      width: 100%;
+    }
+
+    .qr-placeholder {
+      text-align: center;
+      color: #1a3a1a;
+      font-size: 13px;
+      line-height: 2;
+    }
+    .qr-placeholder .big {
+      font-size: 48px;
+      display: block;
+      margin-bottom: 8px;
+      letter-spacing: 4px;
+    }
+
+    .qr-container {
+      display: none;
+      position: relative;
+      text-align: center;
+    }
+    .qr-container.visible { display: block; }
+
+    .qr-glow {
+      position: absolute;
+      inset: -20px;
+      background: radial-gradient(circle, var(--green-glow) 0%, transparent 70%);
+      border-radius: 50%;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.5s;
+    }
+    .qr-container.visible .qr-glow { opacity: 1; }
+
+    .qr-frame {
+      position: relative;
+      padding: 16px;
+      background: #fff;
+      box-shadow: 0 0 30px rgba(0,255,0,0.08);
+      z-index: 1;
+      display: inline-block;
+    }
+    .qr-frame canvas { display: block; image-rendering: pixelated; }
+
+    /* ── QR Meta Info ──────────────────────────── */
+    .qr-meta {
+      display: none;
+      gap: 20px;
+      font-size: 12px;
+      color: var(--green-dim);
+      text-align: center;
+    }
+    .qr-meta.visible { display: flex; }
+
+    /* ── Footer ────────────────────────────────── */
+    footer {
+      background: #111;
+      padding: 12px;
+      font-size: 13px;
+      border-top: 2px solid var(--border);
+      text-align: center;
+      color: var(--green-dim);
+    }
+
+    /* ── Responsive ────────────────────────────── */
+    @media (max-width: 768px) {
+      .app { grid-template-columns: 1fr; }
+      .panel-left { border-right: none; border-bottom: 1px solid #1a1a1a; }
+      .qr-stage { min-height: 220px; }
+    }
+    @media (max-width: 480px) {
+      header { font-size: 14px; padding: 12px 16px; }
+      .panel-left, .panel-right { padding: 20px 16px; }
+      .opts-grid { grid-template-columns: 1fr; }
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: scale(0.95); }
+      to { opacity: 1; transform: scale(1); }
+    }
+    .qr-container.visible canvas { animation: fadeIn 0.3s ease; }
+    @media (prefers-reduced-motion: reduce) {
+      .qr-container.visible canvas { animation: none; }
+      .qr-glow { transition: none; }
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <a href="../index.html">BlackAngelSK</a>
+    <span class="sep">/</span>
+    <span class="title">QR Generator</span>
+  </header>
+
+  <div class="app">
+
+    <!-- ── Left: Controls ──────────────────────── -->
+    <div class="panel-left">
+
+      <div>
+        <div class="section-label">Input Type</div>
+        <div class="presets">
+          <button class="preset active" data-type="text" onclick="setPreset(this)">Text</button>
+          <button class="preset" data-type="url" onclick="setPreset(this)">URL</button>
+          <button class="preset" data-type="email" onclick="setPreset(this)">Email</button>
+          <button class="preset" data-type="phone" onclick="setPreset(this)">Phone</button>
+          <button class="preset" data-type="sms" onclick="setPreset(this)">SMS</button>
+          <button class="preset" data-type="wifi" onclick="setPreset(this)">WiFi</button>
+        </div>
+      </div>
+
+      <div>
+        <div class="section-label">Content</div>
+        <div class="input-wrap">
+          <span class="input-prefix">&gt;</span>
+          <textarea id="qr-input" placeholder="Type anything..."></textarea>
+        </div>
+      </div>
+
+      <!-- WiFi fields (hidden by default) -->
+      <div id="wifi-fields" style="display:none;">
+        <div class="section-label">WiFi Details</div>
+        <div class="opts-grid">
+          <div class="opt-group">
+            <label>SSID</label>
+            <input type="text" id="wifi-ssid" placeholder="Network name"
+              style="width:100%;background:var(--input-bg);color:var(--green);border:1px solid #1e1e1e;padding:8px 10px;font-family:inherit;font-size:13px;outline:none;">
+          </div>
+          <div class="opt-group">
+            <label>Password</label>
+            <input type="text" id="wifi-pass" placeholder="Password"
+              style="width:100%;background:var(--input-bg);color:var(--green);border:1px solid #1e1e1e;padding:8px 10px;font-family:inherit;font-size:13px;outline:none;">
+          </div>
+          <div class="opt-group">
+            <label>Security</label>
+            <select id="wifi-sec">
+              <option value="WPA">WPA/WPA2</option>
+              <option value="WEP">WEP</option>
+              <option value="nopass">None</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <div class="section-label">Settings</div>
+        <div class="opts-grid">
+          <div class="opt-group">
+            <label>Size</label>
+            <select id="qr-size">
+              <option value="128">128 × 128</option>
+              <option value="256" selected>256 × 256</option>
+              <option value="512">512 × 512</option>
+              <option value="1024">1024 × 1024</option>
+            </select>
+          </div>
+          <div class="opt-group">
+            <label>Error Correction</label>
+            <select id="qr-ec">
+              <option value="L">L — Low (7%)</option>
+              <option value="M" selected>M — Medium (15%)</option>
+              <option value="Q">Q — Quartile (25%)</option>
+              <option value="H">H — High (30%)</option>
+            </select>
+          </div>
+        </div>
+        <div class="color-pickers" style="margin-top: 12px;">
+          <div class="color-pick">
+            <label>Foreground</label>
+            <div class="color-input-row">
+              <input type="color" id="qr-fg" value="#000000">
+              <input type="text" class="color-hex" id="fg-hex" value="#000000" maxlength="7">
+            </div>
+          </div>
+          <div class="color-pick">
+            <label>Background</label>
+            <div class="color-input-row">
+              <input type="color" id="qr-bg" value="#ffffff">
+              <input type="text" class="color-hex" id="bg-hex" value="#ffffff" maxlength="7">
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="actions">
+        <button class="btn" id="btn-download" disabled>
+          <span class="icon">↓</span> Download
+        </button>
+        <button class="btn" id="btn-copy" disabled>
+          <span class="icon">⧉</span> Copy
+        </button>
+      </div>
+
+      <div class="error-msg" id="error-msg"></div>
+    </div>
+
+    <!-- ── Right: Preview ──────────────────────── -->
+    <div class="panel-right">
+      <div class="preview-label">Live Preview</div>
+      <div class="qr-stage">
+        <div class="qr-placeholder" id="qr-placeholder">
+          <span class="big">██ ▇▇ ██</span>
+          Start typing to generate...
+        </div>
+        <div class="qr-container" id="qr-container">
+          <div class="qr-glow"></div>
+          <div class="qr-frame" id="qr-frame">
+            <canvas id="qr-canvas"></canvas>
+          </div>
+        </div>
+      </div>
+      <div class="qr-meta" id="qr-meta">
+        <span id="meta-size"></span>
+        <span>|</span>
+        <span id="meta-ec"></span>
+        <span>|</span>
+        <span id="meta-caps"></span>
+      </div>
+    </div>
+
+  </div>
+
+  <footer>&copy; 2026 BlackAngelSK</footer>
+
+  <script>
+    const $ = id => document.getElementById(id);
+
+    const input      = $('qr-input');
+    const sizeSel    = $('qr-size');
+    const ecSel      = $('qr-ec');
+    const fgInput    = $('qr-fg');
+    const bgInput    = $('qr-bg');
+    const fgHex      = $('fg-hex');
+    const bgHex      = $('bg-hex');
+    const btnDl      = $('btn-download');
+    const btnCopy    = $('btn-copy');
+    const placeholder = $('qr-placeholder');
+    const container  = $('qr-container');
+    const canvasEl   = $('qr-canvas');
+    const errEl      = $('error-msg');
+    const metaSize   = $('meta-size');
+    const metaEC     = $('meta-ec');
+    const metaCaps   = $('meta-caps');
+    const qrMeta     = $('qr-meta');
+    const wifiFields = $('wifi-fields');
+    const wifiSSID   = $('wifi-ssid');
+    const wifiPass   = $('wifi-pass');
+    const wifiSec    = $('wifi-sec');
+
+    let lastDataURL = null;
+    let debounceTimer = null;
+    let currentPreset = 'text';
+
+    // Create QRious instance
+    const qr = new QRious({
+      element: canvasEl,
+      size: 256,
+      background: '#ffffff',
+      foreground: '#000000',
+      level: 'M'
+    });
+
+    // ── Preset handling ──────────────────────────
+    function setPreset(btn) {
+      document.querySelectorAll('.preset').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      currentPreset = btn.dataset.type;
+      wifiFields.style.display = currentPreset === 'wifi' ? 'block' : 'none';
+      const placeholders = {
+        text: 'Type anything...',
+        url: 'https://example.com',
+        email: 'user@example.com',
+        phone: '+421 900 123 456',
+        sms: '+421 900 123 456',
+        wifi: ''
+      };
+      input.placeholder = placeholders[currentPreset] || 'Type anything...';
+      input.focus();
+      scheduleGenerate();
+    }
+
+    // ── Build QR string from inputs ──────────────
+    function buildString() {
+      const raw = input.value.trim();
+      if (!raw && currentPreset !== 'wifi') return '';
+      switch (currentPreset) {
+        case 'url':
+          return raw && !/^https?:\/\//i.test(raw) ? 'https://' + raw : raw;
+        case 'email':
+          return 'mailto:' + raw;
+        case 'phone':
+          return 'tel:' + raw.replace(/\s/g, '');
+        case 'sms':
+          return 'smsto:' + raw.replace(/\s/g, '');
+        case 'wifi': {
+          const ssid = wifiSSID.value.trim();
+          const pass = wifiPass.value.trim();
+          const sec  = wifiSec.value;
+          if (!ssid) return '';
+          const enc = sec === 'nopass' ? 'nopass' : sec;
+          return 'WIFI:T:' + enc + ';S:' + ssid + ';P:' + pass + ';;';
+        }
+        default:
+          return raw;
+      }
+    }
+
+    // ── Generate QR ──────────────────────────────
+    function generate() {
+      const text = buildString();
+      hideError();
+
+      if (!text) {
+        container.classList.remove('visible');
+        placeholder.style.display = '';
+        btnDl.disabled = true;
+        btnCopy.disabled = true;
+        qrMeta.classList.remove('visible');
+        return;
+      }
+
+      try {
+        qr.set({
+          value: text,
+          size: parseInt(sizeSel.value, 10),
+          level: ecSel.value,
+          foreground: fgInput.value,
+          background: bgInput.value
+        });
+
+        container.classList.add('visible');
+        placeholder.style.display = 'none';
+        lastDataURL = canvasEl.toDataURL('image/png');
+        btnDl.disabled = false;
+        btnCopy.disabled = false;
+
+        // Meta info
+        metaSize.textContent = sizeSel.value + '×' + sizeSel.value;
+        metaEC.textContent = 'EC: ' + ecSel.value;
+        metaCaps.textContent = text.length + ' chars';
+        qrMeta.classList.add('visible');
+      } catch (e) {
+        showError('Failed to generate QR code.');
+        container.classList.remove('visible');
+        placeholder.style.display = '';
+      }
+    }
+
+    // ── Debounced live preview ───────────────────
+    function scheduleGenerate() {
+      clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(generate, 150);
+    }
+
+    // ── Color sync ───────────────────────────────
+    function syncHex(colorInput, hexInput) {
+      hexInput.value = colorInput.value;
+      scheduleGenerate();
+    }
+    function syncColors(colorInput, hexInput) {
+      if (/^#[0-9a-f]{6}$/i.test(hexInput.value)) {
+        colorInput.value = hexInput.value;
+        scheduleGenerate();
+      }
+    }
+
+    // ── Download ─────────────────────────────────
+    function download() {
+      if (!lastDataURL) return;
+      const a = document.createElement('a');
+      a.href = lastDataURL;
+      a.download = 'qrcode.png';
+      a.click();
+    }
+
+    // ── Copy ─────────────────────────────────────
+    async function copyToClipboard() {
+      if (!lastDataURL) return;
+      try {
+        const resp = await fetch(lastDataURL);
+        const blob = await resp.blob();
+        await navigator.clipboard.write([
+          new ClipboardItem({ 'image/png': blob })
+        ]);
+        btnCopy.innerHTML = '<span class="icon">✓</span> Copied!';
+        setTimeout(() => { btnCopy.innerHTML = '<span class="icon">⧉</span> Copy'; }, 1500);
+      } catch {
+        showError('Copy failed — try Download instead.');
+      }
+    }
+
+    // ── Errors ───────────────────────────────────
+    function showError(msg) {
+      errEl.textContent = msg;
+      errEl.classList.add('visible');
+    }
+    function hideError() { errEl.classList.remove('visible'); }
+
+    // ── Event listeners ──────────────────────────
+    input.addEventListener('input', scheduleGenerate);
+    sizeSel.addEventListener('change', scheduleGenerate);
+    ecSel.addEventListener('change', scheduleGenerate);
+    fgInput.addEventListener('input', () => syncHex(fgInput, fgHex));
+    bgInput.addEventListener('input', () => syncHex(bgInput, bgHex));
+    fgHex.addEventListener('input', () => syncColors(fgInput, fgHex));
+    bgHex.addEventListener('input', () => syncColors(bgInput, bgHex));
+    wifiSSID.addEventListener('input', scheduleGenerate);
+    wifiPass.addEventListener('input', scheduleGenerate);
+    wifiSec.addEventListener('change', scheduleGenerate);
+
+    btnDl.addEventListener('click', download);
+    btnCopy.addEventListener('click', copyToClipboard);
+
+    input.addEventListener('keydown', e => {
+      if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); generate(); }
+    });
+
+    // ── Init ─────────────────────────────────────
+    input.focus();
+  </script>
+
+</body>
+</html>
