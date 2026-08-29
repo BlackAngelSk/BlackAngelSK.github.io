@@ -276,40 +276,7 @@ body {
 }
 
 /* ============ DIFFICULTY BUTTONS ============ */
-.difficulty-grid {
-    display: flex;
-    justify-content: center;
-    gap: 12px;
-    padding: 20px 30px;
-    flex-wrap: wrap;
-}
-
-.diff-btn {
-    padding: 12px 32px;
-    background: var(--card-bg);
-    color: var(--text-primary);
-    border: 1px solid var(--card-border);
-    border-radius: 8px;
-    font-family: 'Oswald', sans-serif;
-    font-size: 16px;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 1px;
-    cursor: pointer;
-    transition: all 0.3s ease;
-}
-
-.diff-btn:hover {
-    border-color: var(--red);
-    color: var(--red);
-    background: rgba(201, 48, 44, 0.08);
-}
-
-.diff-btn.selected {
-    border-color: var(--red);
-    color: var(--red);
-    background: rgba(201, 48, 44, 0.12);
-}
+/* Moved to tf3.html inline styles */
 
 /* ============ SECTION HEADING ============ */
 .section-heading {

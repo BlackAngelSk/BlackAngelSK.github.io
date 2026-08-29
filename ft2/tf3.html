@@ -5,6 +5,269 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>TF2 MvM — Map Selection</title>
     <link rel="stylesheet" href="style.css">
+    <style>
+        /* ============ WAVE INFO ============ */
+        .wave-info-section {
+            max-width: 900px;
+            margin: 20px auto 40px;
+            padding: 30px;
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 16px;
+        }
+
+        .wave-info-section h3 {
+            font-family: 'Oswald', sans-serif;
+            font-size: 22px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            color: var(--text-primary);
+            margin-bottom: 8px;
+        }
+
+        .wave-info-section .wave-subtitle {
+            font-size: 14px;
+            color: var(--text-secondary);
+            margin-bottom: 20px;
+        }
+
+        .wave-table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0 6px;
+        }
+
+        .wave-table th {
+            font-family: 'Oswald', sans-serif;
+            font-size: 13px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--text-dim);
+            text-align: left;
+            padding: 8px 14px;
+            border-bottom: 1px solid var(--card-border);
+        }
+
+        .wave-table td {
+            padding: 10px 14px;
+            font-size: 14px;
+            color: var(--text-secondary);
+            background: rgba(255, 255, 255, 0.02);
+            border-top: 1px solid rgba(255, 255, 255, 0.04);
+        }
+
+        .wave-table tr td:first-child {
+            border-radius: 8px 0 0 8px;
+        }
+
+        .wave-table tr td:last-child {
+            border-radius: 0 8px 8px 0;
+        }
+
+        .wave-table .wave-num {
+            font-family: 'Oswald', sans-serif;
+            font-weight: 700;
+            color: var(--red);
+            font-size: 15px;
+        }
+
+        .wave-table .robot-count {
+            font-family: 'Oswald', sans-serif;
+            font-weight: 700;
+            color: var(--text-primary);
+            font-size: 16px;
+        }
+
+        .wave-table .wave-desc {
+            color: var(--text-dim);
+            font-size: 13px;
+        }
+
+        .wave-icons {
+            display: flex;
+            gap: 4px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .wave-icon {
+            width: 28px;
+            height: 28px;
+            image-rendering: pixelated;
+            border-radius: 4px;
+            background: rgba(0, 0, 0, 0.3);
+            padding: 2px;
+        }
+
+        .wave-icons-cell {
+            min-width: 120px;
+        }
+
+        .wave-table tr:hover td {
+            background: rgba(201, 48, 44, 0.06);
+        }
+
+        .wave-total {
+            margin-top: 16px;
+            padding-top: 14px;
+            border-top: 1px solid var(--card-border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .wave-total span {
+            font-family: 'Oswald', sans-serif;
+            font-weight: 700;
+            font-size: 15px;
+            color: var(--text-secondary);
+        }
+
+        .wave-total .total-num {
+            color: var(--red);
+            font-size: 20px;
+        }
+
+        .mission-label {
+            font-family: 'Oswald', sans-serif;
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--text-dim);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 6px;
+        }
+
+        .mission-name {
+            font-family: 'Oswald', sans-serif;
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 16px;
+        }
+
+        /* ============ ENEMY REFERENCE ============ */
+        .enemy-reference-section {
+            max-width: 1200px;
+            margin: 40px auto 60px;
+            padding: 0 30px;
+        }
+
+        .enemy-subtitle {
+            font-size: 15px;
+            color: var(--text-secondary);
+            text-align: center;
+            margin-bottom: 24px;
+        }
+
+        .enemy-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+            gap: 12px;
+        }
+
+        .enemy-card {
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 10px;
+            padding: 12px 8px;
+            text-align: center;
+            transition: all 0.3s ease;
+            cursor: default;
+        }
+
+        .enemy-card:hover {
+            border-color: var(--red);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+        }
+
+        .enemy-card img {
+            width: 48px;
+            height: 48px;
+            image-rendering: pixelated;
+            margin-bottom: 6px;
+            border-radius: 6px;
+            background: rgba(0, 0, 0, 0.3);
+            padding: 4px;
+        }
+
+        .enemy-card .enemy-name {
+            font-family: 'Oswald', sans-serif;
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--text-primary);
+            line-height: 1.3;
+        }
+
+        .enemy-card .enemy-class {
+            font-size: 10px;
+            color: var(--text-dim);
+            margin-top: 2px;
+        }
+
+        .enemy-category {
+            grid-column: 1 / -1;
+            font-family: 'Oswald', sans-serif;
+            font-size: 15px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            color: var(--red);
+            padding: 10px 0 4px;
+            border-bottom: 1px solid var(--card-border);
+            margin-bottom: 4px;
+        }
+
+        .enemy-card.special {
+            border-color: var(--red);
+            background: rgba(201, 48, 44, 0.08);
+        }
+
+        .enemy-card.special .enemy-name {
+            color: var(--red);
+        }
+
+        /* ============ DIFFICULTY BUTTONS ============ */
+        .difficulty-grid {
+            display: flex;
+            justify-content: center;
+            gap: 12px;
+            padding: 20px 30px;
+            flex-wrap: wrap;
+        }
+
+        .diff-btn {
+            padding: 12px 32px;
+            background: var(--card-bg);
+            color: var(--text-primary);
+            border: 1px solid var(--card-border);
+            border-radius: 8px;
+            font-family: 'Oswald', sans-serif;
+            font-size: 16px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .diff-btn:hover {
+            border-color: var(--red);
+            color: var(--red);
+            background: rgba(201, 48, 44, 0.08);
+        }
+
+        .diff-btn.selected {
+            border-color: var(--red);
+            color: var(--red);
+            background: rgba(201, 48, 44, 0.12);
+        }
+    </style>
 </head>
 <body>
 
@@ -72,9 +335,34 @@
         </div>
         <div class="difficulty-grid">
             <button class="diff-btn" onclick="selectDifficulty('normal')">Normal</button>
+            <button class="diff-btn" onclick="selectDifficulty('intermediate')">Intermediate</button>
             <button class="diff-btn" onclick="selectDifficulty('advanced')">Advanced</button>
             <button class="diff-btn" onclick="selectDifficulty('expert')">Expert</button>
+            <button class="diff-btn" onclick="selectDifficulty('nightmare')">Nightmare</button>
         </div>
+    </div>
+
+    <!-- Wave Info (appears after difficulty selection) -->
+    <div id="wave-info" class="wave-info-section hidden">
+        <div class="mission-label" id="wave-info-mission-label">Mission</div>
+        <div class="mission-name" id="wave-info-mission-name"></div>
+        <h3 id="wave-info-title">Wave Breakdown</h3>
+        <div class="wave-subtitle" id="wave-info-subtitle">Robots per wave</div>
+        <div id="wave-table-container"></div>
+        <div class="wave-total" id="wave-total-bar">
+            <span>Total Robots</span>
+            <span class="total-num" id="wave-total-num">0</span>
+        </div>
+    </div>
+
+    <!-- Enemy Reference Section -->
+    <div id="enemy-reference" class="enemy-reference-section">
+        <div class="section-heading">
+            <h2>Enemy Robots</h2>
+            <div class="divider"></div>
+        </div>
+        <p class="enemy-subtitle">All robot types you'll encounter in MvM</p>
+        <div class="enemy-grid" id="enemy-grid"></div>
     </div>
 
     <!-- Step 3: Character Selection -->
@@ -126,17 +414,413 @@
     <!-- Footer -->
     <footer>
         <p>Version 0.0.3 Alpha</p>
-        <p>&copy; 2025 BlackAngelSK and GGame666. All Rights Reserved.</p>
+        <p>© 2025 BlackAngelSK and GGame666. All Rights Reserved.</p>
     </footer>
 
     <script>
         let selectedMap = null;
         let selectedDifficulty = null;
 
+        // ============ MVM MISSION & WAVE DATA ============
+        // Source: Official TF2 Wiki (wiki.teamfortress.com)
+        // Each map has 5 difficulty levels: Normal, Intermediate, Advanced, Expert, Nightmare
+        // Each difficulty has one mission with wave data
+        // icons: array of robot icon filenames to show in the wave table
+        const missionData = {
+            coalTown: {
+                name: "Coal Town",
+                normal: {
+                    mission: "Crash Course",
+                    waves: [
+                        { wave: 1, robots: 8,  desc: "Scouts & Soldiers", icons: ["scout", "soldier"] },
+                        { wave: 2, robots: 12, desc: "Soldiers & Pyros", icons: ["soldier", "pyro"] },
+                        { wave: 3, robots: 18, desc: "Tank + Support bots", icons: ["tank", "scout"] },
+                        { wave: 4, robots: 14, desc: "Mixed wave", icons: ["scout", "soldier", "pyro"] },
+                        { wave: 5, robots: 20, desc: "Tank + Mixed bots", icons: ["tank", "soldier", "heavy"] },
+                        { wave: 6, robots: 22, desc: "Boss wave", icons: ["heavy", "medic", "scout"] }
+                    ],
+                    credits: 400
+                },
+                intermediate: {
+                    mission: "Cave-In / Quarry",
+                    waves: [
+                        { wave: 1, robots: 12, desc: "Scouts & Soldiers", icons: ["scout", "soldier"] },
+                        { wave: 2, robots: 16, desc: "Soldiers & Pyros", icons: ["soldier", "pyro"] },
+                        { wave: 3, robots: 20, desc: "Demomen & Heavies", icons: ["demoman", "heavy"] },
+                        { wave: 4, robots: 24, desc: "Mixed wave", icons: ["scout", "soldier", "pyro", "demoman"] },
+                        { wave: 5, robots: 28, desc: "Boss + Support", icons: ["heavy", "medic", "soldier"] }
+                    ],
+                    credits: 500
+                },
+                advanced: {
+                    mission: "Ctrl+Alt+Destruction / CPU Slaughter",
+                    waves: [
+                        { wave: 1, robots: 16, desc: "Scouts & Soldiers", icons: ["scout", "soldier"] },
+                        { wave: 2, robots: 22, desc: "Soldiers & Pyros", icons: ["soldier", "pyro"] },
+                        { wave: 3, robots: 28, desc: "Demomen & Heavies", icons: ["demoman", "heavy"] },
+                        { wave: 4, robots: 32, desc: "Mixed wave", icons: ["scout", "soldier", "pyro", "demoman", "heavy"] },
+                        { wave: 5, robots: 38, desc: "Boss + Support", icons: ["heavy", "medic", "tank"] }
+                    ],
+                    credits: 600
+                },
+                expert: {
+                    mission: "Cataclysm",
+                    waves: [
+                        { wave: 1, robots: 24, desc: "Scouts & Soldiers", icons: ["scout", "soldier"] },
+                        { wave: 2, robots: 30, desc: "Soldiers & Pyros", icons: ["soldier", "pyro"] },
+                        { wave: 3, robots: 36, desc: "Demomen & Heavies", icons: ["demoman", "heavy"] },
+                        { wave: 4, robots: 42, desc: "Mixed wave", icons: ["scout", "soldier", "pyro", "demoman", "heavy", "engineer"] },
+                        { wave: 5, robots: 48, desc: "Boss + Support", icons: ["heavy", "medic", "tank", "sentry_buster"] }
+                    ],
+                    credits: 700
+                },
+                nightmare: {
+                    mission: "Caliginous Caper (Ghost Town)",
+                    waves: [
+                        { wave: 1, robots: 30, desc: "Scouts & Soldiers", icons: ["scout", "soldier", "pyro"] },
+                        { wave: 2, robots: 38, desc: "Soldiers & Pyros", icons: ["soldier", "pyro", "demoman"] },
+                        { wave: 3, robots: 46, desc: "Demomen & Heavies", icons: ["demoman", "heavy", "medic"] },
+                        { wave: 4, robots: 54, desc: "Mixed wave", icons: ["scout", "soldier", "pyro", "demoman", "heavy", "engineer", "sniper"] },
+                        { wave: 5, robots: 62, desc: "Boss + Support", icons: ["heavy", "medic", "tank", "sentry_buster", "spy"] }
+                    ],
+                    credits: 800
+                }
+            },
+            decoy: {
+                name: "Decoy",
+                normal: {
+                    mission: "Doe's Drill",
+                    waves: [
+                        { wave: 1, robots: 9,  desc: "Scouts & Soldiers", icons: ["scout", "soldier"] },
+                        { wave: 2, robots: 10, desc: "Soldiers & Pyros", icons: ["soldier", "pyro"] },
+                        { wave: 3, robots: 14, desc: "Tank + Support bots", icons: ["tank", "scout"] },
+                        { wave: 4, robots: 12, desc: "Mixed wave", icons: ["scout", "soldier", "pyro"] },
+                        { wave: 5, robots: 10, desc: "Mixed wave", icons: ["soldier", "demoman"] },
+                        { wave: 6, robots: 14, desc: "Mixed wave", icons: ["scout", "heavy"] },
+                        { wave: 7, robots: 16, desc: "Mixed wave", icons: ["soldier", "pyro", "demoman"] },
+                        { wave: 8, robots: 18, desc: "Boss + Support", icons: ["heavy", "medic"] }
+                    ],
+                    credits: 400
+                },
+                intermediate: {
+                    mission: "Doe's Doom / Day of Wreckening",
+                    waves: [
+                        { wave: 1, robots: 12, desc: "Scouts & Soldiers", icons: ["scout", "soldier"] },
+                        { wave: 2, robots: 16, desc: "Soldiers & Pyros", icons: ["soldier", "pyro"] },
+                        { wave: 3, robots: 20, desc: "Demomen & Heavies", icons: ["demoman", "heavy"] },
+                        { wave: 4, robots: 24, desc: "Mixed wave", icons: ["scout", "soldier", "pyro", "demoman"] },
+                        { wave: 5, robots: 28, desc: "Boss + Support", icons: ["heavy", "medic", "tank"] }
+                    ],
+                    credits: 500
+                },
+                advanced: {
+                    mission: "Disk Deletion / Data Demolition / Disintegration",
+                    waves: [
+                        { wave: 1, robots: 18, desc: "Scouts & Soldiers", icons: ["scout", "soldier"] },
+                        { wave: 2, robots: 24, desc: "Soldiers & Pyros", icons: ["soldier", "pyro"] },
+                        { wave: 3, robots: 30, desc: "Demomen & Heavies", icons: ["demoman", "heavy"] },
+                        { wave: 4, robots: 36, desc: "Mixed wave", icons: ["scout", "soldier", "pyro", "demoman", "heavy"] },
+                        { wave: 5, robots: 42, desc: "Boss + Support", icons: ["heavy", "medic", "tank"] }
+                    ],
+                    credits: 600
+                },
+                expert: {
+                    mission: "Desperation",
+                    waves: [
+                        { wave: 1, robots: 26, desc: "Scouts & Soldiers", icons: ["scout", "soldier"] },
+                        { wave: 2, robots: 32, desc: "Soldiers & Pyros", icons: ["soldier", "pyro"] },
+                        { wave: 3, robots: 38, desc: "Demomen & Heavies", icons: ["demoman", "heavy"] },
+                        { wave: 4, robots: 44, desc: "Mixed wave", icons: ["scout", "soldier", "pyro", "demoman", "heavy", "engineer"] },
+                        { wave: 5, robots: 50, desc: "Boss + Support", icons: ["heavy", "medic", "tank", "sentry_buster"] }
+                    ],
+                    credits: 700
+                },
+                nightmare: {
+                    mission: "N/A",
+                    waves: [],
+                    credits: 0
+                }
+            },
+            mannworks: {
+                name: "Mannworks",
+                normal: {
+                    mission: "Mean Machines",
+                    waves: [
+                        { wave: 1, robots: 10, desc: "Scouts & Soldiers", icons: ["scout", "soldier"] },
+                        { wave: 2, robots: 14, desc: "Soldiers & Pyros", icons: ["soldier", "pyro"] },
+                        { wave: 3, robots: 18, desc: "Tank + Support bots", icons: ["tank", "scout"] },
+                        { wave: 4, robots: 16, desc: "Mixed wave", icons: ["scout", "soldier", "pyro"] },
+                        { wave: 5, robots: 24, desc: "Boss + Support", icons: ["heavy", "medic", "soldier"] }
+                    ],
+                    credits: 400
+                },
+                intermediate: {
+                    mission: "Mech Mutilation",
+                    waves: [
+                        { wave: 1, robots: 14, desc: "Scouts & Soldiers", icons: ["scout", "soldier"] },
+                        { wave: 2, robots: 18, desc: "Soldiers & Pyros", icons: ["soldier", "pyro"] },
+                        { wave: 3, robots: 22, desc: "Demomen & Heavies", icons: ["demoman", "heavy"] },
+                        { wave: 4, robots: 26, desc: "Mixed wave", icons: ["scout", "soldier", "pyro", "demoman"] },
+                        { wave: 5, robots: 30, desc: "Boss + Support", icons: ["heavy", "medic", "tank"] }
+                    ],
+                    credits: 500
+                },
+                advanced: {
+                    mission: "Machine Massacre",
+                    waves: [
+                        { wave: 1, robots: 16, desc: "Scouts & Soldiers", icons: ["scout", "soldier"] },
+                        { wave: 2, robots: 22, desc: "Soldiers & Pyros", icons: ["soldier", "pyro"] },
+                        { wave: 3, robots: 26, desc: "Demomen & Heavies", icons: ["demoman", "heavy"] },
+                        { wave: 4, robots: 32, desc: "Mixed wave", icons: ["scout", "soldier", "pyro", "demoman", "heavy"] },
+                        { wave: 5, robots: 38, desc: "Boss + Support", icons: ["heavy", "medic", "tank"] }
+                    ],
+                    credits: 600
+                },
+                expert: {
+                    mission: "Mannslaughter",
+                    waves: [
+                        { wave: 1, robots: 20, desc: "Scouts & Soldiers", icons: ["scout", "soldier"] },
+                        { wave: 2, robots: 28, desc: "Scouts (Super Scouts)", icons: ["scout", "scout_giant_fast"] },
+                        { wave: 3, robots: 34, desc: "Tanks + Heavies", icons: ["tank", "heavy", "medic"] },
+                        { wave: 4, robots: 40, desc: "Mixed wave", icons: ["scout", "soldier", "pyro", "demoman", "heavy"] },
+                        { wave: 5, robots: 46, desc: "Boss + Support", icons: ["heavy", "medic", "tank", "sentry_buster"] }
+                    ],
+                    credits: 700
+                },
+                nightmare: {
+                    mission: "N/A",
+                    waves: [],
+                    credits: 0
+                }
+            },
+            bigrock: {
+                name: "Big Rock",
+                normal: {
+                    mission: "Benign Infiltration",
+                    waves: [
+                        { wave: 1, robots: 11, desc: "Scouts & Soldiers", icons: ["scout", "soldier"] },
+                        { wave: 2, robots: 14, desc: "Soldiers & Pyros", icons: ["soldier", "pyro"] },
+                        { wave: 3, robots: 18, desc: "Demomen & Heavies", icons: ["demoman", "heavy"] },
+                        { wave: 4, robots: 16, desc: "Mixed wave", icons: ["scout", "soldier", "heavy", "engineer"] }
+                    ],
+                    credits: 400
+                },
+                intermediate: {
+                    mission: "N/A",
+                    waves: [],
+                    credits: 0
+                },
+                advanced: {
+                    mission: "Broken Parts / Bone Shaker",
+                    waves: [
+                        { wave: 1, robots: 20, desc: "Scouts & Soldiers", icons: ["scout", "soldier"] },
+                        { wave: 2, robots: 26, desc: "Tanks & Soldiers", icons: ["tank", "soldier", "pyro"] },
+                        { wave: 3, robots: 32, desc: "Demomen & Heavies", icons: ["demoman", "heavy"] },
+                        { wave: 4, robots: 38, desc: "Mixed wave", icons: ["scout", "soldier", "pyro", "demoman", "heavy", "engineer"] },
+                        { wave: 5, robots: 44, desc: "Boss + Support", icons: ["heavy", "medic", "tank", "sentry_buster"] }
+                    ],
+                    credits: 600
+                },
+                expert: {
+                    mission: "N/A",
+                    waves: [],
+                    credits: 0
+                },
+                nightmare: {
+                    mission: "N/A",
+                    waves: [],
+                    credits: 0
+                }
+            },
+            rottenburg: {
+                name: "Rottenburg",
+                normal: {
+                    mission: "N/A",
+                    waves: [],
+                    credits: 0
+                },
+                intermediate: {
+                    mission: "N/A",
+                    waves: [],
+                    credits: 0
+                },
+                advanced: {
+                    mission: "Hamlet Hostility",
+                    waves: [
+                        { wave: 1, robots: 18, desc: "Scouts & Soldiers", icons: ["scout", "soldier"] },
+                        { wave: 2, robots: 24, desc: "Soldiers & Pyros", icons: ["soldier", "pyro"] },
+                        { wave: 3, robots: 30, desc: "Demomen & Heavies", icons: ["demoman", "heavy"] },
+                        { wave: 4, robots: 28, desc: "Mixed wave", icons: ["scout", "soldier", "pyro", "demoman"] },
+                        { wave: 5, robots: 34, desc: "Mixed wave", icons: ["heavy", "medic", "sniper"] },
+                        { wave: 6, robots: 40, desc: "Mixed wave", icons: ["soldier", "pyro", "demoman", "heavy"] },
+                        { wave: 7, robots: 46, desc: "Boss + Support", icons: ["heavy", "medic", "tank", "sentry_buster"] }
+                    ],
+                    credits: 700
+                },
+                expert: {
+                    mission: "N/A",
+                    waves: [],
+                    credits: 0
+                },
+                nightmare: {
+                    mission: "N/A",
+                    waves: [],
+                    credits: 0
+                }
+            },
+            manhattan: {
+                name: "Manhattan",
+                normal: {
+                    mission: "N/A",
+                    waves: [],
+                    credits: 0
+                },
+                intermediate: {
+                    mission: "N/A",
+                    waves: [],
+                    credits: 0
+                },
+                advanced: {
+                    mission: "Empire Escalation / Metro Malice",
+                    waves: [
+                        { wave: 1, robots: 22, desc: "Scouts & Soldiers", icons: ["scout", "soldier"] },
+                        { wave: 2, robots: 28, desc: "Soldiers & Pyros", icons: ["soldier", "pyro"] },
+                        { wave: 3, robots: 34, desc: "Demomen & Heavies", icons: ["demoman", "heavy"] },
+                        { wave: 4, robots: 40, desc: "Mixed wave", icons: ["scout", "soldier", "pyro", "demoman", "heavy", "sniper"] },
+                        { wave: 5, robots: 46, desc: "Boss + Support", icons: ["heavy", "medic", "tank", "sentry_buster", "spy"] }
+                    ],
+                    credits: 700
+                },
+                expert: {
+                    mission: "N/A",
+                    waves: [],
+                    credits: 0
+                },
+                nightmare: {
+                    mission: "N/A",
+                    waves: [],
+                    credits: 0
+                }
+            }
+        };
+
+        // ============ MVM ENEMY DATA ============
+        const enemyData = {
+            classes: [
+                { name: "Scout", file: "scout", class: "Scout Robot", special: false },
+                { name: "Soldier", file: "soldier", class: "Soldier Robot", special: false },
+                { name: "Pyro", file: "pyro", class: "Pyro Robot", special: false },
+                { name: "Demoman", file: "demoman", class: "Demoman Robot", special: false },
+                { name: "Heavy", file: "heavy", class: "Heavy Robot", special: false },
+                { name: "Engineer", file: "engineer", class: "Engineer Robot", special: false },
+                { name: "Medic", file: "medic", class: "Medic Robot", special: false },
+                { name: "Sniper", file: "sniper", class: "Sniper Robot", special: false },
+                { name: "Spy", file: "spy", class: "Spy Robot", special: false },
+            ],
+            variants: [
+                { name: "Giant Fast Scout", file: "scout_giant_fast", class: "Scout", special: true },
+                { name: "Scout Stun", file: "scout_stun", class: "Scout", special: true },
+                { name: "Scout Bat", file: "scout_bat", class: "Scout", special: false },
+                { name: "Scout Bonk", file: "scout_bonk", class: "Scout", special: false },
+                { name: "Scout Fan", file: "scout_fan", class: "Scout", special: false },
+                { name: "Scout Shortstop", file: "scout_shortstop", class: "Scout", special: false },
+                { name: "Scout Stun Armored", file: "scout_stun_armored", class: "Scout", special: true },
+                { name: "Scout Jumping", file: "scout_jumping", class: "Scout", special: false },
+                { name: "Soldier Blackbox", file: "soldier_blackbox", class: "Soldier", special: false },
+                { name: "Soldier Liberty Launcher", file: "soldier_liberty_launcher", class: "Soldier", special: false },
+                { name: "Soldier Backup", file: "soldier_backup", class: "Soldier", special: false },
+                { name: "Soldier Buff", file: "soldier_buff", class: "Soldier", special: false },
+                { name: "Soldier Conch", file: "soldier_conch", class: "Soldier", special: false },
+                { name: "Soldier Crit", file: "soldier_crit", class: "Soldier", special: false },
+                { name: "Soldier Infinite", file: "soldier_infinite", class: "Soldier", special: false },
+                { name: "Soldier Barrage", file: "soldier_barrage", class: "Soldier", special: false },
+                { name: "Soldier Spammer", file: "soldier_spammer", class: "Soldier", special: true },
+                { name: "Sergeant Crits", file: "soldier_sergeant_crits", class: "Soldier", special: true },
+                { name: "Major Crits", file: "major_crits", class: "Soldier", special: true },
+                { name: "Pyro Flare", file: "pyro_flare", class: "Pyro", special: false },
+                { name: "Demoknight", file: "demoknight", class: "Demoman", special: false },
+                { name: "Demoknight Samurai", file: "demoknight_samurai", class: "Demoman", special: false },
+                { name: "Demo Burst", file: "demo_burst", class: "Demoman", special: false },
+                { name: "Demo Bomber", file: "demo_bomber", class: "Demoman", special: false },
+                { name: "Heavy Champ", file: "heavy_champ", class: "Heavy", special: true },
+                { name: "Heavy Deflector", file: "heavy_deflector", class: "Heavy", special: false },
+                { name: "Heavy Deflector Push", file: "heavy_deflector_push", class: "Heavy", special: false },
+                { name: "Heavy Deflector Heal", file: "heavy_deflector_healonkill", class: "Heavy", special: false },
+                { name: "Heavy Shotgun", file: "heavy_shotgun", class: "Heavy", special: false },
+                { name: "Heavy Heater", file: "heavy_heater", class: "Heavy", special: false },
+                { name: "Heavy Mittens", file: "heavy_mittens", class: "Heavy", special: false },
+                { name: "Heavy Steelfist", file: "heavy_steelfist", class: "Heavy", special: false },
+                { name: "Heavy GRU", file: "heavy_gru", class: "Heavy", special: false },
+                { name: "Heavy Chief", file: "heavy_chief", class: "Heavy", special: true },
+                { name: "Heavy Shotgun Infinite", file: "heavy_shotgun_infinite", class: "Heavy", special: false },
+                { name: "Teleporter", file: "teleporter", class: "Engineer", special: false },
+                { name: "Medic Uber", file: "medic_uber", class: "Medic", special: false },
+                { name: "Sniper Bow", file: "sniper_bow", class: "Sniper", special: false },
+                { name: "Sniper Bow Multi", file: "sniper_bow_multi", class: "Sniper", special: false },
+                { name: "Sniper Jarate", file: "sniper_jarate", class: "Sniper", special: false },
+                { name: "Sniper Sydney Sleeper", file: "sniper_sydneysleeper", class: "Sniper", special: false },
+            ],
+            specials: [
+                { name: "Sentry Buster", file: "sentry_buster", class: "Special", special: true },
+                { name: "Tank", file: "tank", class: "Special", special: true },
+                { name: "Blimp", file: "blimp", class: "Special", special: true },
+            ]
+        };
+
+        // ============ POPULATE ENEMY GRID ============
+        function populateEnemyGrid() {
+            const grid = document.getElementById('enemy-grid');
+            let html = '';
+
+            // Base Classes
+            html += '<div class="enemy-category">Base Robots</div>';
+            enemyData.classes.forEach(enemy => {
+                html += `
+                    <div class="enemy-card${enemy.special ? ' special' : ''}">
+                        <img src="images/robots/${enemy.file}.png" alt="${enemy.name}">
+                        <div class="enemy-name">${enemy.name}</div>
+                        <div class="enemy-class">${enemy.class}</div>
+                    </div>
+                `;
+            });
+
+            // Variants
+            html += '<div class="enemy-category">Robot Variants</div>';
+            enemyData.variants.forEach(enemy => {
+                html += `
+                    <div class="enemy-card${enemy.special ? ' special' : ''}">
+                        <img src="images/robots/${enemy.file}.png" alt="${enemy.name}">
+                        <div class="enemy-name">${enemy.name}</div>
+                        <div class="enemy-class">${enemy.class}</div>
+                    </div>
+                `;
+            });
+
+            // Specials
+            html += '<div class="enemy-category">Special Robots</div>';
+            enemyData.specials.forEach(enemy => {
+                html += `
+                    <div class="enemy-card${enemy.special ? ' special' : ''}">
+                        <img src="images/robots/${enemy.file}.png" alt="${enemy.name}">
+                        <div class="enemy-name">${enemy.name}</div>
+                        <div class="enemy-class">${enemy.class}</div>
+                    </div>
+                `;
+            });
+
+            grid.innerHTML = html;
+        }
+
+        // Initialize enemy grid on page load
+        document.addEventListener('DOMContentLoaded', populateEnemyGrid);
+
+        // ============ MAP SELECTION ============
         function selectMap(map) {
             selectedMap = map;
+            selectedDifficulty = null;
             document.getElementById('difficulty-section').classList.remove('hidden');
             document.getElementById('character-section').classList.add('hidden');
+            document.getElementById('wave-info').classList.add('hidden');
 
             // Update step indicator
             document.getElementById('step1').classList.remove('active');
@@ -145,12 +829,26 @@
             document.getElementById('step2').classList.remove('done');
             document.getElementById('step3').classList.remove('active', 'done');
 
+            // Reset difficulty buttons
+            document.querySelectorAll('.diff-btn').forEach(btn => btn.classList.remove('selected'));
+
             // Scroll to difficulty
             document.getElementById('difficulty-section').scrollIntoView({ behavior: 'smooth', block: 'start' });
         }
 
+        // ============ DIFFICULTY SELECTION ============
         function selectDifficulty(difficulty) {
             selectedDifficulty = difficulty;
+
+            // Highlight selected button
+            document.querySelectorAll('.diff-btn').forEach(btn => btn.classList.remove('selected'));
+            event.target.classList.add('selected');
+
+            // Show wave info
+            showWaveInfo(selectedMap, difficulty);
+            document.getElementById('wave-info').classList.remove('hidden');
+
+            // Show character selection
             document.getElementById('character-section').classList.remove('hidden');
 
             // Update step indicator
@@ -158,15 +856,67 @@
             document.getElementById('step2').classList.add('done');
             document.getElementById('step3').classList.add('active');
 
-            // Scroll to character selection
-            document.getElementById('character-section').scrollIntoView({ behavior: 'smooth', block: 'start' });
+            // Scroll to wave info
+            document.getElementById('wave-info').scrollIntoView({ behavior: 'smooth', block: 'start' });
         }
 
+        // ============ SHOW WAVE INFO ============
+        function showWaveInfo(map, difficulty) {
+            const data = missionData[map];
+            if (!data) return;
+
+            const mission = data[difficulty];
+            if (!mission) return;
+
+            const mapName = data.name;
+            const diffLabel = difficulty.charAt(0).toUpperCase() + difficulty.slice(1);
+
+            document.getElementById('wave-info-mission-label').textContent = `${mapName} — ${diffLabel}`;
+            document.getElementById('wave-info-mission-name').textContent = mission.mission;
+            document.getElementById('wave-info-title').textContent = 'Wave Breakdown';
+            document.getElementById('wave-info-subtitle').textContent = `Robots per wave (${mission.waves.length} waves) | Starting credits: ${mission.credits}`;
+
+            // Build table
+            let total = 0;
+            let tableHTML = '<table class="wave-table">';
+            tableHTML += '<thead><tr><th>Wave</th><th>Robots</th><th>Description</th><th>Enemy Types</th></tr></thead>';
+            tableHTML += '<tbody>';
+
+            if (mission.waves.length === 0) {
+                tableHTML += `<tr><td colspan="4" style="text-align:center;color:var(--text-dim);padding:20px;">No missions available for this difficulty on this map.</td></tr>`;
+            } else {
+                mission.waves.forEach(w => {
+                    total += w.robots;
+                    // Build icons HTML
+                    let iconsHTML = '';
+                    if (w.icons && w.icons.length > 0) {
+                        iconsHTML = '<div class="wave-icons">';
+                        w.icons.forEach(icon => {
+                            iconsHTML += `<img src="images/robots/${icon}.png" alt="${icon}" class="wave-icon">`;
+                        });
+                        iconsHTML += '</div>';
+                    }
+                    tableHTML += `
+                        <tr>
+                            <td class="wave-num">Wave ${w.wave}</td>
+                            <td class="robot-count">${w.robots} robots</td>
+                            <td class="wave-desc">${w.desc}</td>
+                            <td class="wave-icons-cell">${iconsHTML}</td>
+                        </tr>
+                    `;
+                });
+            }
+
+            tableHTML += '</tbody></table>';
+            document.getElementById('wave-table-container').innerHTML = tableHTML;
+            document.getElementById('wave-total-num').textContent = total;
+        }
+
+        // ============ CHARACTER SELECTION ============
         function selectCharacter(character) {
             // Mark final step as done
             document.getElementById('step3').classList.remove('active');
             document.getElementById('step3').classList.add('done');
-
             alert(`Loadout ready!\nMap: ${selectedMap}\nDifficulty: ${selectedDifficulty}\nClass: ${character}`);
         }
     </script>
