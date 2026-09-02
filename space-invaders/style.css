@@ -1,0 +1,165 @@
+/* Space Invaders — matches BlackAngelSK theme */
+*, *::before, *::after { box-sizing: border-box; }
+
+body {
+    font-family: 'Courier New', monospace;
+    background: #000;
+    color: #00ff00;
+    margin: 0;
+    padding: 0;
+    text-align: center;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+/* ── Skip Link ────────────────────────────────────── */
+.skip-link {
+    position: absolute;
+    top: -100%;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #00ff00;
+    color: #000;
+    padding: 10px 20px;
+    z-index: 100;
+    font-weight: bold;
+    text-decoration: none;
+}
+.skip-link:focus { top: 10px; }
+
+/* ── Header / Nav (reuse site styles) ─────────────── */
+header {
+    background: #111;
+    padding: 20px;
+    font-size: 24px;
+    font-weight: bold;
+    text-transform: uppercase;
+    border-bottom: 2px solid #00ff00;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+}
+
+.nav-tabs {
+    display: flex;
+    gap: 4px;
+    margin-left: 16px;
+}
+
+.nav-tab {
+    display: inline-block;
+    padding: 6px 18px;
+    font-size: 14px;
+    font-family: 'Courier New', monospace;
+    text-transform: uppercase;
+    text-decoration: none;
+    color: #00ff00;
+    background: #1a1a1a;
+    border: 1px solid #00ff00;
+    transition: background 0.2s, color 0.2s;
+}
+.nav-tab:hover { background: #00ff00; color: #000; }
+.nav-tab:focus { outline: 2px dashed #00ff00; outline-offset: 2px; }
+.nav-tab--active { background: #00ff00; color: #000; font-weight: bold; }
+.nav-tab--active:hover { background: #33ff33; }
+
+/* ── Game Container ───────────────────────────────── */
+.game-container {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    gap: 12px;
+}
+
+.game-hud {
+    display: flex;
+    gap: 40px;
+    font-size: 16px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+}
+
+.hud-item span {
+    color: #33ff33;
+    font-weight: bold;
+}
+
+canvas {
+    border: 2px solid #00ff00;
+    background: #0a0a0a;
+    display: block;
+    image-rendering: pixelated;
+    max-width: 100%;
+    height: auto;
+}
+
+.game-controls-info {
+    display: flex;
+    gap: 30px;
+    font-size: 12px;
+    color: #007700;
+    letter-spacing: 1px;
+}
+
+/* ── Overlay ──────────────────────────────────────── */
+.game-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.85);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 50;
+}
+.game-overlay.hidden { display: none; }
+
+.overlay-text {
+    text-align: center;
+}
+.overlay-text h2 {
+    font-size: 36px;
+    color: #00ff00;
+    text-shadow: 0 0 20px rgba(0, 255, 0, 0.5);
+    margin: 0 0 12px;
+    letter-spacing: 4px;
+}
+.overlay-text p {
+    font-size: 16px;
+    color: #00cc00;
+}
+#overlay-msg {
+    animation: blink 1.2s step-end infinite;
+}
+#overlay-score {
+    font-size: 22px;
+    color: #33ff33;
+    text-shadow: 0 0 10px rgba(0, 255, 0, 0.4);
+    margin: 4px 0 12px;
+}
+
+@keyframes blink {
+    50% { opacity: 0; }
+}
+
+/* ── Footer ───────────────────────────────────────── */
+footer {
+    background: #111;
+    padding: 10px;
+    font-size: 16px;
+    border-top: 2px solid #00ff00;
+}
+
+/* ── Responsive ───────────────────────────────────── */
+@media (max-width: 600px) {
+    header { padding: 14px; font-size: 16px; }
+    .nav-tabs { margin-left: 0; width: 100%; justify-content: center; }
+    .nav-tab { font-size: 12px; padding: 4px 12px; }
+    .game-hud { gap: 16px; font-size: 13px; }
+    .game-controls-info { gap: 14px; font-size: 10px; }
+}

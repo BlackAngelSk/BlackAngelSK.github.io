@@ -47,6 +47,70 @@ header {
     font-weight: bold;
     text-transform: uppercase;
     border-bottom: 2px solid #00ff00;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+}
+
+/* ── Navigation Tabs ──────────────────────────────── */
+.nav-tabs {
+    display: flex;
+    gap: 4px;
+    margin-left: 16px;
+}
+
+.nav-tab {
+    display: inline-block;
+    padding: 6px 18px;
+    font-size: 14px;
+    font-family: 'Courier New', monospace;
+    text-transform: uppercase;
+    text-decoration: none;
+    color: #00ff00;
+    background: #1a1a1a;
+    border: 1px solid #00ff00;
+    transition: background 0.2s, color 0.2s, box-shadow 0.2s;
+}
+
+.nav-tab:hover {
+    background: #00ff00;
+    color: #000;
+}
+
+.nav-tab:focus {
+    outline: 2px dashed #00ff00;
+    outline-offset: 2px;
+}
+
+.nav-tab--active {
+    background: #00ff00;
+    color: #000;
+    font-weight: bold;
+}
+
+.nav-tab--active:hover {
+    background: #33ff33;
+    color: #000;
+}
+
+@media (max-width: 600px) {
+    header {
+        padding: 14px;
+        font-size: 16px;
+    }
+
+    .nav-tabs {
+        margin-left: 0;
+        width: 100%;
+        justify-content: center;
+    }
+
+    .nav-tab {
+        font-size: 12px;
+        padding: 4px 12px;
+    }
 }
 
 /* ── Main Container ───────────────────────────────── */
@@ -269,11 +333,6 @@ footer {
 
 /* ── Responsive ───────────────────────────────────── */
 @media (max-width: 600px) {
-    header {
-        font-size: 16px;
-        padding: 14px;
-    }
-
     .container h1 {
         font-size: 20px;
     }

@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Space Invaders — BlackAngelSK</title>
+    <meta name="description" content="Classic Space Invaders — shoot the aliens, save the planet.">
+    <link rel="icon" href="../logo-mark.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <a href="#main-content" class="skip-link">Skip to main content</a>
+
+    <header>
+        BlackAngelSK.github.io
+        <nav class="nav-tabs" aria-label="Main navigation">
+            <a href="/" class="nav-tab">Home</a>
+            <a href="/games/" class="nav-tab nav-tab--active">Games</a>
+            <a href="/usefull_tools/tools.html" class="nav-tab">Tools</a>
+        </nav>
+    </header>
+
+    <main id="main-content" class="container game-container">
+        <div class="game-hud">
+            <div class="hud-item">SCORE: <span id="score">0</span></div>
+            <div class="hud-item">LIVES: <span id="lives">3</span></div>
+            <div class="hud-item">WAVE: <span id="wave">1</span></div>
+        </div>
+
+        <canvas id="game" width="640" height="480"></canvas>
+
+        <div class="game-controls-info">
+            <span>&larr; &rarr; MOVE</span>
+            <span>SPACE SHOOT</span>
+            <span>P PAUSE</span>
+        </div>
+
+        <div id="overlay" class="game-overlay">
+            <div class="overlay-text">
+                <h2 id="overlay-title">SPACE INVADERS</h2>
+                <p id="overlay-score"></p>
+                <p id="overlay-msg">Press SPACE to start</p>
+            </div>
+        </div>
+    </main>
+
+    <footer>
+        &copy; 2026 BlackAngelSK. All Rights Reserved.
+    </footer>
+
+    <script src="game.js"></script>
+</body>
+</html>
