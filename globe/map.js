@@ -805,7 +805,7 @@ var _euMembers = [
     'Czech Republic', 'Denmark', 'Estonia', 'Finland', 'France',
     'Germany', 'Greece', 'Hungary', 'Ireland', 'Italy',
     'Latvia', 'Lithuania', 'Luxembourg', 'Malta', 'Netherlands',
-    'Norway', 'Poland', 'Portugal', 'Romania', 'Slovakia', 'Slovenia',
+    'Poland', 'Portugal', 'Romania', 'Slovakia', 'Slovenia',
     'Spain', 'Sweden'
 ];
 var _euLayer = null, _euLabelsLayer = null, _euVisible = false, _euLoading = false;
