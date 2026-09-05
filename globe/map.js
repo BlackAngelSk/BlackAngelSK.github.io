@@ -214,6 +214,35 @@ var _regionsLayer  = null, _allRegionLayers = [];
 
 var _selRegionLayer = null, _selRegionOrig = null;
 
+/* --- polygon centroid helper (largest ring) --------- */
+function _polygonCentroid(layer) {
+    var rings = [];
+    layer.eachLayer(function (l) {
+        if (l.getLatLngs) {
+            var ll = l.getLatLngs();
+            /* MultiPolygon -> array of arrays of arrays */
+            if (ll.length && ll[0].length && ll[0][0] && ll[0][0].length) {
+                ll.forEach(function (poly) { poly.forEach(function (ring) { rings.push(ring); }); });
+            } else if (ll.length && ll[0].length && ll[0][0]) {
+                /* Polygon -> array of arrays */
+                ll.forEach(function (ring) { rings.push(ring); });
+            } else if (ll.length) {
+                rings.push(ll);
+            }
+        }
+    });
+    if (!rings.length) return layer.getBounds().getCenter();
+    /* pick the ring with the most points (= mainland) */
+    rings.sort(function (a, b) { return b.length - a.length; });
+    var ring = rings[0];
+    var lat = 0, lng = 0;
+    for (var i = 0; i < ring.length; i++) {
+        lat += ring[i].lat || ring[i][0] || 0;
+        lng += ring[i].lng || ring[i][1] || 0;
+    }
+    return L.latLng(lat / ring.length, lng / ring.length);
+}
+
 /* --- property helpers ------------------------------------- */
 function _countryNameOf(f) {
     var p = f && f.properties; if (!p) return '';
@@ -525,7 +554,7 @@ function _loadPoliticalOverlay() {
                 });
                 /* Permanent centroid label */
                 try {
-                    var centroid = layer.getBounds().getCenter();
+                    var centroid = _polygonCentroid(layer);
                     var fs = _labelFontSize(map.getZoom());
                     var label = L.marker(centroid, {
                         icon: L.divIcon({
@@ -654,6 +683,231 @@ function toggleRivers() {
 }
 
 $('#btn-rivers').addEventListener('click', toggleRivers);
+
+/* =====================================================
+   NATO Member Countries Overlay
+   ===================================================== */
+var _natoMembers = [
+    'Albania', 'Belgium', 'Bulgaria', 'Canada', 'Croatia',
+    'Czech Republic', 'Denmark', 'Estonia', 'Finland', 'France',
+    'Germany', 'Greece', 'Hungary', 'Iceland', 'Italy',
+    'Latvia', 'Lithuania', 'Luxembourg', 'Montenegro', 'Netherlands',
+    'Macedonia', 'Norway', 'Poland', 'Portugal', 'Romania',
+    'Slovakia', 'Slovenia', 'Spain', 'Sweden', 'Turkey',
+    'England', 'USA'
+];
+var _natoLayer = null, _natoLabelsLayer = null, _natoVisible = false, _natoLoading = false;
+
+function _natoColor() { return '#3b82f6'; }
+
+function _isNatoMember(name) {
+    if (!name) return false;
+    var n = name.toLowerCase();
+    return _natoMembers.some(function (m) { return m.toLowerCase() === n; });
+}
+
+function _loadNatoOverlay() {
+    if (_natoLoading) return;
+    _natoLoading = true;
+    var btn = $('#btn-nato');
+    btn.textContent = '⏳ NATO'; btn.disabled = true;
+
+    var src = _bordersData ? Promise.resolve(_bordersData) :
+        fetch(BORDERS_GEOJSON_URL).then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); });
+
+    src.then(function (data) {
+        _natoLabelsLayer = L.layerGroup();
+        var filtered = {
+            type: 'FeatureCollection',
+            features: data.features.filter(function (f) {
+                return _isNatoMember(_countryNameOf(f));
+            })
+        };
+        _natoLayer = L.geoJSON(filtered, {
+            style: function () {
+                return {
+                    color: '#60a5fa', weight: 6, opacity: 0.85,
+                    fillColor: 'rgba(59,130,246,0.30)', fillOpacity: 0.30,
+                    dashArray: '', renderer: canvasRenderer
+                };
+            },
+            onEachFeature: function (feature, layer) {
+                var cn = _countryNameOf(feature);
+                if (cn) layer.bindTooltip(cn, { sticky: true, className: 'import-tooltip' });
+                layer.on('mouseover', function (e) {
+                    this.setStyle({ weight: 3.5, color: '#93c5fd', fillOpacity: 0.45, opacity: 1 });
+                    this.bringToFront();
+                    $('#status-text').textContent = '🛡️ NATO — ' + cn;
+                });
+                layer.on('mouseout', function (e) {
+                    _natoLayer.resetStyle(this);
+                });
+                try {
+                    var centroid = _polygonCentroid(layer);
+                    var fs = _labelFontSize(map.getZoom());
+                    var label = L.marker(centroid, {
+                        icon: L.divIcon({
+                            className: 'political-label',
+                            html: '<span style="font-size:' + fs + ';color:#93c5fd">🛡️ ' + cn + '</span>',
+                            iconSize: [0, 0], iconAnchor: [0, 0]
+                        }),
+                        interactive: false
+                    });
+                    _natoLabelsLayer.addLayer(label);
+                } catch (_) {}
+            }
+        });
+        _natoLoading = false;
+        _natoLayer.addTo(map);
+        _natoLabelsLayer.addTo(map);
+        _natoVisible = true;
+        btn.classList.add('active');
+        btn.textContent = '🛡️ NATO'; btn.disabled = false;
+        $('#status-text').textContent = '🛡️ NATO member countries (' + filtered.features.length + ' members)';
+    })
+    .catch(function (err) {
+        console.error('Failed to load NATO overlay:', err);
+        alert('Failed to load NATO overlay.\n' + err.message);
+        _natoLoading = false;
+        btn.textContent = '🛡️ NATO'; btn.disabled = false;
+    });
+}
+
+function toggleNato() {
+    var btn = $('#btn-nato');
+    if (_natoVisible && _natoLayer) {
+        map.removeLayer(_natoLayer);
+        if (_natoLabelsLayer) map.removeLayer(_natoLabelsLayer);
+        _natoLayer = null; _natoVisible = false;
+        _natoLabelsLayer = null;
+        btn.classList.remove('active');
+        $('#status-text').textContent = 'NATO overlay hidden';
+        return;
+    }
+    if (_natoLayer) {
+        _natoLayer.addTo(map);
+        if (_natoLabelsLayer) _natoLabelsLayer.addTo(map);
+        _natoVisible = true;
+        btn.classList.add('active');
+        $('#status-text').textContent = '🛡️ NATO member countries';
+        return;
+    }
+    _loadNatoOverlay();
+}
+
+$('#btn-nato').addEventListener('click', toggleNato);
+
+/* =====================================================
+   EU Member Countries Overlay
+   ===================================================== */
+var _euMembers = [
+    'Austria', 'Belgium', 'Bulgaria', 'Croatia', 'Cyprus',
+    'Czech Republic', 'Denmark', 'Estonia', 'Finland', 'France',
+    'Germany', 'Greece', 'Hungary', 'Ireland', 'Italy',
+    'Latvia', 'Lithuania', 'Luxembourg', 'Malta', 'Netherlands',
+    'Norway', 'Poland', 'Portugal', 'Romania', 'Slovakia', 'Slovenia',
+    'Spain', 'Sweden'
+];
+var _euLayer = null, _euLabelsLayer = null, _euVisible = false, _euLoading = false;
+
+function _euColor() { return '#fbbf24'; }
+
+function _isEuMember(name) {
+    if (!name) return false;
+    var n = name.toLowerCase();
+    return _euMembers.some(function (m) { return m.toLowerCase() === n; });
+}
+
+function _loadEuOverlay() {
+    if (_euLoading) return;
+    _euLoading = true;
+    var btn = $('#btn-eu');
+    btn.textContent = '⏳ EU'; btn.disabled = true;
+
+    var src = _bordersData ? Promise.resolve(_bordersData) :
+        fetch(BORDERS_GEOJSON_URL).then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); });
+
+    src.then(function (data) {
+        _euLabelsLayer = L.layerGroup();
+        var filtered = {
+            type: 'FeatureCollection',
+            features: data.features.filter(function (f) {
+                return _isEuMember(_countryNameOf(f));
+            })
+        };
+        _euLayer = L.geoJSON(filtered, {
+            style: function () {
+                return {
+                    color: '#f59e0b', weight: 6, opacity: 0.85,
+                    fillColor: 'rgba(251,191,36,0.25)', fillOpacity: 0.25,
+                    dashArray: '', renderer: canvasRenderer
+                };
+            },
+            onEachFeature: function (feature, layer) {
+                var cn = _countryNameOf(feature);
+                if (cn) layer.bindTooltip(cn, { sticky: true, className: 'import-tooltip' });
+                layer.on('mouseover', function (e) {
+                    this.setStyle({ weight: 3.5, color: '#fcd34d', fillOpacity: 0.40, opacity: 1 });
+                    this.bringToFront();
+                    $('#status-text').textContent = '🇪🇺 EU — ' + cn;
+                });
+                layer.on('mouseout', function (e) {
+                    _euLayer.resetStyle(this);
+                });
+                try {
+                    var centroid = _polygonCentroid(layer);
+                    var fs = _labelFontSize(map.getZoom());
+                    var label = L.marker(centroid, {
+                        icon: L.divIcon({
+                            className: 'political-label',
+                            html: '<span style="font-size:' + fs + ';color:#fcd34d">🇪🇺 ' + cn + '</span>',
+                            iconSize: [0, 0], iconAnchor: [0, 0]
+                        }),
+                        interactive: false
+                    });
+                    _euLabelsLayer.addLayer(label);
+                } catch (_) {}
+            }
+        });
+        _euLoading = false;
+        _euLayer.addTo(map);
+        _euLabelsLayer.addTo(map);
+        _euVisible = true;
+        btn.classList.add('active');
+        btn.textContent = '🇪🇺 EU'; btn.disabled = false;
+        $('#status-text').textContent = '🇪🇺 EU member countries (' + filtered.features.length + ' members)';
+    })
+    .catch(function (err) {
+        console.error('Failed to load EU overlay:', err);
+        alert('Failed to load EU overlay.\n' + err.message);
+        _euLoading = false;
+        btn.textContent = '🇪🇺 EU'; btn.disabled = false;
+    });
+}
+
+function toggleEu() {
+    var btn = $('#btn-eu');
+    if (_euVisible && _euLayer) {
+        map.removeLayer(_euLayer);
+        if (_euLabelsLayer) map.removeLayer(_euLabelsLayer);
+        _euLayer = null; _euVisible = false;
+        _euLabelsLayer = null;
+        btn.classList.remove('active');
+        $('#status-text').textContent = 'EU overlay hidden';
+        return;
+    }
+    if (_euLayer) {
+        _euLayer.addTo(map);
+        if (_euLabelsLayer) _euLabelsLayer.addTo(map);
+        _euVisible = true;
+        btn.classList.add('active');
+        $('#status-text').textContent = '🇪🇺 EU member countries';
+        return;
+    }
+    _loadEuOverlay();
+}
+
+$('#btn-eu').addEventListener('click', toggleEu);
 
 /* =====================================================
    Tool Management
