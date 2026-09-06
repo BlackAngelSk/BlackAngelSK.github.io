@@ -206,6 +206,7 @@ var REGION_MIN_ZOOM = 6;
 var _bordersData   = null, _bordersLayer = null;
 var _bordersLoading = false, _bordersVisible = false;
 var _allCountryLayers = [];
+var _borderClickTimer = null;
 
 var _selCountryLayer = null, _selCountryName = null, _selCountryOrig = null;
 
@@ -429,7 +430,7 @@ function toggleBorders() {
             _bordersLayer = L.geoJSON(data, {
                 style: function () {
                     return {
-                        color: 'rgba(120, 180, 255, 0.7)', weight: 1.5,
+                        color: 'rgba(120, 180, 255, 0.7)', weight: 2.5,
                         fillColor: 'rgba(120, 180, 255, 0.08)', fillOpacity: 0.18,
                         dashArray: '', renderer: canvasRenderer
                     };
@@ -440,16 +441,24 @@ function toggleBorders() {
                     if (cn) layer.bindTooltip(cn, { sticky: true, className: 'import-tooltip' });
                     layer.on('mouseover', function (e) {
                         if (_selCountryLayer === this) return;
-                        this.setStyle({ weight: 4, color: '#78b4ff', fillOpacity: 0.22, opacity: 1 });
+                        if (this._hiddenBySel) return;
+                        this.setStyle({ weight: 5, color: '#78b4ff', fillOpacity: 0.22, opacity: 1 });
                         this.bringToFront();
-                        $('#status-text').textContent = '🗺️ ' + cn + ' — double-click to select';
+                        $('#status-text').textContent = '🗺️ ' + cn + ' — click to select';
                     });
                     layer.on('mouseout', function (e) {
                         if (_selCountryLayer === this) return;
                         if (this._hiddenBySel) return;
                         _bordersLayer.resetStyle(this);
                     });
+                    layer.on('click', function (e) {
+                        if (_borderClickTimer) { clearTimeout(_borderClickTimer); _borderClickTimer = null; }
+                        _borderClickTimer = setTimeout(function () {
+                            _selectCountry(layer, cn);
+                        }, 300);
+                    });
                     layer.on('dblclick', function (e) {
+                        if (_borderClickTimer) { clearTimeout(_borderClickTimer); _borderClickTimer = null; }
                         if (e && e.originalEvent) L.DomEvent.stop(e.originalEvent);
                         _selectCountry(this, cn);
                     });
@@ -2474,6 +2483,271 @@ function handleFileImport(file) {
 }
 
 /* =====================================================
+   Yandex Maps URL Import
+   ===================================================== */
+function parseYandexMapsUrl(url) {
+    const isYandex = /yandex\.(ru|com|uz|by|kz)\/maps/.test(url);
+    if (!isYandex) return null;
+    try {
+        const parsed = new URL(url);
+        const params = parsed.searchParams;
+        const result = {
+            lat: null, lng: null, zoom: 15,
+            points: [], route: [], searchText: null, spn: null, constructorHash: null
+        };
+
+        // Extract center from ll=lng,lat
+        const ll = params.get('ll');
+        if (ll) {
+            const parts = ll.split(',');
+            if (parts.length === 2) {
+                result.lng = parseFloat(parts[0]);
+                result.lat = parseFloat(parts[1]);
+            }
+        }
+
+        // Extract zoom
+        const z = params.get('z');
+        if (z) result.zoom = parseInt(z, 10) || 15;
+
+        // Extract span
+        const spn = params.get('spn');
+        if (spn) {
+            const spnParts = spn.split(',');
+            if (spnParts.length === 2) {
+                result.spn = { lng: parseFloat(spnParts[0]), lat: parseFloat(spnParts[1]) };
+            }
+        }
+
+        // Extract text search query
+        const text = params.get('text');
+        if (text) result.searchText = text;
+
+        // Parse ALL pt points: pt=lng,lat,scale,type,flags~lng,lat,scale,type,flags~...
+        const pt = params.get('pt');
+        if (pt) {
+            const ptSegments = pt.split('~');
+            ptSegments.forEach(function(seg) {
+                const p = seg.split(',');
+                if (p.length >= 2) {
+                    const lng = parseFloat(p[0]);
+                    const lat = parseFloat(p[1]);
+                    const scale = p.length >= 3 ? parseFloat(p[2]) : 949;
+                    const type = p.length >= 4 ? parseInt(p[3], 10) : 0;
+                    const flags = p.length >= 5 ? p[4] : '';
+                    if (!isNaN(lat) && !isNaN(lng)) {
+                        result.points.push({ lat: lat, lng: lng, scale: scale, type: type, flags: flags });
+                    }
+                }
+            });
+        }
+
+        // Extract route from rtext=lat1,lng1~lat2,lng2~...
+        const rtext = params.get('rtext');
+        if (rtext) {
+            const waypoints = rtext.split('~').map(function(wp) {
+                const wpParts = wp.split(',');
+                return { lat: parseFloat(wpParts[0]), lng: parseFloat(wpParts[1]) };
+            }).filter(function(wp) { return !isNaN(wp.lat) && !isNaN(wp.lng); });
+            if (waypoints.length >= 2) result.route = waypoints;
+        }
+
+        // Extract user map constructor hash from um=constructor:HASH
+        const um = params.get('um');
+        if (um) {
+            const umMatch = um.match(/constructor:([a-f0-9]+)/i);
+            if (umMatch) result.constructorHash = umMatch[1];
+        }
+
+        // If no coordinates found and no constructor hash, return null
+        if (result.lat === null && result.lng === null && result.points.length === 0 && result.route.length === 0 && !result.constructorHash) return null;
+        return result;
+    } catch (_) {
+        return null;
+    }
+}
+
+function fetchYandexMapData(yandexData) {
+    const features = [];
+    let i = 0;
+
+    // Create marker features for EACH parsed point
+    if (yandexData.points && yandexData.points.length > 0) {
+        yandexData.points.forEach(function(pt, idx) {
+            const isBusiness = pt.type === 1;
+            features.push({
+                id: 'yandex_pt_' + (i++),
+                name: 'Yandex Point ' + (idx + 1),
+                type: 'marker',
+                color: isBusiness ? '#ffaa00' : '#ff0000',
+                weight: 3,
+                dashStyle: 'solid',
+                geometryType: 'Point',
+                geometry: { type: 'Point', coordinates: [pt.lng, pt.lat] },
+                text: (isBusiness ? 'POI' : 'Point') + ' ' + (idx + 1),
+                checked: true,
+                folder: 'Yandex Points'
+            });
+        });
+    }
+
+    // Create route polyline and individual route point markers
+    if (yandexData.route && yandexData.route.length >= 2) {
+        // Route polyline (dashed)
+        features.push({
+            id: 'yandex_route_' + (i++),
+            name: 'Yandex Route',
+            type: 'polyline',
+            color: '#ff4444',
+            weight: 3,
+            dashStyle: 'dashed',
+            geometryType: 'LineString',
+            geometry: {
+                type: 'LineString',
+                coordinates: yandexData.route.map(function(wp) { return [wp.lng, wp.lat]; })
+            },
+            text: 'Route',
+            checked: true,
+            folder: 'Yandex Routes'
+        });
+
+        // Individual route point markers
+        yandexData.route.forEach(function(wp, idx) {
+            features.push({
+                id: 'yandex_rt_' + (i++),
+                name: 'Route Waypoint ' + (idx + 1),
+                type: 'marker',
+                color: '#ff4444',
+                weight: 3,
+                dashStyle: 'solid',
+                geometryType: 'Point',
+                geometry: { type: 'Point', coordinates: [wp.lng, wp.lat] },
+                text: 'Waypoint ' + (idx + 1),
+                checked: true,
+                folder: 'Yandex Routes'
+            });
+        });
+    }
+
+    // Only create a center pin if there are no points and no route
+    if (yandexData.points.length === 0 && yandexData.route.length === 0 && yandexData.lat !== null && yandexData.lng !== null) {
+        features.push({
+            id: 'yandex_center_' + (i++),
+            name: 'Yandex Center',
+            type: 'marker',
+            color: '#ff0000',
+            weight: 3,
+            dashStyle: 'solid',
+            geometryType: 'Point',
+            geometry: { type: 'Point', coordinates: [yandexData.lng, yandexData.lat] },
+            text: 'Center',
+            checked: true,
+            folder: 'Yandex Points'
+        });
+    }
+
+    return features;
+}
+
+function fetchYandexConstructorMap(hash, btn) {
+    const proxyBase = 'http://localhost:8080/?url=';
+    const pageUrl = 'https://yandex.com/maps/?um=constructor:' + hash;
+
+    return fetch(proxyBase + encodeURIComponent(pageUrl))
+        .then(function(r) {
+            if (!r.ok) throw new Error('Failed to fetch Yandex map page: HTTP ' + r.status);
+            return r.text();
+        })
+        .then(function(html) {
+            // Extract userMap.features JSON from the page
+            var marker = '"userMap":{"features":[';
+            var idx = html.indexOf(marker);
+            if (idx < 0) throw new Error('Could not find map features in Yandex page');
+            var arrStart = html.indexOf('[', idx);
+            // Find matching closing bracket
+            var depth = 0, end = -1;
+            for (var i = arrStart; i < Math.min(arrStart + 2000000, html.length); i++) {
+                if (html[i] === '[') depth++;
+                else if (html[i] === ']') {
+                    depth--;
+                    if (depth === 0) { end = i + 1; break; }
+                }
+            }
+            if (end < 0) throw new Error('Could not parse map features array');
+            var featuresJson = html.substring(arrStart, end);
+            var features = JSON.parse(featuresJson);
+            return parseYandexConstructorFeatures(features);
+        });
+}
+
+function parseYandexConstructorFeatures(features) {
+    var result = [];
+    var i = 0;
+
+    features.forEach(function(f) {
+        try {
+            var name = f.title || 'Feature ' + (i + 1);
+            var geom = f.geometry;
+            if (!geom || !geom.coordinates) return;
+
+            if (f.type === 'line' || geom.type === 'LineString') {
+                var coords = geom.coordinates;
+                if (coords.length < 2) return;
+                var strokeColor = (f.stroke && f.stroke.color) ? f.stroke.color : '#4488ff';
+                var strokeWidth = (f.stroke && f.stroke.width) ? f.stroke.width : 2;
+                result.push({
+                    id: 'ym_' + (i++),
+                    name: name,
+                    type: 'polyline',
+                    color: strokeColor,
+                    weight: strokeWidth,
+                    dashStyle: 'solid',
+                    geometryType: 'LineString',
+                    geometry: { type: 'LineString', coordinates: coords },
+                    text: name,
+                    checked: true,
+                    folder: 'Yandex Map'
+                });
+            } else if (f.type === 'polygon' || geom.type === 'Polygon') {
+                /* Yandex coords are GeoJSON Polygon: [[ring1],[hole1],...].
+                   The import system expects flat coords: [ring1 only]. */
+                var polyCoords = geom.coordinates;
+                if (Array.isArray(polyCoords[0]) && !Array.isArray(polyCoords[0][0])) {
+                    /* Already flat [[lng,lat],...] — unexpected but fine */
+                } else if (Array.isArray(polyCoords[0]) && Array.isArray(polyCoords[0][0])) {
+                    /* Nested [[[lng,lat],...]] — unwrap first ring */
+                    polyCoords = polyCoords[0];
+                }
+                if (!polyCoords || polyCoords.length < 3) return;
+                var strokeColor = (f.stroke && f.stroke.color) ? f.stroke.color : '#ff4444';
+                var strokeWidth = (f.stroke && f.stroke.width) ? f.stroke.width : 2;
+                var fillColor = (f.fill && f.fill.color) ? f.fill.color : strokeColor;
+                var fillOpacity = (f.fill && f.fill.opacity !== undefined) ? Math.max(f.fill.opacity, 0.35) : 0.35;
+                result.push({
+                    id: 'ym_' + (i++),
+                    name: name,
+                    type: 'polygon',
+                    color: strokeColor,
+                    fillColor: fillColor,
+                    fillOpacity: fillOpacity,
+                    weight: strokeWidth,
+                    dashStyle: 'solid',
+                    geometryType: 'Polygon',
+                    geometry: { type: 'Polygon', coordinates: polyCoords },
+                    text: name,
+                    checked: true,
+                    folder: 'Yandex Map'
+                });
+            }
+        } catch (e) {
+            console.warn('Skipping Yandex feature:', e);
+        }
+    });
+
+    return result;
+}
+
+/* =====================================================
    Google My Maps KML Import
    ===================================================== */
 function parseGoogleMapsUrl(url) {
@@ -2735,6 +3009,46 @@ function handleUrlImport() {
     if (!url) { alert('Please enter a URL.'); return; }
     const btn = $('#import-url-btn');
     btn.disabled = true; btn.textContent = 'Fetching…';
+
+    /* ── Yandex Maps URL → local parse ────── */
+    const yandexData = parseYandexMapsUrl(url);
+    if (yandexData) {
+        // Constructor maps need to fetch data from Yandex servers
+        if (yandexData.constructorHash) {
+            fetchYandexConstructorMap(yandexData.constructorHash, btn)
+                .then(features => {
+                    if (features.length === 0) {
+                        // Fall back to URL params
+                        const fallback = fetchYandexMapData(yandexData);
+                        if (fallback.length === 0) { alert('No features found in this Yandex map.'); return; }
+                        importPendingFeatures = fallback;
+                    } else {
+                        importPendingFeatures = features;
+                    }
+                    renderPreview(importPendingFeatures);
+                })
+                .catch(err => {
+                    console.error('Yandex constructor map import failed:', err);
+                    // Fall back to URL params
+                    const fallback = fetchYandexMapData(yandexData);
+                    if (fallback.length > 0) {
+                        importPendingFeatures = fallback;
+                        renderPreview(importPendingFeatures);
+                    } else {
+                        alert('Failed to import Yandex map.\n' + err.message);
+                    }
+                })
+                .finally(() => { btn.disabled = false; btn.textContent = 'Fetch & Import'; });
+            return;
+        }
+        // Simple URL-based map
+        const yandexFeatures = fetchYandexMapData(yandexData);
+        if (yandexFeatures.length === 0) { alert('No coordinates found in this Yandex Maps URL.'); btn.disabled = false; btn.textContent = 'Fetch & Import'; return; }
+        importPendingFeatures = yandexFeatures;
+        renderPreview(importPendingFeatures);
+        btn.disabled = false; btn.textContent = 'Fetch & Import';
+        return;
+    }
 
     /* ── Google Maps URL → KML proxy flow ────── */
     const mid = parseGoogleMapsUrl(url);
