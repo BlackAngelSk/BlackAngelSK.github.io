@@ -164,10 +164,10 @@ L.control.layers({
 /* ── Map Label Languages ─────────────────────────── */
 const LANGUAGES = [
     { code: 'EN', flag: '🇬🇧', url: 'https://{s}.basemaps.cartocdn.com/light_only_labels/{z}/{x}/{y}{r}.png', max: 19, attr: '© CARTO © OSM' },
-    { code: 'SK', flag: '🇸🇰', url: 'https://{s}.basemaps.cartocdn.com/light_only_labels/{z}/{x}/{y}{r}.png', max: 19, attr: '© CARTO © OSM' },
+   /* { code: 'SK', flag: '🇸🇰', url: 'https://{s}.basemaps.cartocdn.com/light_only_labels/{z}/{x}/{y}{r}.png', max: 19, attr: '© CARTO © OSM' },
     { code: 'DE', flag: '🇩🇪', url: 'https://{s}.basemaps.cartocdn.com/light_only_labels/{z}/{x}/{y}{r}.png', max: 19, attr: '© CARTO © OSM' },
     { code: 'JP', flag: '🇯🇵', url: 'https://{s}.basemaps.cartocdn.com/light_only_labels/{z}/{x}/{y}{r}.png', max: 19, attr: '© CARTO © OSM' },
-    { code: 'OFF', flag: '🚫', url: '', max: 19, attr: '' }
+    */ { code: 'OFF', flag: '🚫', url: '', max: 19, attr: '' }
 ];
 let langIdx = -1;
 let langOverlay = null;
