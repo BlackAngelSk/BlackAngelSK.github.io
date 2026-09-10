@@ -1157,3 +1157,329 @@ body.layout-editing #sidebar {
     }
     .top-tool-label { display: none; }
 }
+
+/* ===================================================
+   THEME SWITCHER — Floating button + dropdown
+   =================================================== */
+.theme-switcher-wrap {
+    position: fixed;
+    top: 10px;
+    right: 10px;
+    z-index: 1100;
+}
+#theme-dropdown {
+    position: absolute;
+    top: calc(100% + 8px);
+    right: 0;
+    width: 240px;
+    background: rgba(8, 14, 35, 0.97);
+    border: 1px solid rgba(100, 160, 255, 0.3);
+    border-radius: 12px;
+    padding: 6px;
+    z-index: 2000;
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
+    transition: opacity 0.2s ease, transform 0.2s ease;
+}
+#theme-dropdown.hidden {
+    opacity: 0;
+    pointer-events: none;
+    transform: translateY(-6px);
+}
+.theme-dropdown-title {
+    font-size: 0.6rem;
+    font-weight: 700;
+    color: rgba(140, 180, 255, 0.4);
+    text-transform: uppercase;
+    letter-spacing: 1.2px;
+    padding: 6px 10px 4px;
+}
+.theme-option {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: 8px;
+    padding: 8px 10px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    text-align: left;
+}
+.theme-option:hover {
+    background: rgba(40, 80, 160, 0.35);
+    border-color: rgba(100, 160, 255, 0.15);
+}
+.theme-option.active {
+    background: rgba(40, 100, 200, 0.5);
+    border-color: rgba(120, 200, 255, 0.4);
+}
+.theme-opt-icon {
+    font-size: 1.2rem;
+    flex-shrink: 0;
+    width: 28px;
+    text-align: center;
+}
+.theme-opt-info {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    min-width: 0;
+}
+.theme-opt-name {
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: #c0d8ff;
+}
+.theme-opt-desc {
+    font-size: 0.62rem;
+    color: rgba(140, 180, 255, 0.45);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.theme-option.active .theme-opt-name { color: #fff; }
+
+/* ===================================================
+   THEME: MINIMAL — Floating pill toolbar, no sidebar
+   =================================================== */
+.theme-minimal #top-bar {
+    top: auto !important;
+    bottom: 44px !important;
+    left: 50% !important;
+    right: auto !important;
+    transform: translateX(-50%);
+    width: auto !important;
+    height: auto !important;
+    border-radius: 24px !important;
+    border: 1px solid rgba(100, 160, 255, 0.25) !important;
+    padding: 3px !important;
+    background: rgba(8, 14, 35, 0.92) !important;
+    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.5), 0 0 40px rgba(40, 80, 160, 0.1) !important;
+    justify-content: center !important;
+    backdrop-filter: blur(20px) !important;
+    -webkit-backdrop-filter: blur(20px) !important;
+}
+.theme-minimal .top-bar-left { display: none !important; }
+.theme-minimal .top-bar-right { display: flex !important; gap: 4px !important; }
+.theme-minimal .top-tool-label { display: none !important; }
+.theme-minimal .top-tool-btn { min-width: 34px; padding: 5px 5px !important; }
+.theme-minimal .top-tool-icon { font-size: 1rem; }
+.theme-minimal .top-tool-sep { height: 18px; margin: 0 2px; }
+.theme-minimal .top-tool-group { gap: 0; padding: 2px 3px; }
+
+.theme-minimal #sidebar { display: none !important; }
+
+.theme-minimal #style-panel {
+    bottom: 90px !important;
+    left: 12px !important;
+    width: clamp(120px, 18vw, 155px) !important;
+}
+.theme-minimal #style-panel .panel-body {
+    max-height: 200px;
+    overflow-y: auto;
+}
+
+.theme-minimal #status-bar {
+    height: 24px !important;
+    background: rgba(8, 14, 35, 0.8) !important;
+    border-top: 1px solid rgba(100, 160, 255, 0.12) !important;
+}
+.theme-minimal #status-text { font-size: 0.65rem !important; }
+
+.theme-minimal #settings-panel {
+    top: auto !important;
+    bottom: 90px !important;
+    right: 12px !important;
+}
+
+.theme-minimal #btn-finish {
+    bottom: 80px !important;
+}
+
+.theme-minimal #flag-panel {
+    top: auto !important;
+    bottom: 90px !important;
+    right: 12px !important;
+}
+
+/* ===================================================
+   THEME: SIDEBAR LEFT — Sidebar on left, clean right
+   =================================================== */
+.theme-sidebar-left #sidebar {
+    top: 56px !important;
+    right: auto !important;
+    left: 8px !important;
+}
+.theme-sidebar-left #style-panel {
+    left: auto !important;
+    right: 12px !important;
+    bottom: 48px !important;
+}
+.theme-sidebar-left #settings-panel {
+    right: auto !important;
+    left: 12px !important;
+}
+.theme-sidebar-left #flag-panel {
+    right: auto !important;
+    left: 12px !important;
+}
+.theme-sidebar-left #btn-finish {
+    /* keep centered */
+}
+.theme-sidebar-left #top-bar .top-bar-left {
+    /* keep as-is */
+}
+
+/* ===================================================
+   THEME: DARK PRO — Full dashboard, collapsible panels
+   =================================================== */
+.theme-dark-pro #top-bar {
+    height: 42px !important;
+    background: rgba(4, 8, 20, 0.97) !important;
+    border-bottom: 1px solid rgba(60, 120, 200, 0.3) !important;
+}
+.theme-dark-pro .top-tool-group {
+    background: rgba(10, 18, 40, 0.8) !important;
+    border-color: rgba(60, 120, 200, 0.2) !important;
+}
+.theme-dark-pro .top-tool-btn:hover {
+    background: rgba(30, 70, 160, 0.5) !important;
+}
+.theme-dark-pro .top-tool-btn.active {
+    background: rgba(30, 80, 180, 0.85) !important;
+}
+
+/* Dark Pro sidebar — left side, full height, collapsible */
+.theme-dark-pro #sidebar {
+    top: 42px !important;
+    right: auto !important;
+    left: 0 !important;
+    width: 200px !important;
+    max-height: calc(100vh - 42px - 28px) !important;
+    border-radius: 0 !important;
+    border-left: none !important;
+    border-top: none !important;
+    border-bottom: none !important;
+    background: rgba(4, 8, 20, 0.95) !important;
+    border-right: 1px solid rgba(60, 120, 200, 0.2) !important;
+    gap: 0 !important;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(60, 120, 200, 0.3) transparent;
+}
+
+.theme-dark-pro .sidebar-section {
+    background: transparent !important;
+    border: none !important;
+    border-bottom: 1px solid rgba(60, 120, 200, 0.1) !important;
+    border-radius: 0 !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    padding: 0 !important;
+}
+
+/* Collapsible section titles */
+.theme-dark-pro .sidebar-title {
+    cursor: pointer !important;
+    user-select: none;
+    padding: 10px 12px !important;
+    font-size: 0.62rem !important;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    transition: background 0.15s;
+    position: relative;
+}
+.theme-dark-pro .sidebar-title::after {
+    content: '▾';
+    font-size: 0.55rem;
+    color: rgba(140, 180, 255, 0.35);
+    transition: transform 0.2s;
+}
+.theme-dark-pro .sidebar-title:hover {
+    background: rgba(30, 60, 120, 0.25);
+}
+.theme-dark-pro .sidebar-section.collapsed .sidebar-title::after {
+    transform: rotate(-90deg);
+}
+.theme-dark-pro .sidebar-section.collapsed .sidebar-btn,
+.theme-dark-pro .sidebar-section.collapsed .sidebar-info {
+    display: none !important;
+}
+
+.theme-dark-pro .sidebar-btn {
+    margin: 0 !important;
+    padding: 6px 12px !important;
+    border-radius: 0 !important;
+    border-left: 2px solid transparent !important;
+    font-size: 0.75rem !important;
+}
+.theme-dark-pro .sidebar-btn:hover {
+    background: rgba(30, 60, 120, 0.3) !important;
+    border-left-color: rgba(100, 180, 255, 0.4) !important;
+}
+.theme-dark-pro .sidebar-btn.active {
+    background: rgba(30, 80, 180, 0.5) !important;
+    border-left-color: #4a9eff !important;
+}
+
+.theme-dark-pro .sidebar-info {
+    padding: 8px 12px !important;
+}
+
+/* Dark Pro — style panel on right, slide-in */
+.theme-dark-pro #style-panel {
+    left: auto !important;
+    right: 8px !important;
+    bottom: 36px !important;
+    width: clamp(150px, 22vw, 180px) !important;
+    background: rgba(4, 8, 20, 0.97) !important;
+    border-color: rgba(60, 120, 200, 0.25) !important;
+}
+
+/* Dark Pro — status bar thinner */
+.theme-dark-pro #status-bar {
+    height: 28px !important;
+    background: rgba(4, 8, 20, 0.97) !important;
+    border-top: 1px solid rgba(60, 120, 200, 0.2) !important;
+    font-size: 0.68rem;
+}
+.theme-dark-pro #status-text {
+    color: rgba(120, 170, 240, 0.6) !important;
+}
+
+/* Dark Pro — settings panel left-aligned */
+.theme-dark-pro #settings-panel {
+    left: 208px !important;
+    right: auto !important;
+    top: 50px !important;
+    background: rgba(4, 8, 20, 0.98) !important;
+    border-color: rgba(60, 120, 200, 0.3) !important;
+}
+
+/* Dark Pro — flag panel */
+.theme-dark-pro #flag-panel {
+    left: auto !important;
+    right: 8px !important;
+    top: 50px !important;
+    background: rgba(4, 8, 20, 0.97) !important;
+    border-color: rgba(60, 120, 200, 0.25) !important;
+}
+
+/* Dark Pro — finish button */
+.theme-dark-pro #btn-finish {
+    left: calc(50% + 100px) !important;
+}
+
+/* Dark Pro — leaflet zoom control positioning */
+.theme-dark-pro .leaflet-control-zoom {
+    margin-left: 208px !important;
+}
+
+/* Dark Pro — body background slightly different */
+.theme-dark-pro body,
+.theme-dark-pro {
+    background: #020408;
+}

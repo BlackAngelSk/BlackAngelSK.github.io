@@ -52,6 +52,42 @@
         </div>
     </div>
 
+    <!-- Theme Switcher (outside top-bar so it's always accessible) -->
+    <div class="theme-switcher-wrap">
+        <button id="theme-switcher-btn" class="top-btn" title="Switch UI theme">🎨</button>
+        <div id="theme-dropdown" class="hidden">
+            <div class="theme-dropdown-title">UI Theme</div>
+            <button class="theme-option" data-theme="classic">
+                <span class="theme-opt-icon">🖥️</span>
+                <span class="theme-opt-info">
+                    <span class="theme-opt-name">Classic</span>
+                    <span class="theme-opt-desc">Top bar + right sidebar</span>
+                </span>
+            </button>
+            <button class="theme-option" data-theme="minimal">
+                <span class="theme-opt-icon">✨</span>
+                <span class="theme-opt-info">
+                    <span class="theme-opt-name">Minimal</span>
+                    <span class="theme-opt-desc">Fullscreen map, floating pill toolbar</span>
+                </span>
+            </button>
+            <button class="theme-option" data-theme="sidebar-left">
+                <span class="theme-opt-icon">📐</span>
+                <span class="theme-opt-info">
+                    <span class="theme-opt-name">Sidebar Left</span>
+                    <span class="theme-opt-desc">Left panel, clean right side</span>
+                </span>
+            </button>
+            <button class="theme-option" data-theme="dark-pro">
+                <span class="theme-opt-icon">🎛️</span>
+                <span class="theme-opt-info">
+                    <span class="theme-opt-name">Dark Pro</span>
+                    <span class="theme-opt-desc">Dashboard with collapsible panels</span>
+                </span>
+            </button>
+        </div>
+    </div>
+
     <!-- Right Sidebar — Layers & Actions -->
     <div id="sidebar">
         <div class="sidebar-section">
@@ -360,5 +396,94 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/twemoji@14.0.2/dist/twemoji.min.js" crossorigin="anonymous"></script>
     <script src="map-new.js?v=11"></script>
+
+    <!-- Theme Switcher Script -->
+    <script>
+    (function() {
+        const STORAGE_KEY = 'map-ui-theme';
+        const THEMES = ['classic', 'minimal', 'sidebar-left', 'dark-pro'];
+
+        function getTheme() {
+            try {
+                const t = localStorage.getItem(STORAGE_KEY);
+                return THEMES.includes(t) ? t : 'classic';
+            } catch(e) { return 'classic'; }
+        }
+
+        function setTheme(theme) {
+            // Remove all theme classes
+            THEMES.forEach(t => document.body.classList.remove('theme-' + t));
+            // Apply new theme (skip for classic which is default)
+            if (theme !== 'classic') {
+                document.body.classList.add('theme-' + theme);
+            }
+            // Save
+            try { localStorage.setItem(STORAGE_KEY, theme); } catch(e) {}
+            // Update dropdown active state
+            document.querySelectorAll('.theme-option').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.theme === theme);
+            });
+        }
+
+        // Apply saved theme on load
+        const savedTheme = getTheme();
+        setTheme(savedTheme);
+
+        // Theme switcher dropdown toggle
+        const switcherBtn = document.getElementById('theme-switcher-btn');
+        const dropdown = document.getElementById('theme-dropdown');
+
+        if (switcherBtn && dropdown) {
+            switcherBtn.addEventListener('click', function(e) {
+                e.stopPropagation();
+                dropdown.classList.toggle('hidden');
+            });
+
+            // Theme option clicks
+            dropdown.querySelectorAll('.theme-option').forEach(btn => {
+                btn.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    setTheme(this.dataset.theme);
+                    dropdown.classList.add('hidden');
+                });
+            });
+
+            // Close dropdown on outside click
+            document.addEventListener('click', function(e) {
+                if (!dropdown.contains(e.target) && e.target !== switcherBtn) {
+                    dropdown.classList.add('hidden');
+                }
+            });
+
+            // Close on Escape
+            document.addEventListener('keydown', function(e) {
+                if (e.key === 'Escape') {
+                    dropdown.classList.add('hidden');
+                }
+            });
+        }
+
+        // Dark Pro: collapsible sidebar sections
+        function setupDarkProCollapsible() {
+            if (!document.body.classList.contains('theme-dark-pro')) return;
+            document.querySelectorAll('#sidebar .sidebar-title').forEach(title => {
+                // Remove old handler by cloning
+                const newTitle = title.cloneNode(true);
+                title.parentNode.replaceChild(newTitle, title);
+                newTitle.addEventListener('click', function() {
+                    this.parentElement.classList.toggle('collapsed');
+                });
+            });
+        }
+
+        // Re-setup collapsible whenever theme changes
+        const observer = new MutationObserver(function() {
+            setupDarkProCollapsible();
+        });
+        observer.observe(document.body, { attributes: true, attributeFilter: ['class'] });
+        // Initial setup
+        setupDarkProCollapsible();
+    })();
+    </script>
 </body>
 </html>
