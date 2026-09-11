@@ -1730,6 +1730,8 @@ function exportGeoJSON() {
    Import Modal — State & Helpers
    ===================================================== */
 let importPendingFeatures = [];
+window._importedMaps = [];       /* Array of { name, layerGroup, features, visible } */
+window._pendingImportName = null; /* Pre-fill name for next renderPreview() call */
 
 /* ── Built-in Presets ────────────────────────── */
 const BUILT_IN_PRESETS = [
@@ -2053,6 +2055,7 @@ function openImportModal() {
     $('#import-preview').classList.add('hidden');
     $('#import-actions').classList.add('hidden');
     $('#import-url-input').value = '';
+    $('#import-name-input').value = '';
     refreshPresetsTab();
 }
 function closeImportModal() {
@@ -2165,6 +2168,20 @@ function renderPreview(features) {
     $('#import-preview').classList.remove('hidden');
     $('#import-actions').classList.remove('hidden');
     $('#import-select-all').checked = features.every(f => f.checked);
+    /* Pre-fill import name from source or pending override */
+    const nameInput = $('#import-name-input');
+    if (window._pendingImportName) {
+        nameInput.value = window._pendingImportName;
+        window._pendingImportName = null;
+    } else if (features.some(f => f.mapName)) {
+        const mapName = features.find(f => f.mapName).mapName;
+        nameInput.value = (mapName === 'Google Maps') ? 'Google Maps KML' : mapName;
+    } else {
+        const folders = new Set(features.map(f => f.folder || '').filter(Boolean));
+        if ([...folders].some(f => /yandex/i.test(f))) nameInput.value = 'Yandex Map';
+        else if ([...folders].some(f => /waypoint|route|track/i.test(f))) nameInput.value = 'GPX Import';
+        else nameInput.value = 'GeoJSON Import';
+    }
 }
 
 /* ── Select All Checkbox Sync ──────────────────── */
@@ -2241,19 +2258,146 @@ function confirmImport() {
         importedFolders[name] = folderGroups[name];
     });
 
-    /* Add to layer control */
-    if (Object.keys(importedFolders).length > 0) {
-        const base = { '🗺️ Standard': osm, '🏔 Topographic': topo, '🛰 Satellite': sat };
-        /* Preserve existing overlay layers from the control */
-        map._layers_control_overlays = map._layers_control_overlays || {};
-        Object.assign(map._layers_control_overlays, importedFolders);
-        if (window._importCtrl) map.removeControl(window._importCtrl);
-        window._importCtrl = L.control.layers(base, map._layers_control_overlays, { collapsed: false, position: 'topright' }).addTo(map);
-    }
+    /* Store in global imported maps registry and build panel */
+    const importName = ($('#import-name-input').value || '').trim() || 'Imported Map';
+    Object.keys(folderGroups).forEach(folderName => {
+        const displayName = Object.keys(folderGroups).length === 1 ? importName : importName + ' — ' + folderName;
+        const featuresInFolder = toImport.filter(f => (f.folder || 'Imported') === folderName);
+        window._importedMaps.push({
+            name: displayName,
+            layerGroup: folderGroups[folderName],
+            features: featuresInFolder,
+            visible: true
+        });
+    });
+    updateImportedMapsPanel();
 
     closeImportModal();
     if (count > 0) {
         $('#status-text').textContent = 'Imported ' + count + ' annotation' + (count !== 1 ? 's' : '') + ' from map.';
+    }
+}
+
+/* ── Imported Maps Panel ──────────────────────── */
+function updateImportedMapsPanel() {
+    let panel = $('#imported-maps-panel');
+    if (!panel) {
+        panel = document.createElement('div');
+        panel.id = 'imported-maps-panel';
+        panel.classList.add('hidden');
+        document.body.appendChild(panel);
+    }
+    if (window._importedMaps.length === 0) {
+        panel.classList.add('hidden');
+        return;
+    }
+    panel.classList.remove('hidden');
+
+    /* Track which groups are expanded (persist across rebuilds) */
+    if (!window._importedMapsExpanded) window._importedMapsExpanded = {};
+    const expanded = window._importedMapsExpanded;
+
+    /* Header */
+    let html = '<div class="panel-header">'
+        + '<span class="panel-title">📂 Imported Maps</span>'
+        + '<button class="panel-collapse-all" id="imported-maps-collapse-all">Collapse All</button>'
+        + '</div><div class="panel-body">';
+
+    window._importedMaps.forEach((entry, idx) => {
+        const featureCount = entry.features ? entry.features.length : 0;
+        const isOpen = !!expanded[idx];
+        html += '<div class="imported-map-group">'
+            + '<div class="imported-map-row" data-idx="' + idx + '">'
+            + '<input type="checkbox" ' + (entry.visible ? 'checked' : '') + ' class="imported-map-toggle" data-idx="' + idx + '">'
+            + '<span class="imported-map-name">' + escapeHtml(entry.name) + '</span>'
+            + '<span class="imported-map-count">' + featureCount + '</span>'
+            + '<span class="imported-map-chevron' + (isOpen ? ' expanded' : '') + '" data-idx="' + idx + '">▸</span>'
+            + '</div>'
+            + '<div class="imported-map-features' + (isOpen ? ' expanded' : '') + '" data-idx="' + idx + '">';
+
+        if (entry.features && entry.features.length > 0) {
+            entry.features.forEach(f => {
+                html += '<div class="imported-map-feature">'
+                    + '<span class="imported-map-feature-color" style="background:' + (f.color || '#888') + '"></span>'
+                    + '<span class="imported-map-feature-name">' + escapeHtml(f.name || 'Unnamed') + '</span>'
+                    + '<span class="imported-map-feature-type">' + (f.geometryType || '') + '</span>'
+                    + '</div>';
+            });
+        }
+        html += '</div></div>';
+    });
+
+    html += '</div>';
+    panel.innerHTML = html;
+
+    /* ── Event handlers ── */
+    /* Toggle layer visibility */
+    panel.querySelectorAll('.imported-map-toggle').forEach(cb => {
+        cb.addEventListener('change', e => {
+            const idx = parseInt(e.target.dataset.idx);
+            const entry = window._importedMaps[idx];
+            if (!entry) return;
+            entry.visible = e.target.checked;
+            if (entry.visible) {
+                entry.layerGroup.addTo(map);
+            } else {
+                map.removeLayer(entry.layerGroup);
+            }
+        });
+    });
+
+    /* Chevron toggle — clicking the entire row toggles checkbox AND chevron */
+    panel.querySelectorAll('.imported-map-row').forEach(row => {
+        row.addEventListener('click', e => {
+            /* Don't double-fire if the checkbox itself was clicked */
+            if (e.target.classList.contains('imported-map-toggle')) return;
+            const idx = parseInt(row.dataset.idx);
+            const cb = row.querySelector('.imported-map-toggle');
+            if (cb) { cb.checked = !cb.checked; cb.dispatchEvent(new Event('change')); }
+        });
+    });
+
+    /* Chevron toggle for feature list */
+    panel.querySelectorAll('.imported-map-chevron').forEach(chev => {
+        chev.addEventListener('click', e => {
+            e.stopPropagation();
+            const idx = parseInt(chev.dataset.idx);
+            const featuresEl = panel.querySelector('.imported-map-features[data-idx="' + idx + '"]');
+            if (!featuresEl) return;
+            const isOpen = featuresEl.classList.contains('expanded');
+            if (isOpen) {
+                featuresEl.classList.remove('expanded');
+                chev.classList.remove('expanded');
+                expanded[idx] = false;
+            } else {
+                featuresEl.classList.add('expanded');
+                chev.classList.add('expanded');
+                expanded[idx] = true;
+            }
+        });
+    });
+
+    /* Collapse/Expand all */
+    const collapseAllBtn = panel.querySelector('#imported-maps-collapse-all');
+    if (collapseAllBtn) {
+        collapseAllBtn.addEventListener('click', () => {
+            const anyOpen = Object.values(expanded).some(v => v);
+            const featureEls = panel.querySelectorAll('.imported-map-features');
+            const chevEls = panel.querySelectorAll('.imported-map-chevron');
+            if (anyOpen) {
+                /* Collapse all */
+                featureEls.forEach(el => el.classList.remove('expanded'));
+                chevEls.forEach(el => el.classList.remove('expanded'));
+                Object.keys(expanded).forEach(k => expanded[k] = false);
+                collapseAllBtn.textContent = 'Expand All';
+            } else {
+                /* Expand all */
+                featureEls.forEach(el => el.classList.add('expanded'));
+                chevEls.forEach(el => el.classList.add('expanded'));
+                window._importedMaps.forEach((_, i) => expanded[i] = true);
+                collapseAllBtn.textContent = 'Collapse All';
+            }
+        });
     }
 }
 
@@ -2296,12 +2440,12 @@ function refreshPresetsTab() {
 
     builtInList.querySelectorAll('.load-preset').forEach(btn => btn.addEventListener('click', () => {
         const idx = parseInt(btn.dataset.idx);
-        if (BUILT_IN_PRESETS[idx]) loadPresetIntoPreview(BUILT_IN_PRESETS[idx].geojson);
+        if (BUILT_IN_PRESETS[idx]) { window._pendingImportName = BUILT_IN_PRESETS[idx].name; loadPresetIntoPreview(BUILT_IN_PRESETS[idx].geojson); }
     }));
     savedList.querySelectorAll('.load-preset').forEach(btn => btn.addEventListener('click', () => {
         const name = btn.dataset.name;
         const mapData = getSavedMaps().find(s => s.name === name);
-        if (mapData && mapData.geojson) loadPresetIntoPreview(mapData.geojson);
+        if (mapData && mapData.geojson) { window._pendingImportName = name; loadPresetIntoPreview(mapData.geojson); }
     }));
     savedList.querySelectorAll('.delete-preset').forEach(btn => btn.addEventListener('click', () => {
         const name = btn.dataset.name;

@@ -1633,6 +1633,10 @@ body.proxy-show-unix .proxy-dl-unix {
     .proxy-status-actions { flex-direction: column; }
 }
 
+#imported-maps-panel {
+    max-width: calc(100dvw - 32px);
+}
+
 /* ── Viewport-safe layout overrides ──────────────────
    Use dynamic viewport units where available so mobile browser chrome and
    fullscreen changes do not leave controls outside the visible area. */
@@ -1857,7 +1861,156 @@ body {
     }
 }
 
-/* ── Border & Region Tooltip Enhancements ────────
+/* ── Import Name Input ───────────────────────────── */
+.import-name-row {
+    display: flex; align-items: center; gap: 8px;
+    padding: 4px 0 8px;
+}
+.import-name-label {
+    font-size: 0.75rem; color: rgba(180, 210, 255, 0.6);
+    white-space: nowrap;
+}
+.import-name-input {
+    flex: 1;
+    background: rgba(20, 40, 80, 0.5);
+    border: 1px solid rgba(100, 160, 255, 0.2);
+    border-radius: 6px;
+    padding: 4px 8px;
+    color: #ffffff; font-size: 0.8rem;
+    outline: none;
+    transition: border-color 0.2s;
+}
+.import-name-input:focus {
+    border-color: rgba(100, 180, 255, 0.5);
+}
+
+/* ── Imported Maps Panel ──────────────────────────── */
+#imported-maps-panel {
+    position: fixed;
+    top: 85px; right: 0px;
+    width: 220px;
+    max-height: calc(100vh - 120px);
+    background: rgba(10, 20, 50, 0.92);
+    border: 1px solid rgba(100, 160, 255, 0.3);
+    border-radius: 10px;
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(100, 180, 255, 0.08);
+    z-index: 1000;
+    overflow: hidden;
+    display: flex; flex-direction: column;
+}
+#imported-maps-panel.hidden { display: none; }
+#imported-maps-panel .panel-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 10px 12px 8px;
+    border-bottom: 1px solid rgba(100, 160, 255, 0.15);
+}
+#imported-maps-panel .panel-title {
+    font-size: 0.82rem; font-weight: 600; color: #c0d8ff;
+    white-space: nowrap;
+}
+#imported-maps-panel .panel-collapse-all {
+    background: none; border: none;
+    color: rgba(140, 180, 255, 0.6);
+    cursor: pointer; font-size: 0.72rem;
+    padding: 2px 6px; border-radius: 4px;
+    transition: all 0.15s;
+}
+#imported-maps-panel .panel-collapse-all:hover {
+    background: rgba(40, 80, 160, 0.3);
+    color: #c0d8ff;
+}
+#imported-maps-panel .panel-body {
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(100, 160, 255, 0.3) transparent;
+}
+#imported-maps-panel .panel-body::-webkit-scrollbar { width: 4px; }
+#imported-maps-panel .panel-body::-webkit-scrollbar-track { background: transparent; }
+#imported-maps-panel .panel-body::-webkit-scrollbar-thumb { background: rgba(100, 160, 255, 0.3); border-radius: 4px; }
+#imported-maps-panel .panel-empty {
+    padding: 16px 12px; text-align: center;
+    font-size: 0.75rem; color: rgba(140, 180, 255, 0.4);
+}
+
+/* Imported map group */
+.imported-map-group {
+    border-bottom: 1px solid rgba(100, 160, 255, 0.1);
+}
+.imported-map-group:last-child { border-bottom: none; }
+.imported-map-row {
+    display: flex; align-items: center; gap: 6px;
+    padding: 8px 10px;
+    cursor: pointer;
+    transition: background 0.15s;
+}
+.imported-map-row:hover {
+    background: rgba(40, 80, 160, 0.2);
+}
+.imported-map-row input[type="checkbox"] {
+    cursor: pointer; accent-color: #4488ff;
+    flex-shrink: 0;
+}
+.imported-map-name {
+    font-size: 0.78rem; font-weight: 600; color: #8ec8ff;
+    flex: 1;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.imported-map-count {
+    font-size: 0.62rem; color: rgba(140, 180, 255, 0.4);
+    background: rgba(20, 40, 80, 0.5);
+    padding: 1px 5px; border-radius: 4px;
+    flex-shrink: 0;
+}
+.imported-map-chevron {
+    font-size: 0.65rem; color: rgba(140, 180, 255, 0.5);
+    flex-shrink: 0; width: 12px; text-align: center;
+    transition: transform 0.2s;
+}
+.imported-map-chevron.expanded {
+    transform: rotate(90deg);
+}
+
+/* Collapsible feature list */
+.imported-map-features {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.25s ease;
+    padding: 0 10px;
+}
+.imported-map-features.expanded {
+    max-height: 500px;
+    padding: 0 10px 6px;
+}
+.imported-map-feature {
+    display: flex; align-items: center; gap: 6px;
+    padding: 3px 6px;
+    font-size: 0.7rem; color: rgba(200, 220, 255, 0.7);
+    border-radius: 4px;
+}
+.imported-map-feature:hover {
+    background: rgba(40, 80, 160, 0.15);
+}
+.imported-map-feature-color {
+    width: 10px; height: 10px;
+    border-radius: 50%;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    flex-shrink: 0;
+}
+.imported-map-feature-name {
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    flex: 1;
+}
+.imported-map-feature-type {
+    font-size: 0.58rem;
+    color: rgba(140, 180, 255, 0.35);
+    background: rgba(20, 40, 80, 0.4);
+    padding: 1px 4px; border-radius: 3px;
+    flex-shrink: 0;
+}
+
+/* Border & Region Tooltip Enhancements
    (Canvas renderer draws paths on <canvas>, so CSS animations
     won't affect them — style changes via setStyle() are the
     way to animate. Tooltips are DOM elements so CSS works.) */
