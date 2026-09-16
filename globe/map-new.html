@@ -240,6 +240,10 @@
                         <div class="proxy-step-title">Download the setup script</div>
                         <div class="proxy-step-desc">Click the button for your OS. It handles everything automatically.</div>
                         <div class="proxy-download-row">
+                            <a class="proxy-download-btn proxy-dl-all" href="setup-proxy.js" download title="Cross-platform: runs on Windows, Linux, macOS (requires Node.js)">
+                                <span class="proxy-dl-icon">🌐</span>
+                                <span>All OS (Node.js)</span>
+                            </a>
                             <a id="proxy-dl-bat" class="proxy-download-btn proxy-dl-win" href="setup-proxy.bat" download>
                                 <span class="proxy-dl-icon">🪟</span>
                                 <span>Windows (.bat)</span>
@@ -261,7 +265,8 @@
                         <div class="proxy-step-title">Run the script</div>
                         <div class="proxy-step-desc" id="proxy-run-instructions">
                             <span class="proxy-cmd-win">Double-click <code>setup-proxy.bat</code> or run in CMD:<br><code>setup-proxy.bat</code></span>
-                            <span class="proxy-cmd-unix">Open a terminal and run:<br><code>bash setup-proxy.sh</code></span>
+                            <span class="proxy-cmd-unix">Open a terminal and run:<br><code>bash setup-proxy.sh</code> or <code>node setup-proxy.js</code></span>
+                            <span class="proxy-cmd-all">Open a terminal and run:<br><code>node setup-proxy.js</code></span>
                         </div>
                     </div>
                 </div>
@@ -282,6 +287,8 @@
                 </div>
                 <div class="proxy-footer-links">
                     <span>Manual: <code>node proxy.js</code> (port 8080)</span>
+                    <span>·</span>
+                    <span>All OS: <code>node start.js</code></span>
                     <span>·</span>
                     <a href="https://nodejs.org" target="_blank" rel="noopener">Get Node.js</a>
                 </div>

@@ -1574,6 +1574,7 @@ body.tool-measure #map { cursor: crosshair !important; }
 /* Platform-specific command hints */
 .proxy-cmd-win,
 .proxy-cmd-unix { display: none; }
+.proxy-cmd-all { display: inline; }
 body.proxy-show-win .proxy-cmd-win { display: inline; }
 body.proxy-show-unix .proxy-cmd-unix { display: inline; }
 body.proxy-show-win .proxy-dl-win,

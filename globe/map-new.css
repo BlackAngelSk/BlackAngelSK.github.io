@@ -1105,6 +1105,43 @@ body {
 }
 .proxy-footer-links a:hover { text-decoration: underline; }
 
+/* Platform-specific proxy command hints & download button highlights */
+.proxy-cmd-win,
+.proxy-cmd-unix { display: none; }
+.proxy-cmd-all { display: inline; }
+body.proxy-show-win .proxy-cmd-win { display: inline; }
+body.proxy-show-unix .proxy-cmd-unix { display: inline; }
+body.proxy-show-win .proxy-dl-win,
+body.proxy-show-unix .proxy-dl-unix {
+    box-shadow: 0 0 0 2px rgba(100, 200, 255, 0.3);
+}
+.proxy-dl-win {
+    background: rgba(30, 80, 180, 0.7);
+    color: #c0d8ff;
+}
+.proxy-dl-win:hover {
+    background: rgba(40, 100, 220, 0.9);
+    border-color: rgba(120, 200, 255, 0.6);
+    color: #fff;
+}
+.proxy-dl-unix {
+    background: rgba(30, 120, 80, 0.7);
+    color: #c0f0d8;
+}
+.proxy-dl-unix:hover {
+    background: rgba(40, 160, 100, 0.9);
+    border-color: rgba(80, 220, 140, 0.6);
+    color: #fff;
+}
+.proxy-dl-all {
+    background: rgba(60, 60, 80, 0.6);
+    color: #a0b0cc;
+}
+.proxy-dl-all:hover {
+    background: rgba(80, 80, 110, 0.8);
+    border-color: rgba(140, 160, 200, 0.5);
+}
+
 /* Overlay Manage */
 #overlay-list-container {
     min-height: 60px;

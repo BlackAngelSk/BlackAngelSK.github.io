@@ -139,7 +139,7 @@ echo
 # ── Step 3: Check port 8080 ─────────────────────
 echo -e "[3/4] Checking port 8080..."
 
-if lsof -i :8080 -t &> /dev/null 2>&1 || ss -tlnp 2>/dev/null | grep -q ':8080'; then
+if lsof -i :8080 -t &> /dev/null 2>&1 || (command -v ss &> /dev/null && ss -tlnp 2>/dev/null | grep -q ':8080'); then
     echo "  Port 8080 is already in use. Attempting to free it..."
     PID=$(lsof -i :8080 -t 2>/dev/null | head -1)
     if [ -n "$PID" ]; then
