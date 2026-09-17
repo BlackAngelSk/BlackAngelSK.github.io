@@ -3952,33 +3952,37 @@ function checkProxyStatus() {
     function showProxyOk(label) {
         statusEl.textContent = '✅ Proxy is running!';
         statusEl.className = 'proxy-ok';
-        detailEl.textContent = label || ('Connected to proxy at ' + window.location.origin);
+        detailEl.textContent = label || 'Connected to proxy';
         $('#proxy-check-btn').style.display = 'none';
         $('#proxy-retry-btn').style.display = '';
         if (proxyPollTimer) { clearInterval(proxyPollTimer); proxyPollTimer = null; }
     }
 
+    function tryPing(url, label) {
+        return fetch(url)
+            .then(function (r) { if (!r.ok) throw 0; return r.text(); })
+            .then(function (t) { if (t.indexOf('pong') !== -1) { showProxyOk(label); throw 'done'; } throw 0; });
+    }
+
     /* Strategy 1: relative URL (same-origin) */
-    fetch('/ping')
-        .then(function (r) { if (!r.ok) throw 0; return r.text(); })
-        .then(function (t) { if (t.indexOf('pong') !== -1) { showProxyOk('Same-origin /ping OK'); throw 'done'; } throw 0; })
-        .catch(function (e) { if (e === 'done') return Promise.reject(e); /* continue */ return null; })
-        /* Strategy 2: absolute URL with CORS */
-        .then(function () { return fetch('http://localhost:8080/ping'); })
-        .then(function (r) { if (!r.ok) throw 0; return r.text(); })
-        .then(function (t) { if (t.indexOf('pong') !== -1) { showProxyOk('Cross-origin http://localhost:8080/ping OK'); throw 'done'; } throw 0; })
-        .catch(function (e) { if (e === 'done') return Promise.reject(e); /* continue */ return null; })
-        /* Strategy 3: no-cors fallback (file:// or strict browser) */
+    tryPing('/ping', 'Same-origin /ping OK')
+        .catch(function (e) { if (e === 'done') return Promise.reject(e); return null; })
+        /* Strategy 2: HTTP localhost */
+        .then(function () { return tryPing('http://localhost:8080/ping', 'http://localhost:8080 OK'); })
+        .catch(function (e) { if (e === 'done') return Promise.reject(e); return null; })
+        /* Strategy 3: HTTPS localhost (for HTTPS websites) */
+        .then(function () { return tryPing('https://localhost:8443/ping', 'https://localhost:8443 OK'); })
+        .catch(function (e) { if (e === 'done') return Promise.reject(e); return null; })
+        /* Strategy 4: no-cors fallback */
         .then(function () { return fetch('http://localhost:8080/ping', { mode: 'no-cors' }); })
-        .then(function () { showProxyOk('no-cors fetch OK (opaque)'); })
+        .then(function () { showProxyOk('no-cors OK'); })
         .catch(function (e) {
-            if (e === 'done') return; /* already showed success */
+            if (e === 'done') return;
             statusEl.textContent = '❌ Proxy not running yet';
             statusEl.className = 'proxy-fail';
-            detailEl.innerHTML = 'Could not reach the proxy on port 8080.<br><br>' +
-                '<b>1.</b> Run <code>node proxy.js</code> in a terminal<br>' +
-                '<b>2.</b> Open <a href="http://localhost:8080/map.html" target="_blank">http://localhost:8080/map.html</a><br>' +
-                '<b>3.</b> Hard-refresh this page (Ctrl+Shift+R / Cmd+Shift+R)';
+            detailEl.innerHTML =
+                '<b>If your site is HTTPS:</b> Open <a href="https://localhost:8443/map.html" target="_blank">https://localhost:8443/map.html</a> once to trust the certificate, then reload this page.<br><br>' +
+                '<b>If running locally:</b> Open <a href="http://localhost:8080/map.html" target="_blank">http://localhost:8080/map.html</a>';
         });
 }
 
