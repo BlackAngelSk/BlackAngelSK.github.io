@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Earth Globe</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div id="loading">
+        <div id="loading-content">
+            <div class="spinner"></div>
+            <span>Loading Earth textures and cities...</span>
+            <div id="loading-progress"></div>
+        </div>
+    </div>
+    <div id="header">
+        <div class="header-bar">
+            <h1>🌍 Globe</h1>
+            <div id="search-wrap">
+                <input type="text" id="search" placeholder="Search..." autocomplete="off" aria-label="Search cities and countries" role="searchbox" />
+                <div id="search-results" class="hidden" role="listbox" aria-label="Search results"></div>
+            </div>
+        </div>
+    </div>
+    <div id="country-panel" class="hidden" role="dialog" aria-label="Country information">
+        <button id="close-country" title="Close" aria-label="Close country panel">×</button>
+        <h2 id="country-name"></h2>
+        <p id="country-info"></p>
+    </div>
+    <div id="lod-hud" aria-live="polite" aria-label="Level of Detail">LOD: Medium (64 seg)</div>
+    <div id="conflict-legend" class="hidden">
+        <div class="cl-title">⚔ Conflicts</div>
+        <div class="cl-item"><span class="cl-dot cl-critical"></span> Critical — Active high-intensity war</div>
+        <div class="cl-item"><span class="cl-dot cl-high"></span> High — Major armed conflict</div>
+        <div class="cl-item"><span class="cl-dot cl-medium"></span> Medium — Ongoing instability</div>
+        <div class="cl-item"><span class="cl-dot cl-low"></span> Low / Frozen — Dormant or frozen conflict</div>
+    </div>
+    <div id="conflict-panel" class="hidden" role="dialog" aria-label="Conflict information">
+        <button id="close-conflict" title="Close" aria-label="Close conflict panel">×</button>
+        <div id="conflict-status-badge"></div>
+        <h2 id="conflict-name"></h2>
+        <div id="conflict-meta"></div>
+        <p id="conflict-parties"></p>
+        <p id="conflict-desc"></p>
+    </div>
+    <div id="clock-hud">
+        <div id="clock-utc"></div>
+        <div id="clock-local"></div>
+        <div id="clock-coords"></div>
+    </div>
+    <div id="globe-container"></div>
+    <div id="controls" role="toolbar" aria-label="Globe controls">
+        <button id="btn-rotate" class="active" title="Toggle auto-rotation" aria-label="Toggle auto-rotation">⟳ Rotate</button>
+        <button id="btn-clouds" class="active" title="Toggle clouds" aria-label="Toggle clouds">☁ Clouds</button>
+        <button id="btn-atmosphere" class="active" title="Toggle atmosphere" aria-label="Toggle atmosphere">🌐 Atmo</button>
+        <button id="btn-night" title="Toggle day/night" aria-label="Toggle day/night">🌙 Night</button>
+        <button id="btn-cities" class="active" title="Toggle cities" aria-label="Toggle cities">🏙 Cities</button>
+        <button id="btn-timezones" title="Toggle timezone lines" aria-label="Toggle timezone lines">🕐 TZ</button>
+        <button id="btn-conflicts" title="Toggle conflict hotspots" aria-label="Toggle conflict hotspots">⚔ Conflicts</button>
+        <button id="btn-rivers" title="Toggle major world rivers" aria-label="Toggle major world rivers">🌊 Rivers</button>
+        <button id="btn-routes" title="Toggle maritime trade routes" aria-label="Toggle maritime trade routes">⚓ Routes</button>
+        <button id="btn-fullscreen" title="Toggle fullscreen" aria-label="Toggle fullscreen">⛶ Full</button>
+        <button id="btn-map" title="Open Interactive Map with Annotations" aria-label="Open Interactive Map">🗺 Map</button>
+    </div>
+    <!-- Maritime Trade Route Popup -->
+    <div id="route-popup" class="glass hidden" role="dialog" aria-label="Maritime route information">
+        <div class="popup-header">
+            <span class="popup-route" id="popup-route"></span>
+            <button class="popup-close" id="popup-close" aria-label="Close route popup">×</button>
+        </div>
+        <div class="popup-cargo-badge" id="popup-cargo"></div>
+        <div class="popup-detail"><span class="pd-label">Origin</span><span class="pd-value" id="popup-origin"></span></div>
+        <div class="popup-detail"><span class="pd-label">Destination</span><span class="pd-value" id="popup-dest"></span></div>
+        <div class="popup-detail"><span class="pd-label">Distance</span><span class="pd-value" id="popup-distance"></span></div>
+        <div class="popup-detail"><span class="pd-label">Avg. Transit Time</span><span class="pd-value" id="popup-time"></span></div>
+        <div class="popup-detail"><span class="pd-label">Cargo Type</span><span class="pd-value" id="popup-cargo-text"></span></div>
+    </div>
+
+    <!-- Maritime Legend -->
+    <div id="maritime-legend" class="glass hidden" role="complementary" aria-label="Maritime cargo types legend">
+        <div class="ml-title">⚓ Cargo Types</div>
+        <div class="ml-item"><span class="ml-swatch" style="background:#ff6b6b"></span>Crude Oil & Tankers</div>
+        <div class="ml-item"><span class="ml-swatch" style="background:#4ecdc4"></span>Container Ships</div>
+        <div class="ml-item"><span class="ml-swatch" style="background:#ffe66d"></span>Bulk Cargo</div>
+        <div class="ml-item"><span class="ml-swatch" style="background:#a8e6cf"></span>LNG & Gas Carriers</div>
+    </div>
+
+    <!-- Maritime Stats -->
+    <div id="maritime-stats" class="glass hidden" role="complementary" aria-label="Maritime network overview">
+        <div class="ms-title">Network Overview</div>
+        <div class="ms-row"><span class="ms-label">Active Vessels</span><span class="ms-value" id="ms-ships">14,287</span></div>
+        <div class="ms-row"><span class="ms-label">Active Routes</span><span class="ms-value" id="ms-routes">24</span></div>
+        <div class="ms-row"><span class="ms-label">Hub Ports</span><span class="ms-value" id="ms-ports">10</span></div>
+        <div class="ms-row"><span class="ms-label">Network Health</span><span class="ms-value ms-health" id="ms-health">98.4%</span></div>
+    </div>
+
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+            "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+        }
+    }
+    </script>
+    <script type="module" src="app.js"></script>
+</body>
+</html>

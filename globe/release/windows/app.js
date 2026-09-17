@@ -1,0 +1,1262 @@
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+const TEX_URL = {
+  day: 'https://raw.githubusercontent.com/mrdoob/three.js/dev/examples/textures/planets/earth_atmos_2048.jpg',
+  night: 'https://raw.githubusercontent.com/mrdoob/three.js/dev/examples/textures/planets/earth_lights_2048.png',
+  clouds: 'https://raw.githubusercontent.com/mrdoob/three.js/dev/examples/textures/planets/earth_clouds_2048.png',
+  bump: 'https://raw.githubusercontent.com/mrdoob/three.js/dev/examples/textures/planets/earth_normal_2048.jpg',
+  spec: 'https://raw.githubusercontent.com/mrdoob/three.js/dev/examples/textures/planets/earth_specular_2048.jpg',
+};
+// --- LOD (Level of Detail) System ---
+const LOD_THRESHOLDS=[
+  {maxDist:200,segments:192},{maxDist:300,segments:128},
+  {maxDist:420,segments:64},{maxDist:Infinity,segments:32}
+];
+const _geoCache=new Map();
+function _getSphereGeo(radius,seg){
+  const k=radius.toFixed(4)+'_'+seg;
+  if(!_geoCache.has(k))_geoCache.set(k,new THREE.SphereGeometry(radius,seg,seg));
+  return _geoCache.get(k);
+}
+function getLODSegments(dist){
+  for(const t of LOD_THRESHOLDS)if(dist<t.maxDist)return t.segments;
+  return 32;
+}
+const BDR_W = 4096;
+const BDR_H = 2048;
+const BDR_URL = 'https://raw.githubusercontent.com/holtzy/D3-graph-gallery/master/DATA/world.geojson';
+
+const CITIES = [
+  ['New York',40.71,-74.01,1.2,'#ffdd44'],['London',51.51,-0.13,1.2,'#ff6644'],
+  ['Tokyo',35.68,139.65,1.2,'#ff44aa'],['Paris',48.86,2.35,1.1,'#44aaff'],
+  ['Sydney',-33.87,151.21,1.1,'#44ffaa'],['Moscow',55.76,37.62,1.1,'#ff8844'],
+  ['Beijing',39.90,116.41,1.2,'#ff6644'],['Mumbai',19.08,72.88,1.0,'#ffaa44'],
+  ['Cairo',30.04,31.24,1.0,'#ffcc44'],['Rio',-22.91,-43.17,1.0,'#44ff66'],
+  ['Berlin',52.52,13.41,0.9,'#aaff66'],['Seoul',37.57,126.98,1.0,'#ff88aa'],
+  ['Bangkok',13.76,100.50,0.9,'#ffaa88'],['Lagos',6.52,3.38,0.9,'#ffbb44'],
+  ['Istanbul',41.01,28.98,1.0,'#ffcc66'],['Toronto',43.65,-79.38,0.9,'#66aaff'],
+  ['Dubai',25.20,55.27,0.9,'#ffdd88'],['Singapore',1.35,103.82,0.9,'#ff66cc'],
+  ['Rome',41.90,12.50,0.9,'#ffaa66'],['Mexico City',19.43,-99.13,1.0,'#ff88aa'],
+  ['Washington',38.91,-77.04,0.9,'#66ccff'],['Brasilia',-15.80,-47.89,0.9,'#44ddff'],
+  ['Buenos Aires',-34.60,-58.38,0.9,'#88ccff'],['Lima',-12.05,-77.04,0.8,'#88ddaa'],
+  ['Jakarta',-6.21,106.85,0.9,'#ff4488'],['Nairobi',-1.29,36.82,0.7,'#aaffaa'],
+  ['Johannesburg',-26.20,28.05,0.8,'#ffbb44'],['Stockholm',59.33,18.07,0.7,'#66aaff'],
+  ['Oslo',59.91,10.75,0.7,'#66aaff'],['Copenhagen',55.68,12.57,0.7,'#66aaff'],
+  ['Warsaw',52.23,21.01,0.8,'#aaff88'],['Vienna',48.21,16.37,0.8,'#ffcc88'],
+  ['Madrid',40.42,-3.70,0.9,'#ffcc66'],['Lisbon',38.72,-9.14,0.7,'#ffaa88'],
+  ['Amsterdam',52.37,4.90,0.8,'#ffcc44'],['Brussels',50.85,4.35,0.7,'#ffcc44'],
+  ['Zurich',47.38,8.54,0.7,'#aaffcc'],['Munich',48.14,11.58,0.8,'#aaffcc'],
+  ['Athens',37.98,23.73,0.8,'#ffcc66'],['Helsinki',60.17,24.94,0.7,'#88aaff'],
+  ['Dublin',53.35,-6.26,0.7,'#ffdd66'],['Barcelona',41.39,2.17,0.9,'#ffcc88'],
+  ['Budapest',47.50,19.04,0.7,'#ffdd88'],['Prague',50.08,14.44,0.7,'#ffdd88'],
+  ['Havana',23.11,-82.37,0.7,'#ff88aa'],['Ankara',39.93,32.86,0.8,'#ffcc88'],
+  ['Riyadh',24.71,46.68,0.8,'#ffcc88'],['Tehran',35.69,51.39,0.9,'#ff99aa'],
+  ['Karachi',24.86,67.00,0.9,'#ffaa44'],['Delhi',28.70,77.10,1.0,'#ffaa44'],
+  ['Dhaka',23.81,90.41,0.9,'#ffaa44'],['Manila',14.60,120.98,0.8,'#ff88aa'],
+  ['Hong Kong',22.32,114.17,0.9,'#ffcc44'],['Shanghai',31.23,121.47,1.2,'#ff6644'],
+  ['Taipei',25.03,121.57,0.7,'#ff88aa'],['Bratislava',48.15,17.11,0.6,'#ffcc88'],
+  ['Ljubljana',46.06,14.51,0.5,'#88aaff'],['Zagreb',45.82,15.98,0.6,'#ffcc88'],
+  ['Beograd',44.79,20.45,0.6,'#ffcc88'],['Sofia',42.70,23.32,0.6,'#ffcc88'],
+  ['Bucharest',44.43,26.10,0.7,'#ffcc88'],['Tallinn',59.44,24.75,0.5,'#88aaff'],
+  ['Riga',56.95,24.11,0.5,'#88aaff'],['Vilnius',54.69,25.28,0.5,'#88aaff'],
+  ['Minsk',53.90,27.56,0.7,'#aaff88'],['Kyiv',50.45,30.52,0.8,'#aaff88'],
+  ['Tbilisi',41.72,44.83,0.5,'#ffcc88'],['Yerevan',40.18,44.50,0.5,'#ffcc88'],
+  ['Baku',40.41,49.87,0.6,'#ffcc88'],['Tashkent',41.30,69.24,0.6,'#ffcc88'],
+  ['Almaty',43.22,76.85,0.6,'#ffcc88'],['Doha',25.29,51.53,0.7,'#ffcc88'],
+  ['Kuwait City',29.38,47.98,0.7,'#ffcc88'],['Colombo',6.93,79.86,0.6,'#ffcc88'],
+  ['San Francisco',37.77,-122.42,0.9,'#66ccff'],['LA',34.05,-118.24,0.9,'#66ccff'],
+  ['Chicago',41.88,-87.63,0.9,'#66ccff'],['Vancouver',49.28,-123.12,0.8,'#66aaff'],
+  ['Melbourne',-37.81,144.96,0.8,'#44ffcc'],['Auckland',-36.85,174.76,0.7,'#44ffaa'],
+  ['Osaka',34.69,135.50,0.8,'#ff44aa'],['Sao Paulo',-23.55,-46.63,1.0,'#44ff66'],
+  ['Houston',29.76,-95.37,0.8,'#66ccff'],['Denver',39.74,-104.99,0.7,'#66ccff'],
+  ['Boston',42.36,-71.06,0.8,'#66ccff'],['Miami',25.76,-80.19,0.7,'#66ccff'],
+  ['Seattle',47.61,-122.33,0.7,'#66aaff'],['Santiago',-33.45,-70.67,0.8,'#88ccff'],
+  ['Bogota',4.71,-74.07,0.8,'#ff88aa'],['Montevideo',-34.90,-56.17,0.6,'#88ccff'],
+  ['Asuncion',-25.26,-57.58,0.6,'#88ccff'],['La Paz',-16.49,-68.12,0.5,'#88ccff'],
+  ['Quito',-0.18,-78.47,0.7,'#ff88aa'],['Guayaquil',-2.17,-79.92,0.5,'#ff88aa'],
+  ['Caracas',10.48,-66.91,0.7,'#ff88aa'],['Guadalajara',20.66,-103.35,0.8,'#ff88aa'],
+  ['Monterrey',25.69,-100.32,0.7,'#ff88aa'],['Santo Domingo',18.49,-69.93,0.7,'#ff88aa'],
+  ['Kingston',18.02,-76.81,0.5,'#ff88aa'],['Casablanca',33.57,-7.59,0.7,'#ffcc44'],
+  ['Tunis',36.81,10.18,0.7,'#ffcc44'],['Algiers',36.75,3.06,0.7,'#ffcc44'],
+  ['Rabat',34.02,-6.84,0.5,'#ffcc44'],['Accra',5.60,-0.19,0.6,'#ffbb44'],
+  ['Dakar',14.72,-17.47,0.6,'#ffbb44'],['Abuja',9.06,7.49,0.7,'#ffbb44'],
+  ['Kampala',0.35,32.58,0.5,'#aaffaa'],['Dar es Salaam',-6.79,39.21,0.6,'#aaffaa'],
+  ['Addis Ababa',9.03,38.75,0.7,'#aaffaa'],['Maputo',-25.97,32.57,0.5,'#aaffaa'],
+  ['Harare',-17.83,31.03,0.5,'#aaffaa'],['Khartoum',15.50,32.56,0.7,'#aaffaa'],
+  ['Kinshasa',-4.44,15.27,0.8,'#aaffaa'],['Luanda',-8.84,13.29,0.7,'#aaffaa'],
+  ['Guangzhou',23.13,113.26,0.9,'#ff6644'],['Shenzhen',22.54,114.06,0.9,'#ff6644'],
+  ['Chengdu',30.57,104.07,0.8,'#ff6644'],['Wuhan',30.59,114.31,0.8,'#ff6644'],
+  ['Hangzhou',30.27,120.15,0.8,'#ff6644'],['Nanjing',32.06,118.80,0.7,'#ff6644'],
+  ['Tianjin',39.34,117.36,0.8,'#ff6644'],['Chongqing',29.56,106.55,0.8,'#ff6644'],
+  ['Sapporo',43.06,141.35,0.6,'#ff44aa'],['Hiroshima',34.39,132.46,0.6,'#ff44aa'],
+  ['Fukuoka',33.59,130.40,0.6,'#ff44aa'],['Kyoto',35.01,135.77,0.6,'#ff44aa'],
+  ['Yokohama',35.44,139.64,0.6,'#ff44aa'],['Brisbane',-27.47,153.03,0.7,'#44ffaa'],
+  ['Perth',-31.95,115.86,0.7,'#44ffaa'],['Cape Town',-33.92,18.42,0.7,'#44ffaa'],
+  ['Damascus',33.51,36.28,0.7,'#ffcc88'],['Beirut',33.89,35.50,0.6,'#ffcc88'],
+  ['Baghdad',33.31,44.36,0.8,'#ffcc88'],['Mecca',21.39,39.86,0.6,'#ffcc88'],
+  ['Ahmedabad',23.02,72.57,0.7,'#ffaa44'],['Hyderabad',17.39,78.49,0.8,'#ffaa44'],
+  ['Chennai',13.08,80.27,0.8,'#ffaa44'],['Kolkata',22.57,88.36,0.9,'#ffaa44'],
+  ['Bangalore',12.97,77.59,0.9,'#ffaa44'],['Pune',18.52,73.86,0.7,'#ffaa44'],
+  ['Jaipur',26.91,75.79,0.6,'#ffaa44'],['Tel Aviv',32.09,34.78,0.6,'#ffcc88'],
+  ['Novosibirsk',55.01,82.94,0.6,'#ff8844'],['Yekaterinburg',56.84,60.61,0.6,'#ff8844'],
+  ['Kazan',55.79,49.12,0.5,'#ff8844'],['St. Petersburg',59.93,30.34,1.0,'#ff8844'],
+  ['Ibadan',7.38,3.95,0.6,'#ffbb44'],['Mogadishu',2.05,45.32,0.5,'#aaffaa'],
+  ['Cape Town',-33.92,18.42,0.7,'#44ffaa'],['Jeddah',21.49,39.19,0.7,'#ffcc88'],
+  ['Sendai',38.27,140.87,0.5,'#ff44aa'],['Adelaide',-34.93,138.60,0.6,'#44ffaa'],
+  ['Canberra',-35.28,149.13,0.5,'#44ffaa'],['Wellington',-41.29,174.78,0.5,'#44ffaa'],
+  ['Nice',43.71,7.26,0.5,'#ffcc66'],['Milan',45.46,9.19,0.8,'#ffccaa'],
+  ['Naples',40.85,14.27,0.7,'#ffccaa'],['Venice',45.44,12.32,0.6,'#ffccaa'],
+  ['Florence',43.77,11.26,0.5,'#ffccaa'],['Genoa',44.41,8.95,0.5,'#ffccaa'],
+  ['Turin',45.07,7.69,0.6,'#ffccaa'],['Lyon',45.76,4.84,0.7,'#ffcc66'],
+  ['Marseille',43.30,5.37,0.6,'#ffcc66'],['Toulouse',43.60,1.44,0.5,'#ffcc66'],
+  ['Glasgow',55.86,-4.25,0.5,'#ffdd66'],['Edinburgh',55.95,-3.19,0.5,'#ffdd66'],
+  ['Manchester',53.48,-2.24,0.6,'#ffdd66'],['Birmingham',52.49,-1.89,0.5,'#ffdd66'],
+  ['Hamburg',53.55,9.99,0.6,'#aaffcc'],['Frankfurt',50.11,8.68,0.6,'#aaffcc'],
+  ['Krakow',50.06,19.95,0.5,'#ffcc88'],['Cluj-Napoca',46.77,23.62,0.4,'#ffcc88'],
+  ['Reykjavik',64.15,-21.94,0.5,'#88aaff'],['Nova Scotia',44.65,-63.57,0.3,'#66aaff'],
+  ['Bogota',4.71,-74.07,0.8,'#ff88aa'],['Medellin',6.25,-75.57,0.7,'#ff88aa'],
+  ['Cali',3.45,-76.53,0.5,'#ff88aa'],['Barranquilla',10.97,-74.78,0.5,'#ff88aa'],
+  ['Port-au-Prince',18.59,-72.31,0.5,'#ff88aa'],['San Juan',18.47,-66.11,0.4,'#ff88aa'],
+  ['Manaus',-3.12,-60.02,0.6,'#ff88aa'],['Belem',-1.46,-48.50,0.5,'#ff88aa'],
+  ['Recife',-8.05,-34.88,0.5,'#ff88aa'],['Salvador',-12.97,-38.51,0.5,'#ff88aa'],
+  ['Fortaleza',-3.72,-38.54,0.5,'#ff88aa'],['Curitiba',-25.43,-49.27,0.5,'#88ccff'],
+  ['Porto Alegre',-30.03,-51.22,0.5,'#88ccff'],['Arequipa',-16.41,-71.54,0.5,'#88ddaa'],
+  ['Trujillo',-8.12,-79.03,0.4,'#88ddaa'],['Cusco',-13.53,-71.97,0.5,'#88ddaa'],
+  ['Cordoba',-31.42,-64.19,0.5,'#88ccff'],['Mendoza',-32.89,-68.83,0.4,'#88ccff'],
+  ['Rosario',-32.95,-60.64,0.5,'#88ccff'],['La Plata',-34.92,-75.95,0.4,'#88ccff'],
+  ['Valparaiso',-33.05,-71.61,0.5,'#88ccff'],
+  ['__origin__',0,1,0,0.1,'#ffffff'],
+];
+
+const COUNTRY_INFO = {
+  'United States':{lat:39.83,lon:-98.58,info:'Population: ~331M | Capital: Washington D.C. | 50 states'},
+  'Canada':{lat:56.13,lon:-106.35,info:'Population: ~38M | Capital: Ottawa'},
+  'Mexico':{lat:19.43,lon:-99.13,info:'Population: ~130M | Capital: Mexico City'},
+  'Brazil':{lat:-14.24,lon:-51.93,info:'Population: ~214M | Capital: Brasilia | Largest in South America'},
+  'Argentina':{lat:-38.42,lon:-63.62,info:'Population: ~46M | Capital: Buenos Aires'},
+  'United Kingdom':{lat:55.38,lon:-3.44,info:'Population: ~67M | Capital: London'},
+  'France':{lat:46.23,lon:2.21,info:'Population: ~67M | Capital: Paris'},
+  'Germany':{lat:51.17,lon:10.45,info:'Population: ~84M | Capital: Berlin'},
+  'Italy':{lat:41.87,lon:12.57,info:'Population: ~60M | Capital: Rome'},
+  'Spain':{lat:40.46,lon:-3.75,info:'Population: ~47M | Capital: Madrid'},
+  'Japan':{lat:36.20,lon:138.25,info:'Population: ~125M | Capital: Tokyo'},
+  'China':{lat:35.86,lon:104.20,info:'Population: ~1.4B | Capital: Beijing'},
+  'India':{lat:20.59,lon:78.96,info:'Population: ~1.4B | Capital: New Delhi'},
+  'Russia':{lat:61.52,lon:105.32,info:'Population: ~144M | Capital: Moscow'},
+  'Australia':{lat:-25.27,lon:133.78,info:'Population: ~26M | Capital: Canberra'},
+  'South Africa':{lat:30.56,lon:22.94,info:'Population: ~60M | Capital: Pretoria'},
+  'Turkey':{lat:38.96,lon:35.24,info:'Population: ~85M | Capital: Ankara'},
+  'Saudi Arabia':{lat:23.89,lon:45.08,info:'Population: ~35M | Capital: Riyadh'},
+  'Egypt':{lat:26.82,lon:30.80,info:'Population: ~104M | Capital: Cairo'},
+  'South Korea':{lat:35.91,lon:127.77,info:'Population: ~52M | Capital: Seoul'},
+  'Indonesia':{lat:-0.79,lon:113.92,info:'Population: ~275M | Capital: Jakarta'},
+  'Pakistan':{lat:30.38,lon:69.35,info:'Population: ~220M | Capital: Islamabad'},
+  'Nigeria':{lat:9.08,lon:8.68,info:'Population: ~220M | Capital: Abuja'},
+  'Ukraine':{lat:48.38,lon:31.17,info:'Population: ~44M | Capital: Kyiv'},
+  'Poland':{lat:51.92,lon:19.15,info:'Population: ~38M | Capital: Warsaw'},
+  'Sweden':{lat:60.13,lon:18.64,info:'Population: ~10M | Capital: Stockholm'},
+  'Norway':{lat:60.47,lon:8.47,info:'Population: ~5M | Capital: Oslo'},
+  'Finland':{lat:61.92,lon:25.75,info:'Population: ~6M | Capital: Helsinki'},
+  'Denmark':{lat:56.26,lon:9.50,info:'Population: ~6M | Capital: Copenhagen'},
+  'Belgium':{lat:50.50,lon:4.47,info:'Population: ~12M | Capital: Brussels'},
+  'Netherlands':{lat:52.13,lon:5.29,info:'Population: ~17M | Capital: Amsterdam'},
+  'Switzerland':{lat:46.82,lon:8.23,info:'Population: ~9M | Capital: Bern'},
+  'Austria':{lat:47.52,lon:14.55,info:'Population: ~9M | Capital: Vienna'},
+  'Greece':{lat:39.07,lon:21.82,info:'Population: ~11M | Capital: Athens'},
+  'Portugal':{lat:39.40,lon:-8.22,info:'Population: ~10M | Capital: Lisbon'},
+  'Romania':{lat:45.94,lon:24.97,info:'Population: ~19M | Capital: Bucharest'},
+  'Croatia':{lat:45.10,lon:15.20,info:'Population: ~4M | Capital: Zagreb'},
+  'Serbia':{lat:44.02,lon:21.01,info:'Population: ~7M | Capital: Belgrade'},
+  'Bulgaria':{lat:42.73,lon:25.49,info:'Population: ~7M | Capital: Sofia'},
+  'Czech Republic':{lat:49.82,lon:15.47,info:'Population: ~11M | Capital: Prague'},
+  'Hungary':{lat:47.16,lon:19.50,info:'Population: ~10M | Capital: Budapest'},
+  'Slovakia':{lat:48.67,lon:19.70,info:'Population: ~5M | Capital: Bratislava'},
+  'Slovenia':{lat:46.15,lon:14.99,info:'Population: ~2M | Capital: Ljubljana'},
+  'Estonia':{lat:58.60,lon:25.01,info:'Population: ~1.3M | Capital: Tallinn'},
+  'Latvia':{lat:56.88,lon:24.60,info:'Population: ~1.8M | Capital: Riga'},
+  'Lithuania':{lat:55.17,lon:23.88,info:'Population: ~2.8M | Capital: Vilnius'},
+  'Belarus':{lat:53.71,lon:27.95,info:'Population: ~9M | Capital: Minsk'},
+  'Israel':{lat:31.05,lon:34.85,info:'Population: ~9M | Capital: Jerusalem'},
+  'UAE':{lat:23.42,lon:53.85,info:'Population: ~10M | Capital: Abu Dhabi'},
+  'Qatar':{lat:25.35,lon:51.18,info:'Population: ~3M | Capital: Doha'},
+  'Thailand':{lat:15.87,lon:100.99,info:'Population: ~72M | Capital: Bangkok'},
+  'Vietnam':{lat:14.06,lon:108.28,info:'Population: ~98M | Capital: Hanoi'},
+  'Singapore':{lat:1.35,lon:103.82,info:'Population: ~5.9M | City-state'},
+  'Philippines':{lat:12.88,lon:121.77,info:'Population: ~111M | Capital: Manila'},
+  'Malaysia':{lat:4.21,lon:101.98,info:'Population: ~33M | Capital: Kuala Lumpur'},
+  'Morocco':{lat:31.79,lon:-7.09,info:'Population: ~37M | Capital: Rabat'},
+  'Algeria':{lat:28.03,lon:1.66,info:'Population: ~44M | Capital: Algiers'},
+  'Tunisia':{lat:33.89,lon:9.54,info:'Population: ~12M | Capital: Tunis'},
+  'Ethiopia':{lat:9.15,lon:40.49,info:'Population: ~120M | Capital: Addis Ababa'},
+  'Kenya':{lat:-0.02,lon:37.91,info:'Population: ~55M | Capital: Nairobi'},
+  'Tanzania':{lat:-6.37,lon:34.89,info:'Population: ~63M | Capital: Dodoma'},
+  'DR Congo':{lat:-4.04,lon:21.76,info:'Population: ~99M | Capital: Kinshasa'},
+  'Sudan':{lat:12.86,lon:30.22,info:'Population: ~44M | Capital: Khartoum'},
+  'Iraq':{lat:33.31,lon:43.68,info:'Population: ~41M | Capital: Baghdad'},
+  'Iran':{lat:32.43,lon:53.69,info:'Population: ~85M | Capital: Tehran'},
+  'Uzbekistan':{lat:41.38,lon:64.59,info:'Population: ~35M | Capital: Tashkent'},
+  'Kazakhstan':{lat:48.02,lon:66.92,info:'Population: ~19M | Capital: Astana'},
+  'Mongolia':{lat:46.86,lon:103.85,info:'Population: ~3M | Capital: Ulan Bator'},
+  'Georgia':{lat:42.32,lon:43.36,info:'Population: ~4M | Capital: Tbilisi'},
+  'Armenia':{lat:40.07,lon:45.04,info:'Population: ~3M | Capital: Yerevan'},
+  'Azerbaijan':{lat:40.14,lon:47.58,info:'Population: ~10M | Capital: Baku'},
+  'Syria':{lat:34.80,lon:39.00,info:'Population: ~18M | Capital: Damascus'},
+  'Jordan':{lat:30.59,lon:36.24,info:'Population: ~11M | Capital: Amman'},
+  'Lebanon':{lat:33.85,lon:35.86,info:'Population: ~5M | Capital: Beirut'},
+  'Bangladesh':{lat:23.68,lon:90.36,info:'Population: ~170M | Capital: Dhaka'},
+  'Myanmar':{lat:21.91,lon:95.96,info:'Population: ~55M | Capital: Nay Pyi Taw'},
+  'Sri Lanka':{lat:7.87,lon:80.77,info:'Population: ~22M | Capital: Colombo'},
+  'Peru':{lat:-9.19,lon:-75.02,info:'Population: ~33M | Capital: Lima'},
+  'Chile':{lat:-35.68,lon:-71.54,info:'Population: ~19M | Capital: Santiago'},
+  'Colombia':{lat:4.57,lon:-74.30,info:'Population: ~51M | Capital: Bogota'},
+  'Venezuela':{lat:6.42,lon:-66.59,info:'Population: ~28M | Capital: Caracas'},
+  'Ecuador':{lat:-1.83,lon:-78.18,info:'Population: ~18M | Capital: Quito'},
+  'Bolivia':{lat:-16.29,lon:-63.59,info:'Population: ~12M | Capital: Sucre'},
+  'Paraguay':{lat:-23.44,lon:-58.44,info:'Population: ~7M | Capital: Asuncion'},
+  'Uruguay':{lat:-32.52,lon:-55.77,info:'Population: ~4M | Capital: Montevideo'},
+  'New Zealand':{lat:-40.90,lon:174.89,info:'Population: ~5M | Capital: Wellington'},
+  'Cuba':{lat:21.52,lon:-77.78,info:'Population: ~11M | Capital: Havana'},
+  'Haiti':{lat:18.97,lon:-72.29,info:'Population: ~11M | Capital: Port-au-Prince'},
+  'Dominican Republic':{lat:18.74,lon:-70.16,info:'Population: ~11M | Capital: Santo Domingo'},
+  'Jamaica':{lat:18.11,lon:-77.30,info:'Population: ~3M | Capital: Kingston'},
+  'Libya':{lat:26.34,lon:17.23,info:'Population: ~7M | Capital: Tripoli'},
+  'Mozambique':{lat:-18.67,lon:35.53,info:'Population: ~32M | Capital: Maputo'},
+  'Zimbabwe':{lat:-19.02,lon:29.15,info:'Population: ~15M | Capital: Harare'},
+  'Ghana':{lat:7.95,lon:-1.02,info:'Population: ~32M | Capital: Accra'},
+  'Senegal':{lat:14.50,lon:-14.45,info:'Population: ~17M | Capital: Dakar'},
+  'Mali':{lat:17.57,lon:-4.00,info:'Population: ~21M | Capital: Bamako'},
+  'Niger':{lat:17.61,lon:8.08,info:'Population: ~26M | Capital: Niamey'},
+  'Burkina Faso':{lat:12.37,lon:-1.52,info:'Population: ~22M | Capital: Ouagadougou'},
+  'Cameroon':{lat:7.37,lon:12.36,info:'Population: ~27M | Capital: Yaounde'},
+  'Angola':{lat:-11.20,lon:17.87,info:'Population: ~34M | Capital: Luanda'},
+  'Uganda':{lat:1.37,lon:32.29,info:'Population: ~47M | Capital: Kampala'},
+  'Rwanda':{lat:-1.94,lon:29.87,info:'Population: ~13M | Capital: Kigali'},
+  'Nepal':{lat:28.39,lon:84.12,info:'Population: ~30M | Capital: Kathmandu'},
+  'Afghanistan':{lat:33.94,lon:67.71,info:'Population: ~40M | Capital: Kabul'},
+};
+
+function latLonToV3(lat,lon,r){
+  const p=(90-lat)*Math.PI/180,t=(lon+180)*Math.PI/180;
+  return new THREE.Vector3(-r*Math.sin(p)*Math.cos(t),r*Math.cos(p),r*Math.sin(p)*Math.sin(t));
+}
+
+function ll2c(lon,lat,w,h){return [(lon+180)/360*w,(90-lat)/180*h];}
+function dP(ctx,ring,w,h){
+  ctx.beginPath();ring.forEach((c,i)=>{const[x,y]=ll2c(c[0],c[1],w,h);i===0?ctx.moveTo(x,y):ctx.lineTo(x,y);});ctx.closePath();
+}
+
+let geoFeatures=[];let borderCanvas=null,borderCtx=null,borderW=0,borderH=0;
+let highlightedCountryIdx=-1;
+
+const CONFLICT_COUNTRIES=[
+  'ukraine','russia','syria','yemen','myanmar','burma','ethiopia',
+  'sudan','israel','palestine','gaza','somalia','mali',
+  'burkina faso','niger','haiti','colombia',
+  'democratic republic of the congo','dr congo','central african republic',
+  'libya','iraq','afghanistan','cameroon','mozambique',
+  'sahrawi arab democratic republic','western sahara',
+];
+
+function isConflictCountry(f){
+  if(!f.properties)return false;
+  const n=(f.properties.name||f.properties.NAME||f.properties.ADMIN||'').toLowerCase();
+  return CONFLICT_COUNTRIES.some(c=>n===c||n.includes(c)||c.includes(n));
+}
+
+// --- Conflict Hotspot Data ---
+const CONFLICTS=[
+  // CRITICAL
+  {name:'Russo-Ukrainian War',lat:48.38,lon:31.17,status:'active',severity:'critical',type:'interstate',
+   startDate:'2022-02-24',parties:['Russia','Ukraine'],
+   description:'Full-scale Russian invasion of Ukraine. Major frontline fighting in eastern and southern regions with massive humanitarian impact.'},
+  {name:'Israel\u2013Hamas War',lat:31.45,lon:34.40,status:'active',severity:'critical',type:'interstate',
+   startDate:'2023-10-07',parties:['Israel','Hamas','Palestinian Islamic Jihad'],
+   description:'Large-scale conflict in Gaza Strip following Hamas attack. Extensive military operations and severe humanitarian crisis.'},
+  {name:'Sudan Civil War',lat:15.50,lon:32.56,status:'active',severity:'critical',type:'civil',
+   startDate:'2023-04-15',parties:['Sudanese Armed Forces','Rapid Support Forces'],
+   description:'Armed conflict between the Sudanese military and the RSF paramilitary. Massive displacement and humanitarian catastrophe.'},
+  {name:'Myanmar Civil War',lat:19.76,lon:96.08,status:'active',severity:'critical',type:'civil',
+   startDate:'2021-02-01',parties:['Myanmar Military (Tatmadaw)','National Unity Government','Ethnic Armed Organizations'],
+   description:'Post-coup civil war with resistance forces fighting the military junta across multiple fronts.'},
+  // HIGH
+  {name:'Syrian Civil War',lat:33.51,lon:36.28,status:'active',severity:'high',type:'civil',
+   startDate:'2011-03-15',parties:['Syrian Government','HTS','SDF','Various rebel groups'],
+   description:'Multi-sided civil war with international involvement. Ongoing instability despite reduced large-scale fighting.'},
+  {name:'Yemeni Civil War',lat:15.37,lon:44.19,status:'active',severity:'high',type:'civil',
+   startDate:'2014-09-16',parties:['Houthis','Saudi-led Coalition','STC','Yemeni Government'],
+   description:'Complex multi-party conflict with one of the world\'s worst humanitarian crises.'},
+  {name:'DR Congo \u2013 Eastern Conflict',lat:-1.66,lon:29.22,status:'active',severity:'high',type:'insurgency',
+   startDate:'2022-03-25',parties:['DRC Military','M23','ADF','Multiple armed groups'],
+   description:'Escalating conflict in eastern Congo with M23 resurgence and multiple armed groups causing mass displacement.'},
+  {name:'Somalia \u2013 Al-Shabaab Insurgency',lat:2.05,lon:45.32,status:'active',severity:'high',type:'insurgency',
+   startDate:'2006-01-01',parties:['Somalia Government','AMISOM/ATMIS','Al-Shabaab'],
+   description:'Long-running insurgency by Al-Shabaab against the Somali government and African Union forces.'},
+  {name:'Ethiopia \u2013 Tigray & Amhara Conflicts',lat:13.50,lon:39.00,status:'active',severity:'high',type:'civil',
+   startDate:'2020-11-03',parties:['Ethiopian Military','TDF','Fano Militia'],
+   description:'Post-Tigray war tensions continue with new conflicts in Amhara region. Fragile ceasefire in Tigray.'},
+  {name:'Afghanistan \u2013 Taliban Rule & Resistance',lat:34.53,lon:69.17,status:'active',severity:'high',type:'civil',
+   startDate:'2021-08-15',parties:['Taliban Government','NRF','ISIS-K'],
+   description:'Taliban-controlled Afghanistan facing ISIS-K attacks and ongoing resistance movements.'},
+  {name:'Lebanon Conflict',lat:33.89,lon:35.50,status:'active',severity:'high',type:'interstate',
+   startDate:'2023-10-08',parties:['Israel','Hezbollah','Lebanese civilians'],
+   description:'Cross-border hostilities between Israel and Hezbollah escalating into full military operations in Lebanon.'},
+  // MEDIUM
+  {name:'Mali Conflict',lat:17.57,lon:-4.00,status:'active',severity:'medium',type:'insurgency',
+   startDate:'2012-01-01',parties:['Malian Military','JNIM','ISIS-Sahel','Wagner Group'],
+   description:'Insurgency in northern and central Mali with jihadist groups and military junta seeking Wagner support.'},
+  {name:'Burkina Faso Insurgency',lat:12.37,lon:-1.52,status:'active',severity:'medium',type:'insurgency',
+   startDate:'2015-01-01',parties:['Burkina Faso Military','JNIM','ISIS-Sahel'],
+   description:'Growing jihadist insurgency with large areas outside government control.'},
+  {name:'Niger Instability',lat:13.51,lon:2.11,status:'active',severity:'medium',type:'insurgency',
+   startDate:'2023-07-26',parties:['Military Junta','JNIM','ISIS-Sahel'],
+   description:'Military coup followed by ongoing Sahel insurgency and regional tensions.'},
+  {name:'Cameroon Anglophone Crisis',lat:4.05,lon:9.77,status:'active',severity:'medium',type:'insurgency',
+   startDate:'2016-10-01',parties:['Cameroon Military','Ambazonian Separatists'],
+   description:'Armed separatist conflict in English-speaking Northwest and Southwest regions.'},
+  {name:'Mozambique \u2013 Cabo Delgado Insurgency',lat:-11.35,lon:40.56,status:'active',severity:'medium',type:'insurgency',
+   startDate:'2017-10-01',parties:['Mozambique Military','SADC Forces','ISIS-Mozambique'],
+   description:'ISIS-linked insurgency in northern Mozambique disrupting LNG projects and displacing hundreds of thousands.'},
+  {name:'Haiti Gang Violence',lat:18.59,lon:-72.31,status:'active',severity:'medium',type:'civil',
+   startDate:'2021-07-07',parties:['Gang Coalitions','Haitian National Police','MSS Force'],
+   description:'Armed gangs controlling much of Port-au-Prince with extreme violence and humanitarian crisis.'},
+  {name:'Colombia \u2013 Armed Groups',lat:2.44,lon:-76.61,status:'active',severity:'medium',type:'insurgency',
+   startDate:'2016-11-24',parties:['Colombian Military','ELN','FARC Dissidents','Clan del Golfo'],
+   description:'Post-peace accord violence with ELN and FARC dissidents active despite ongoing peace talks.'},
+  {name:'Iraq \u2013 Insurgency & Tensions',lat:33.31,lon:44.36,status:'active',severity:'medium',type:'insurgency',
+   startDate:'2017-01-01',parties:['Iraqi Security Forces','PMF','ISIS remnants'],
+   description:'Residual ISIS insurgency and militia tensions in post-caliphate Iraq.'},
+  {name:'Korean Peninsula Tensions',lat:38.32,lon:127.20,status:'active',severity:'medium',type:'interstate',
+   startDate:'1950-06-25',parties:['North Korea','South Korea','United States'],
+   description:'Technically still at war. Ongoing military provocations and nuclear tensions.'},
+  {name:'Taiwan Strait Tensions',lat:23.70,lon:121.00,status:'active',severity:'medium',type:'interstate',
+   startDate:'1949-10-01',parties:['China','Taiwan','United States'],
+   description:'Ongoing cross-strait tensions with increasing military activity in the strait.'},
+  {name:'Sahrawi \u2013 Western Sahara',lat:24.22,lon:-12.89,status:'ceasefire',severity:'medium',type:'insurgency',
+   startDate:'1975-10-16',parties:['Morocco','Polisario Front','SADR'],
+   description:'Long-running territorial dispute with a UN-monitored ceasefire.'},
+  // LOW / FROZEN
+  {name:'Cyprus Division',lat:35.13,lon:33.43,status:'frozen',severity:'low',type:'frozen',
+   startDate:'1974-07-15',parties:['Republic of Cyprus','Turkish Republic of Northern Cyprus'],
+   description:'Island divided since 1974. UN buffer zone separates Greek and Turkish Cypriot communities.'},
+  {name:'Kashmir Conflict',lat:34.08,lon:74.80,status:'active',severity:'low',type:'insurgency',
+   startDate:'1947-10-22',parties:['India','Pakistan','Kashmiri Insurgents'],
+   description:'Long-running territorial dispute with periodic escalations along the Line of Control.'},
+  {name:'Nagorno-Karabakh (Resolved)',lat:39.80,lon:46.75,status:'frozen',severity:'low',type:'frozen',
+   startDate:'1988-02-20',parties:['Azerbaijan','Armenia'],
+   description:'Dispute resolved in 2023 with Azerbaijan recapturing the region. Armenian population displaced.'},
+  {name:'Transnistria Conflict',lat:46.85,lon:29.55,status:'frozen',severity:'low',type:'frozen',
+   startDate:'1990-09-02',parties:['Moldova','Transnistria','Russia'],
+   description:'Frozen conflict in eastern Moldova with Russian troops stationed in the breakaway region.'},
+  {name:'Donbas Legacy',lat:48.00,lon:37.80,status:'frozen',severity:'low',type:'frozen',
+   startDate:'2014-04-06',parties:['Ukraine','Russia-backed separatists'],
+   description:'Former separatist-held area now fully contested in the broader Russo-Ukrainian War.'},
+];
+
+const SEVERITY_COLORS={
+  critical:{fill:'rgba(255,30,30,0.7)',ring:'rgba(255,60,60,0.9)',glow:0xff2222,size:1.6,pulseSpeed:0.04},
+  high:{fill:'rgba(255,136,0,0.65)',ring:'rgba(255,150,30,0.85)',glow:0xff8800,size:1.3,pulseSpeed:0.025},
+  medium:{fill:'rgba(200,170,0,0.55)',ring:'rgba(200,180,20,0.75)',glow:0xccaa00,size:1.0,pulseSpeed:0.015},
+  low:{fill:'rgba(130,130,150,0.45)',ring:'rgba(150,150,170,0.6)',glow:0x888899,size:0.8,pulseSpeed:0.008},
+};
+
+const STATUS_LABELS={active:'Active',ceasefire:'Ceasefire',frozen:'Frozen'};
+
+function drawBorders(ctx,w,h,highlightIdx){
+  ctx.clearRect(0,0,w,h);
+  geoFeatures.forEach((f,idx)=>{
+    const g=f.geometry;if(!g)return;
+    const isHL=idx===highlightIdx;
+    const isConflict=isConflictCountry(f);
+    const dr=(rings)=>{
+      rings.forEach((ring,i)=>{
+        dP(ctx,ring,w,h);
+        if(i===0){
+          if(isHL){
+            ctx.fillStyle='rgba(100,200,255,0.35)';ctx.fill();
+            ctx.strokeStyle='rgba(100,220,255,1.0)';ctx.lineWidth=2.5;
+          }else if(isConflict){
+            ctx.fillStyle='rgba(255,60,60,0.25)';ctx.fill();
+            ctx.strokeStyle='rgba(255,80,80,0.8)';ctx.lineWidth=1.8;
+          }else{
+            ctx.fillStyle='rgba(220,255,200,0.08)';ctx.fill();
+            ctx.strokeStyle='rgba(255,255,190,0.9)';ctx.lineWidth=1.2;
+          }
+          ctx.stroke();
+        }else{
+          if(isHL){ctx.strokeStyle='rgba(100,220,255,0.9)';ctx.lineWidth=2.0;}
+          else if(isConflict){ctx.strokeStyle='rgba(255,80,80,0.7)';ctx.lineWidth=1.5;}
+          else{ctx.strokeStyle='rgba(255,255,190,0.9)';ctx.lineWidth=1.0;}
+          ctx.stroke();
+        }
+      });
+    };
+    if(g.type==='Polygon')dr(g.coordinates);
+    else if(g.type==='MultiPolygon')g.coordinates.forEach(p=>dr(p));
+  });
+}
+
+function highlightCountry(idx){
+  highlightedCountryIdx=idx;
+  if(borderCanvas&&borderCtx)drawBorders(borderCtx,borderW,borderH,idx);
+  if(brM.map)brM.map.needsUpdate=true;
+}
+
+async function mkBorderTex(w=BDR_W,h=BDR_H){
+  borderW=w;borderH=h;
+  const c=document.createElement('canvas');c.width=w;c.height=h;borderCanvas=c;borderCtx=c.getContext('2d');
+  try{
+    updateProgress('Loading country borders...');
+    const r=await fetch(BDR_URL);if(!r.ok)throw new Error('HTTP '+r.status);const d=await r.json();
+    geoFeatures=d.features;
+    drawBorders(borderCtx,w,h,-1);
+    updateProgress('Loaded '+geoFeatures.length+' countries.');
+  }catch(e){console.error('Borders failed:',e);updateProgress('Borders failed.');}
+  return c;
+}
+
+function mkStars(cnt=4000){
+  const c=document.createElement('canvas');c.width=4096;c.height=2048;const x=c.getContext('2d');x.clearRect(0,0,c.width,c.height);
+  for(let i=0;i<cnt;i++){const px=Math.random()*c.width,py=Math.random()*c.height,b=Math.random(),s=Math.random()*1.5+0.3;
+  x.fillStyle=b>0.8?`rgba(180,200,255,${b})`:`rgba(255,255,255,${b*0.6})`;x.beginPath();x.arc(px,py,s,0,Math.PI*2);x.fill();
+  if(b>0.9){x.fillStyle=`rgba(200,220,255,${b*0.1})`;x.beginPath();x.arc(px,py,s*4,0,Math.PI*2);x.fill();}}
+  return c;
+}
+
+function mkMarker(color){
+  const c=document.createElement('canvas');c.width=64;c.height=64;const x=c.getContext('2d');x.clearRect(0,0,64,64);
+  const g=x.createRadialGradient(32,32,0,32,32,28);
+  g.addColorStop(0,color);g.addColorStop(0.3,color+'99');g.addColorStop(1,color+'00');
+  x.fillStyle=g;x.beginPath();x.arc(32,32,28,0,Math.PI*2);x.fill();
+  x.fillStyle='#fff';x.beginPath();x.arc(32,32,5,0,Math.PI*2);x.fill();
+  x.fillStyle=color;x.beginPath();x.arc(32,32,3,0,Math.PI*2);x.fill();
+  return new THREE.CanvasTexture(c);
+}
+
+// Scene
+const cont=document.getElementById('globe-container');
+const scene=new THREE.Scene();
+const camera=new THREE.PerspectiveCamera(45,window.innerWidth/window.innerHeight,0.1,2000);
+camera.position.set(0,0,350);
+const renderer=new THREE.WebGLRenderer({antialias:true,alpha:true});
+renderer.setSize(window.innerWidth,window.innerHeight);
+renderer.setPixelRatio(Math.min(window.devicePixelRatio,3));
+cont.appendChild(renderer.domElement);
+
+const aL=new THREE.AmbientLight(0x404060,1.0);scene.add(aL);
+const sL=new THREE.DirectionalLight(0xffffff,2.5);sL.position.set(200,100,200);scene.add(sL);
+const fL=new THREE.DirectionalLight(0x304070,0.3);fL.position.set(-200,-50,-200);scene.add(fL);
+
+const ER=120;
+const gG=new THREE.Group();scene.add(gG);
+const loader=new THREE.TextureLoader();
+let ld=0;const tot=5;
+function onL(n){ld++;updateProgress('Loading textures... '+ld+'/'+tot);if(ld>=tot)hidLoad();}
+function onE(n,e){console.warn(n,e);ld++;if(ld>=tot)hidLoad();}
+function mkT(u,ok){return loader.load(u,t=>{
+  t.colorSpace=THREE.SRGBColorSpace;
+  t.anisotropy=renderer.capabilities.getMaxAnisotropy();
+  t.minFilter=THREE.LinearMipmapLinearFilter;
+  t.magFilter=THREE.LinearFilter;
+  if(ok)ok(t);onL(u);
+},undefined,e=>onE(u,e));}
+
+const dT=mkT(TEX_URL.day);
+const nT=mkT(TEX_URL.night);
+const cT=mkT(TEX_URL.clouds);
+const bT=mkT(TEX_URL.bump);
+const sT=mkT(TEX_URL.spec);
+
+const eM=new THREE.MeshPhongMaterial({map:dT,bumpMap:bT,bumpScale:0.12,specularMap:sT,specular:new THREE.Color(0x333333),shininess:25});
+const earthMesh=new THREE.Mesh(_getSphereGeo(ER,64),eM);gG.add(earthMesh);
+
+const nlM=new THREE.MeshBasicMaterial({map:nT,transparent:true,opacity:0,blending:THREE.AdditiveBlending,depthWrite:false});
+const nightMesh=new THREE.Mesh(_getSphereGeo(ER*1.002,64),nlM);gG.add(nightMesh);
+
+const brM=new THREE.MeshBasicMaterial({transparent:true,opacity:1,depthWrite:false,blending:THREE.NormalBlending});
+const borderMesh=new THREE.Mesh(_getSphereGeo(ER*1.005,64),brM);gG.add(borderMesh);
+(async()=>{const cv=await mkBorderTex();if(cv){brM.map=new THREE.CanvasTexture(cv);brM.needsUpdate=true;}})();
+
+const clM=new THREE.MeshPhongMaterial({map:cT,transparent:true,opacity:0.4,depthWrite:false});
+const cloudMesh=new THREE.Mesh(_getSphereGeo(ER*1.01,64),clM);gG.add(cloudMesh);
+
+// Atmosphere
+const av=`varying vec3 vN;void main(){vN=normalize(normalMatrix*normal);gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0);}`;
+const af=`varying vec3 vN;uniform vec3 gC;void main(){float i=pow(0.65-dot(vN,vec3(0,0,1)),2.0);gl_FragColor=vec4(gC,1.0)*i*1.2;}`;
+const atM=new THREE.Mesh(_getSphereGeo(ER*1.15,64),new THREE.ShaderMaterial({vertexShader:av,fragmentShader:af,uniforms:{gC:{value:new THREE.Color(0.2,0.5,1.0)}},side:THREE.BackSide,blending:THREE.AdditiveBlending,transparent:true}));
+gG.add(atM);
+const atFrontMesh=new THREE.Mesh(_getSphereGeo(ER*1.08,64),new THREE.MeshBasicMaterial({color:0x3388ff,transparent:true,opacity:0.05,side:THREE.FrontSide,blending:THREE.AdditiveBlending,depthWrite:false}));
+gG.add(atFrontMesh);
+
+const lodMeshes=[
+  {mesh:earthMesh,radius:ER},{mesh:nightMesh,radius:ER*1.002},
+  {mesh:borderMesh,radius:ER*1.005},{mesh:cloudMesh,radius:ER*1.01},
+  {mesh:atM,radius:ER*1.15},{mesh:atFrontMesh,radius:ER*1.08}
+];
+
+// Cities
+const ctG=new THREE.Group();gG.add(ctG);
+const mScr={};
+const ctLabels=[];
+CITIES.forEach(c=>{
+  if(c[0]==='__origin__')return;
+  const[nm,lt,ln,sz,cl]=c;
+  if(!mScr[cl])mScr[cl]=mkMarker(cl);
+  const mat=new THREE.SpriteMaterial({map:mScr[cl],transparent:true,blending:THREE.AdditiveBlending,depthWrite:false,depthTest:true});
+  const sp=new THREE.Sprite(mat);const sc=sz*1.8;sp.scale.set(sc,sc,1);sp.position.copy(latLonToV3(lt,ln,ER*1.04));
+  sp.userData={name:nm,lat:lt,lon:ln};ctG.add(sp);
+  const lcv=document.createElement('canvas');lcv.width=256;lcv.height=64;const lx=lcv.getContext('2d');
+  lx.clearRect(0,0,256,64);lx.font='bold 18px Arial,sans-serif';lx.fillStyle='rgba(255,255,255,0.9)';
+  lx.textAlign='center';lx.textBaseline='middle';lx.fillText(nm,128,32);
+  const lm=new THREE.SpriteMaterial({map:new THREE.CanvasTexture(lcv),transparent:true,depthTest:false,depthWrite:false,opacity:0.85});
+  const lb=new THREE.Sprite(lm);lb.scale.set(5,1.25,1);lb.position.copy(latLonToV3(lt,ln,ER*1.04+3));ctG.add(lb);ctLabels.push(lb);
+});
+
+// Stars
+const stC=mkStars(4000);const stT=new THREE.CanvasTexture(stC);stT.anisotropy=renderer.capabilities.getMaxAnisotropy();
+scene.add(new THREE.Mesh(new THREE.SphereGeometry(800,64,64),new THREE.MeshBasicMaterial({map:stT,side:THREE.BackSide})));
+
+// --- Conflict Markers ---
+const conflictGroup=new THREE.Group();gG.add(conflictGroup);conflictGroup.visible=false;
+const conflictMarkers=[];
+
+CONFLICTS.forEach((c,ci)=>{
+  const sv=SEVERITY_COLORS[c.severity]||SEVERITY_COLORS.medium;
+  // Pulsing ring texture
+  const rc=document.createElement('canvas');rc.width=128;rc.height=128;
+  const rx=rc.getContext('2d');rx.clearRect(0,0,128,128);
+  const rg=rx.createRadialGradient(64,64,20,64,64,60);
+  rg.addColorStop(0,'rgba(0,0,0,0)');
+  rg.addColorStop(0.5,sv.ring);
+  rg.addColorStop(0.75,sv.fill);
+  rg.addColorStop(1,'rgba(0,0,0,0)');
+  rx.fillStyle=rg;rx.beginPath();rx.arc(64,64,60,0,Math.PI*2);rx.fill();
+  const ig=rx.createRadialGradient(64,64,0,64,64,12);
+  ig.addColorStop(0,'#ffffff');
+  ig.addColorStop(0.3,sv.ring);
+  ig.addColorStop(1,'rgba(0,0,0,0)');
+  rx.fillStyle=ig;rx.beginPath();rx.arc(64,64,12,0,Math.PI*2);rx.fill();
+
+  const ringTex=new THREE.CanvasTexture(rc);
+  const ringMat=new THREE.SpriteMaterial({map:ringTex,transparent:true,blending:THREE.AdditiveBlending,depthWrite:false,depthTest:true});
+  const ring=new THREE.Sprite(ringMat);
+  const baseSz=sv.size*4;
+  ring.scale.set(baseSz,baseSz,1);
+  ring.position.copy(latLonToV3(c.lat,c.lon,ER*1.06));
+  ring.userData={conflictIdx:ci};
+  conflictGroup.add(ring);
+
+  // Label
+  const lcv=document.createElement('canvas');lcv.width=256;lcv.height=48;
+  const lx=lcv.getContext('2d');lx.clearRect(0,0,256,48);
+  lx.font='bold 16px Arial,sans-serif';
+  lx.fillStyle=sv.ring;lx.textAlign='center';lx.textBaseline='middle';
+  lx.fillText(c.name,128,24);
+  const lTex=new THREE.CanvasTexture(lcv);
+  const lMat=new THREE.SpriteMaterial({map:lTex,transparent:true,depthTest:false,depthWrite:false,opacity:0.9});
+  const lb=new THREE.Sprite(lMat);
+  lb.scale.set(6,1.1,1);
+  lb.position.copy(latLonToV3(c.lat,c.lon,ER*1.06+3));
+  conflictGroup.add(lb);
+
+  conflictMarkers.push({sprite:ring,label:lb,data:c,baseScale:baseSz});
+});
+
+// --- Major Rivers Overlay ---
+const RIVER_W=4096,RIVER_H=2048;
+// Simplified major river paths: arrays of [lon, lat] coordinate pairs
+const MAJOR_RIVERS=[
+  {name:'Nile',color:'rgba(100,180,255,0.8)',width:2.0,
+   path:[[31.5,29.9],[32.3,31.5],[32.9,32.5],[33.8,33.0],[34.3,34.0],[34.8,34.8],[35.5,35.8],[35.9,36.7],[36.3,37.0],[36.8,36.6],[37.0,36.2],[37.5,35.5],[38.0,34.5],[38.5,33.5],[38.9,32.8],[39.5,32.0],[40.0,31.0],[40.5,30.0],[41.0,29.0],[41.5,28.0],[42.0,27.0],[42.5,26.0],[43.0,24.5],[43.5,23.5],[44.0,22.0],[44.5,21.0],[45.0,19.5],[45.5,18.0],[46.0,16.5],[46.5,15.0],[47.0,14.0],[47.5,13.0],[48.0,12.0],[48.5,11.0],[49.0,10.0],[49.5,9.5],[50.0,9.0],[50.5,8.5],[51.0,8.0]]},
+  {name:'Amazon',color:'rgba(80,170,255,0.8)',width:2.5,
+   path:[[-78.0,-3.5],[-76.0,-3.8],[-74.0,-4.0],[-72.0,-4.2],[-70.0,-3.8],[-68.0,-3.5],[-66.0,-3.2],[-64.0,-3.0],[-62.0,-2.8],[-60.0,-2.5],[-58.0,-2.3],[-56.0,-2.0],[-54.0,-1.8],[-52.0,-1.5],[-50.0,-1.2],[-48.0,-1.0],[-46.0,-0.8],[-44.0,-0.5],[-42.0,-0.3],[-40.0,-0.2],[-38.0,-0.1]]},
+  {name:'Mississippi',color:'rgba(90,165,255,0.7)',width:1.8,
+   path:[[-89.5,47.5],[-90.5,46.5],[-91.0,45.5],[-91.5,44.5],[-91.0,43.5],[-90.5,42.5],[-90.0,41.5],[-91.0,40.5],[-91.5,39.5],[-91.0,38.5],[-90.5,37.5],[-90.0,36.5],[-89.5,35.5],[-89.0,34.5],[-89.5,33.5],[-89.0,32.5],[-89.5,31.5],[-89.0,30.5],[-89.5,29.5],[-89.0,29.0]]},
+  {name:'Yangtze',color:'rgba(100,175,255,0.75)',width:2.0,
+   path:[[97.5,33.5],[96.5,32.5],[95.5,31.5],[94.5,30.5],[93.5,29.5],[92.5,29.0],[91.5,29.5],[90.5,29.5],[89.5,29.5],[88.5,29.0],[87.5,28.5],[86.5,29.0],[85.5,29.5],[84.5,30.0],[83.5,30.5],[82.5,30.5],[81.5,30.0],[80.5,30.0],[79.5,30.5],[78.5,30.5],[77.5,30.0],[76.5,30.0],[75.5,30.5],[74.5,30.0],[73.5,30.0]]},
+  {name:'Yellow River',color:'rgba(200,180,60,0.7)',width:1.5,
+   path:[[96.0,35.0],[95.0,35.5],[94.0,36.0],[93.0,36.5],[92.0,37.0],[91.0,37.5],[90.0,38.0],[89.0,38.5],[88.0,39.0],[87.0,39.5],[86.0,39.5],[85.0,39.0],[84.0,38.5],[83.0,38.0],[82.0,37.5],[81.0,37.0],[80.0,36.5]]},
+  {name:'Congo',color:'rgba(70,160,255,0.8)',width:2.0,
+   path:[[18.0,-5.5],[17.5,-5.0],[17.0,-4.5],[16.5,-4.0],[16.0,-3.5],[15.5,-3.0],[15.0,-2.5],[14.5,-2.0],[14.0,-1.5],[13.5,-1.0],[13.0,-0.5],[12.5,0.0],[12.0,0.5],[11.5,1.0],[11.0,1.5],[10.5,2.0],[10.0,2.5]]},
+  {name:'Mekong',color:'rgba(85,165,255,0.75)',width:1.5,
+   path:[[98.5,32.5],[99.5,31.5],[100.0,30.5],[100.5,29.5],[101.0,28.5],[101.5,27.5],[102.0,26.5],[102.5,25.5],[103.0,24.5],[103.5,23.5],[104.0,22.5],[104.5,21.5],[105.0,20.5],[105.5,19.5],[106.0,18.5],[106.5,17.5],[107.0,16.5],[107.5,15.5],[108.0,14.5],[108.5,13.5],[108.5,12.5]]},
+  {name:'Danube',color:'rgba(120,180,255,0.7)',width:1.3,
+   path:[[10.5,47.5],[11.5,48.0],[12.5,48.5],[13.5,48.0],[14.5,47.5],[15.5,47.0],[16.5,47.5],[17.5,47.5],[18.5,47.5],[19.5,47.5],[20.5,47.5],[21.5,47.0],[22.5,46.5],[23.5,46.0],[24.5,45.5],[25.5,45.0],[26.5,44.5],[27.5,44.0],[28.5,43.5],[29.5,43.5]]},
+  {name:'Volga',color:'rgba(110,175,255,0.7)',width:1.5,
+   path:[[36.0,57.5],[37.0,57.0],[38.0,56.5],[39.0,56.0],[40.0,55.5],[41.0,55.0],[42.0,54.5],[43.0,54.0],[44.0,53.5],[45.0,53.0],[46.0,52.5],[47.0,52.0],[48.0,51.5],[49.0,51.0],[49.5,50.5],[49.5,50.0]]},
+  {name:'Ganges',color:'rgba(95,170,255,0.75)',width:1.8,
+   path:[[78.5,30.5],[79.5,30.0],[80.5,29.5],[81.5,29.0],[82.5,28.5],[83.5,28.0],[84.5,27.5],[85.5,27.0],[86.5,26.5],[87.5,26.0],[88.5,25.5],[89.5,25.0],[90.5,24.5],[91.0,24.0]]},
+  {name:'Indus',color:'rgba(90,168,255,0.7)',width:1.5,
+   path:[[77.0,35.0],[76.5,34.0],[76.0,33.0],[75.5,32.0],[75.0,31.0],[74.5,30.0],[74.0,29.0],[73.5,28.0],[73.0,27.0],[72.5,26.0],[72.0,25.0],[71.5,24.0],[71.0,23.5],[70.5,24.0],[70.0,24.5]]},
+  {name:'Rio Grande',color:'rgba(95,170,255,0.65)',width:1.2,
+   path:[[-106.5,32.5],[-105.5,32.0],[-104.5,31.5],[-103.5,31.0],[-103.0,30.5],[-103.0,30.0],[-103.5,29.5],[-104.0,29.0],[-104.5,28.5],[-105.0,28.0],[-105.5,27.5],[-106.0,27.0],[-106.5,26.5],[-107.0,26.0],[-107.5,25.5],[-108.0,25.0]]},
+  {name:'Niger',color:'rgba(80,165,255,0.7)',width:1.5,
+   path:[[-11.5,10.5],[-10.5,11.0],[-9.5,11.5],[-8.5,12.0],[-7.5,12.5],[-6.5,13.0],[-5.5,13.5],[-4.5,14.0],[-3.5,14.5],[-2.5,14.0],[-1.5,13.5],[-0.5,13.0],[0.5,12.5],[1.5,12.0],[2.5,11.5],[3.5,11.0],[4.5,10.5],[5.5,10.0],[6.5,9.5],[7.0,9.0]]},
+  {name:'Zambezi',color:'rgba(85,168,255,0.7)',width:1.3,
+   path:[[23.0,-11.0],[24.0,-11.5],[25.0,-12.0],[26.0,-12.5],[27.0,-13.0],[28.0,-13.5],[29.0,-14.0],[30.0,-14.5],[31.0,-15.0],[32.0,-15.5],[33.0,-16.0],[34.0,-16.5],[35.0,-17.0]]},
+  {name:'Ob-Irtysh',color:'rgba(90,170,255,0.7)',width:1.5,
+   path:[[73.5,54.5],[72.5,55.0],[71.5,55.5],[70.5,56.0],[69.5,56.5],[68.5,57.5],[67.5,58.5],[66.5,59.5],[65.5,60.5],[65.0,61.5],[65.5,62.5],[66.5,63.0],[67.5,63.5],[68.5,64.0],[69.5,64.5],[70.5,65.0]]},
+  {name:'Yenisei',color:'rgba(85,168,255,0.7)',width:1.4,
+   path:[[89.5,52.0],[90.5,52.5],[91.0,53.0],[91.5,54.0],[91.0,55.0],[90.5,56.0],[90.0,57.0],[89.5,58.0],[89.0,59.0],[88.5,60.0],[88.0,61.0],[87.5,62.0],[87.0,63.0],[86.5,64.0],[86.0,65.0],[85.5,66.0]]},
+  {name:'Lena',color:'rgba(80,165,255,0.7)',width:1.3,
+   path:[[107.5,53.0],[108.0,54.0],[108.5,55.0],[109.0,56.0],[109.5,57.0],[110.0,58.0],[110.5,59.0],[111.0,60.0],[111.5,61.0],[112.0,62.0],[113.0,63.0],[114.0,64.0],[115.0,65.0],[116.0,66.0],[117.0,67.0],[118.0,68.0],[119.0,69.0],[120.0,70.0],[121.0,71.0]]},
+  {name:'Rhine',color:'rgba(110,178,255,0.65)',width:1.1,
+   path:[[9.5,47.5],[9.0,48.0],[8.5,48.5],[8.0,49.0],[7.5,49.5],[7.0,50.0],[6.5,50.5],[6.0,51.0],[5.5,51.5],[5.0,52.0]]},
+  {name:'Euphrates',color:'rgba(100,175,255,0.7)',width:1.3,
+   path:[[39.0,38.5],[39.5,38.0],[40.0,37.5],[40.5,37.0],[41.0,36.5],[42.0,36.0],[43.0,35.5],[44.0,35.0],[44.5,34.5],[45.0,34.0],[45.5,33.5],[46.0,33.0],[46.5,32.5]]},
+  {name:'Tigris',color:'rgba(100,175,255,0.65)',width:1.1,
+   path:[[38.0,37.5],[38.5,37.0],[39.0,36.5],[39.5,36.0],[40.0,35.5],[41.0,35.0],[42.0,34.5],[43.0,34.0],[44.0,33.5],[44.5,33.0],[45.0,32.5],[45.5,32.0]]},
+];
+
+let riverCanvas=null,riverCtx=null;
+function drawRivers(ctx,w,h){
+  ctx.clearRect(0,0,w,h);
+  MAJOR_RIVERS.forEach(r=>{
+    if(r.path.length<2)return;
+    ctx.beginPath();
+    ctx.strokeStyle=r.color;
+    ctx.lineWidth=r.width;
+    ctx.lineCap='round';
+    ctx.lineJoin='round';
+    r.path.forEach((pt,i)=>{
+      const[x,y]=ll2c(pt[0],pt[1],w,h);
+      if(i===0)ctx.moveTo(x,y);else ctx.lineTo(x,y);
+    });
+    ctx.stroke();
+  });
+}
+
+async function mkRiverTex(){
+  const c=document.createElement('canvas');c.width=RIVER_W;c.height=RIVER_H;riverCanvas=c;riverCtx=c.getContext('2d');
+  drawRivers(riverCtx,RIVER_W,RIVER_H);
+  return c;
+}
+
+const riverM=new THREE.MeshBasicMaterial({transparent:true,opacity:1,depthWrite:false,blending:THREE.NormalBlending});
+const riverMesh=new THREE.Mesh(_getSphereGeo(ER*1.007,64),riverM);gG.add(riverMesh);riverMesh.visible=false;
+mkRiverTex().then(cv=>{riverM.map=new THREE.CanvasTexture(cv);riverM.needsUpdate=true;});
+
+// Timezone lines — 24 meridians at every 15° of longitude
+const tzGroup=new THREE.Group();gG.add(tzGroup);tzGroup.visible=false;
+for(let lon=-180;lon<180;lon+=15){
+  const pts=[];
+  for(let lat=-90;lat<=90;lat+=3)pts.push(latLonToV3(lat,lon,ER*1.006));
+  const geo=new THREE.BufferGeometry().setFromPoints(pts);
+  const isPrime=lon===0;
+  const mat=new THREE.LineBasicMaterial({color:isPrime?0x44aaff:0x8866cc,transparent:true,opacity:isPrime?0.6:0.25,depthTest:false});
+  tzGroup.add(new THREE.Line(geo,mat));
+  if(lon%45===0){
+    const offsetH=lon/15;const label=(offsetH>=0?'+':'')+Math.round(offsetH);
+    const lcv=document.createElement('canvas');lcv.width=64;lcv.height=32;const lx=lcv.getContext('2d');
+    lx.clearRect(0,0,64,32);lx.font='bold 14px monospace';
+    lx.fillStyle=isPrime?'rgba(68,170,255,0.8)':'rgba(136,102,204,0.6)';
+    lx.textAlign='center';lx.textBaseline='middle';lx.fillText('UTC'+label,32,16);
+    const lTex=new THREE.CanvasTexture(lcv);
+    const lMat=new THREE.SpriteMaterial({map:lTex,transparent:true,depthTest:false,depthWrite:false});
+    const lSp=new THREE.Sprite(lMat);lSp.scale.set(6,3,1);
+    lSp.position.copy(latLonToV3(0,lon,ER*1.008));tzGroup.add(lSp);
+  }
+}
+
+// Controls
+const ctrl=new OrbitControls(camera,renderer.domElement);
+ctrl.enableDamping=true;ctrl.dampingFactor=0.08;ctrl.rotateSpeed=0.5;ctrl.zoomSpeed=0.8;
+ctrl.minDistance=150;ctrl.maxDistance=500;ctrl.enablePan=false;
+
+const SOLAR_DAY_MS=86400000;
+const SUN_XZ_ANGLE=Math.atan2(200,200);
+let autoRo=true,shCloud=true,shAtm=true,shBrD=true,shCt=true,nMde=false;
+
+// UI Buttons
+const btnRot=document.getElementById('btn-rotate');
+const btnCl=document.getElementById('btn-clouds');
+const btnAz=document.getElementById('btn-atmosphere');
+const btnNt=document.getElementById('btn-night');
+const btnCt=document.getElementById('btn-cities');
+
+btnRot.addEventListener('click',()=>{autoRo=!autoRo;btnRot.classList.toggle('active',autoRo);});
+btnCl.addEventListener('click',()=>{shCloud=!shCloud;btnCl.classList.toggle('active',shCloud);});
+btnAz.addEventListener('click',()=>{shAtm=!shAtm;btnAz.classList.toggle('active',shAtm);});
+btnNt.addEventListener('click',()=>{nMde=!nMde;btnNt.classList.toggle('active',nMde);});
+if(btnCt)btnCt.addEventListener('click',()=>{shCt=!shCt;btnCt.classList.toggle('active',shCt);});
+
+const btnTz=document.getElementById('btn-timezones');
+let shTz=false;
+if(btnTz)btnTz.addEventListener('click',()=>{shTz=!shTz;tzGroup.visible=shTz;btnTz.classList.toggle('active',shTz);});
+
+// Conflict toggle
+const btnRivers=document.getElementById('btn-rivers');
+let shRivers=false;
+if(btnRivers)btnRivers.addEventListener('click',()=>{
+  shRivers=!shRivers;riverMesh.visible=shRivers;
+  btnRivers.classList.toggle('active',shRivers);
+});
+
+// Fullscreen toggle
+const btnFs=document.getElementById('btn-fullscreen');
+if(btnFs)btnFs.addEventListener('click',()=>{
+  if(!document.fullscreenElement){
+    document.documentElement.requestFullscreen().then(()=>btnFs.classList.add('active'))
+    .catch(()=>{});
+  }else{
+    document.exitFullscreen().then(()=>btnFs.classList.remove('active'))
+    .catch(()=>{});
+  }
+});
+document.addEventListener('fullscreenchange',()=>{
+  if(btnFs)btnFs.classList.toggle('active',!!document.fullscreenElement);
+});
+
+// Map button — navigate to interactive map
+const btnMap=document.getElementById('btn-map');
+if(btnMap)btnMap.addEventListener('click',()=>{window.location.href='map.html';});
+
+const btnConflict=document.getElementById('btn-conflicts');
+const conflictLegend=document.getElementById('conflict-legend');
+let shConflict=false;
+if(btnConflict)btnConflict.addEventListener('click',()=>{
+  shConflict=!shConflict;
+  conflictGroup.visible=shConflict;
+  btnConflict.classList.toggle('active',shConflict);
+  if(conflictLegend)conflictLegend.classList.toggle('hidden',!shConflict);
+  if(!shConflict)conflictPanel.classList.add('hidden');
+});
+
+// Conflict panel
+const conflictPanel=document.getElementById('conflict-panel');
+const conflictName=document.getElementById('conflict-name');
+const conflictBadge=document.getElementById('conflict-status-badge');
+const conflictMeta=document.getElementById('conflict-meta');
+const conflictParties=document.getElementById('conflict-parties');
+const conflictDesc=document.getElementById('conflict-desc');
+const closeConflict=document.getElementById('close-conflict');
+if(closeConflict)closeConflict.addEventListener('click',()=>conflictPanel.classList.add('hidden'));
+
+function showConflictPanel(c){
+  if(!conflictPanel)return;
+  conflictName.textContent=c.name;
+  const sevLabel=c.severity.charAt(0).toUpperCase()+c.severity.slice(1);
+  const statLabel=STATUS_LABELS[c.status]||c.status;
+  conflictBadge.textContent=sevLabel+' \u2022 '+statLabel;
+  conflictBadge.className='badge-'+c.severity;
+  const typeLabel=c.type.charAt(0).toUpperCase()+c.type.slice(1);
+  conflictMeta.innerHTML='Type: '+typeLabel+'<br>Since: '+c.startDate+'<br>Status: '+statLabel;
+  conflictParties.textContent='Parties: '+c.parties.join(', ');
+  conflictDesc.textContent=c.description;
+  conflictPanel.classList.remove('hidden');
+}
+
+// Country panel
+const countryPanel=document.getElementById('country-panel');
+const countryName=document.getElementById('country-name');
+const countryInfo=document.getElementById('country-info');
+const closeBtn=document.getElementById('close-country');
+closeBtn.addEventListener('click',()=>{countryPanel.classList.add('hidden');highlightCountry(-1);});
+
+const ray=new THREE.Raycaster();
+const ms=new THREE.Vector2();
+let cntryMode=false,ativCn=null,blendTo=0;
+
+// Double-click to zoom to country
+renderer.domElement.addEventListener('dblclick',(e)=>{
+  ms.x=(e.clientX/window.innerWidth)*2-1;
+  ms.y=-(e.clientY/window.innerHeight)*2+1;
+  ray.setFromCamera(ms,camera);
+  const hits=ray.intersectObjects(gG.children);
+  if(hits.length>0){
+    const h=hits[0];
+    const v=new THREE.Vector3();v.copy(h.point);gG.worldToLocal(v);
+    const R=v.length(),n=v.clone().normalize();
+    const lt=90-Math.asin(n.y)*180/Math.PI,ln=Math.atan2(n.z,-n.x)*180/Math.PI-180;
+    showCountryAt(lt,ln,Math.min(R*3,300));
+    const d=findCountry(lt,ln);
+    if(d){
+      countryName.textContent=d.name;countryInfo.textContent=d.info;
+      countryPanel.classList.remove('hidden');
+      highlightCountry(findCountryFeatureIdx(d.name));
+    }else{highlightCountry(-1);}
+  }
+});
+
+function showCountryAt(lat,lon,dist){
+  if(!cntryMode){cntryMode=true;blendTo=1;}
+  const tgt=latLonToV3(lat,lon,dist);
+  gsap(tgt,camera.position,tgt,new THREE.Vector3(0,0,0),80);
+}
+
+let gsapDest=null,gsapOrigin=null,gsapT=0,gsapDur=80;
+function gsap(d,o,lookAt,lookOrigin,dur){gsapDest=d;gsapOrigin=o.clone();gsapT=0;gsapDur=dur;}
+
+function findCountry(lat,lon){
+  let best=null,bestDist=Infinity;
+  for(const[k,v]of Object.entries(COUNTRY_INFO)){
+    const d=latLonDist(lat,lon,v.lat,v.lon);
+    if(d<bestDist&&d<30){bestDist=d;best={name:k,info:v.info};}
+  }
+  return best;
+}
+
+function findCountryFeatureIdx(countryName){
+  if(!countryName||!geoFeatures.length)return-1;
+  const lower=countryName.toLowerCase();
+  return geoFeatures.findIndex(f=>{
+    const p=f.properties;if(!p)return false;
+    const n=(p.name||p.NAME||p.ADMIN||'').toLowerCase();
+    return n===lower||n.includes(lower)||lower.includes(n);
+  });
+}
+
+function latLonDist(l1,ln1,l2,ln2){
+  const R=6371;const dLat=(l2-l1)*Math.PI/180;const dLon=(ln2-ln1)*Math.PI/180;
+  const a=Math.sin(dLat/2)**2+Math.cos(l1*Math.PI/180)*Math.cos(l2*Math.PI/180)*Math.sin(dLon/2)**2;
+  return R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
+}
+
+// Search
+const searchInput=document.getElementById('search');
+const searchResults=document.getElementById('search-results');
+let allSearchable=[];
+function buildSearchIndex(){
+  CITIES.forEach(c=>{if(c[0]==='__origin__')return;allSearchable.push({name:c[0],lat:c[1],lon:c[2],type:'city'});});
+  Object.keys(COUNTRY_INFO).forEach(k=>{allSearchable.push({name:k,lat:COUNTRY_INFO[k].lat,lon:COUNTRY_INFO[k].lon,type:'country'});});
+  allSearchable.sort((a,b)=>a.name.localeCompare(b.name));
+}
+buildSearchIndex();
+
+function searchGlobe(q){
+  if(!q||q.length<2){searchResults.classList.add('hidden');return;}
+  const lower=q.toLowerCase();
+  const matches=allSearchable.filter(s=>s.name.toLowerCase().includes(lower)).slice(0,12);
+  if(!matches.length){searchResults.classList.add('hidden');return;}
+  searchResults.innerHTML='';
+  matches.forEach(m=>{
+    const div=document.createElement('div');div.className='sr-item';
+    div.innerHTML=m.name+'<span class="sr-type">'+m.type+'</span>';
+    div.addEventListener('click',()=>{searchInput.value=m.name;searchResults.classList.add('hidden');zoomTo(m.lat,m.lon);});
+    searchResults.appendChild(div);
+  });
+  searchResults.classList.remove('hidden');
+}
+
+function zoomTo(lat,lon){
+  const dist=Math.max(camera.position.length(),200);
+  const tgt=latLonToV3(lat,lon,dist);
+  gsapDest=tgt;gsapOrigin=camera.position.clone();gsapT=0;gsapDur=80;cntryMode=true;
+  const cf=findCountry(lat,lon);
+  if(cf){
+    countryName.textContent=cf.name;countryInfo.textContent=cf.info;
+    countryPanel.classList.remove('hidden');
+    highlightCountry(findCountryFeatureIdx(cf.name));
+  }
+}
+
+searchInput.addEventListener('input',()=>searchGlobe(searchInput.value));
+searchInput.addEventListener('focus',()=>searchGlobe(searchInput.value));
+document.addEventListener('click',(e)=>{if(!e.target.closest('#search-wrap'))searchResults.classList.add('hidden');});
+
+// Tooltip
+const tooltip=document.createElement('div');tooltip.id='tooltip';document.body.appendChild(tooltip);
+let hoverObj=null;
+
+// Mouse move: check cities + conflict markers for hover
+renderer.domElement.addEventListener('mousemove',(e)=>{
+  ms.x=(e.clientX/window.innerWidth)*2-1;
+  ms.y=-(e.clientY/window.innerHeight)*2+1;
+  ray.setFromCamera(ms,camera);
+  // Check conflict markers first
+  if(conflictGroup.visible){
+    const cHits=ray.intersectObjects(conflictGroup.children.filter(c=>c.userData.conflictIdx!==undefined));
+    if(cHits.length>0){
+      const ci=cHits[0].object.userData.conflictIdx;
+      const c=CONFLICTS[ci];
+      tooltip.style.display='block';tooltip.style.left=(e.clientX+12)+'px';tooltip.style.top=(e.clientY-20)+'px';
+      tooltip.style.background='rgba(40,10,10,0.92)';tooltip.style.borderColor='rgba(255,80,80,0.5)';
+      tooltip.innerHTML='<strong>'+c.name+'</strong><br><span style="font-size:0.7rem;color:'+(SEVERITY_COLORS[c.severity]?.ring||'#ff6666')+'">'+c.severity.toUpperCase()+' \u2022 '+(STATUS_LABELS[c.status]||c.status)+'</span>';
+      renderer.domElement.style.cursor='pointer';
+      hoverObj=cHits[0].object;
+      return;
+    }
+  }
+  // Check cities
+  const hits=ray.intersectObjects(ctG.children);
+  if(hits.length>0&&hits[0].object.userData&&hits[0].object.userData.name){
+    hoverObj=hits[0].object;tooltip.style.display='block';tooltip.style.left=(e.clientX+12)+'px';tooltip.style.top=(e.clientY-20)+'px';
+    tooltip.style.background='rgba(10,20,50,0.9)';tooltip.style.borderColor='rgba(100,160,255,0.4)';
+    tooltip.textContent=hoverObj.userData.name;
+    renderer.domElement.style.cursor='default';
+  }else{
+    tooltip.style.display='none';hoverObj=null;
+    renderer.domElement.style.cursor='grab';
+  }
+});
+
+// Click on conflict markers
+renderer.domElement.addEventListener('click',(e)=>{
+  if(!conflictGroup.visible)return;
+  ms.x=(e.clientX/window.innerWidth)*2-1;
+  ms.y=-(e.clientY/window.innerHeight)*2+1;
+  ray.setFromCamera(ms,camera);
+  const cHits=ray.intersectObjects(conflictGroup.children.filter(c=>c.userData.conflictIdx!==undefined));
+  if(cHits.length>0){
+    const ci=cHits[0].object.userData.conflictIdx;
+    const c=CONFLICTS[ci];
+    showConflictPanel(c);
+    // Zoom to conflict location
+    const tgt=latLonToV3(c.lat,c.lon,250);
+    gsapDest=tgt;gsapOrigin=camera.position.clone();gsapT=0;gsapDur=60;cntryMode=true;
+  }
+});
+
+// Clock HUD
+const clockUtc=document.getElementById('clock-utc');
+const clockLocal=document.getElementById('clock-local');
+const clockCoords=document.getElementById('clock-coords');
+function updateClock(){
+  const n=camera.position.clone().normalize();
+  const lat=90-Math.asin(n.y)*180/Math.PI;
+  let lon=Math.atan2(n.z,-n.x)*180/Math.PI-180;
+  if(lon<-180)lon+=360;if(lon>180)lon-=360;
+  const now=new Date();
+  const utcH=now.getUTCHours(),utcM=now.getUTCMinutes(),utcS=now.getUTCSeconds();
+  if(clockUtc)clockUtc.textContent='UTC  '+String(utcH).padStart(2,'0')+':'+String(utcM).padStart(2,'0')+':'+String(utcS).padStart(2,'0');
+  const lonOffset=lon/15;
+  const totalSec=utcH*3600+utcM*60+utcS+lonOffset*3600;
+  const localSec=((totalSec%86400)+86400)%86400;
+  const lH=Math.floor(localSec/3600),lM=Math.floor((localSec%3600)/60),lS=Math.floor(localSec%60);
+  const utcLabel=lon>=0?'+'+Math.round(lon/15):''+Math.round(lon/15);
+  if(clockLocal)clockLocal.textContent=String(lH).padStart(2,'0')+':'+String(lM).padStart(2,'0')+':'+String(lS).padStart(2,'0')+' UTC'+utcLabel;
+  if(clockCoords)clockCoords.textContent=lat.toFixed(1)+'\u00B0'+(lat>=0?'N':'S')+'  '+Math.abs(lon).toFixed(1)+'\u00B0'+(lon>=0?'E':'W');
+}
+
+// Animation
+let _lastLODSeg=-1;
+function updateLOD(){
+  const dist=camera.position.length();
+  const seg=getLODSegments(dist);
+  if(seg===_lastLODSeg)return;
+  _lastLODSeg=seg;
+  for(const{mesh,radius}of lodMeshes)mesh.geometry=_getSphereGeo(radius,seg);
+  const el=document.getElementById('lod-hud');
+  if(el){const lb={192:'Ultra',128:'High',64:'Medium',32:'Low'};el.textContent='LOD: '+(lb[seg]||seg)+' ('+seg+' seg)';}
+}
+
+let time=0;
+function animate(){
+  requestAnimationFrame(animate);time+=0.001;
+  if(autoRo){
+    const now=Date.now();
+    const utcH=(now%SOLAR_DAY_MS)/3600000;
+    gG.rotation.y=-SUN_XZ_ANGLE+(utcH-12)*Math.PI/12;
+  }
+  cloudMesh.rotation.y+=0.0008;
+  if(nMde){nlM.opacity=Math.min(nlM.opacity+0.015,1.0);aL.intensity=Math.max(aL.intensity-0.02,0.2);}
+  else{nlM.opacity=Math.max(nlM.opacity-0.015,0.0);aL.intensity=Math.min(aL.intensity+0.02,1.0);}
+  atM.visible=shAtm;cloudMesh.visible=shCloud;ctG.visible=shCt;
+
+  // Pulsing conflict markers
+  if(conflictGroup.visible){
+    conflictMarkers.forEach(m=>{
+      const sv=SEVERITY_COLORS[m.data.severity]||SEVERITY_COLORS.medium;
+      const pulse=Math.sin(time*sv.pulseSpeed*600)*0.3+1.0;
+      m.sprite.scale.set(m.baseScale*pulse,m.baseScale*pulse,1);
+      m.sprite.material.opacity=0.7+Math.sin(time*sv.pulseSpeed*400)*0.3;
+    });
+  }
+
+  if(cntryMode&&gsapDest){
+    gsapT++;
+    const t=gsapT/gsapDur;
+    if(t>=1){camera.position.copy(gsapDest);cntryMode=false;gsapT=0;gsapDest=null;autoRo=false;btnRot.classList.remove('active');}
+    else{const e=t*t*(3-2*t);camera.position.lerpVectors(gsapOrigin,gsapDest,e);}
+  }
+
+  const camDist=camera.position.length();
+  const zoomK=Math.min(Math.max(Math.pow(350/camDist,0.3),0.85),1.8);
+  ctLabels.forEach(lb=>{lb.scale.set(5*zoomK,1.25*zoomK,1);});
+
+  // Maritime arc dash animation
+  if(maritimeGroup.visible){
+    arcLines.forEach(line=>{
+      line.material.dashOffset -= 0.003;
+    });
+    // Pulse port rings
+    portGroup.children.forEach(sp=>{
+      if(sp.userData.isPortRing){
+        const pulse=Math.sin(time*3)*0.3+1.0;
+        sp.scale.set(6*pulse,6*pulse,1);
+        sp.material.opacity=0.5+Math.sin(time*3)*0.3;
+      }
+    });
+  }
+
+  updateLOD();
+  updateClock();
+  ctrl.update();renderer.render(scene,camera);
+}
+
+window.addEventListener('resize',()=>{camera.aspect=window.innerWidth/window.innerHeight;camera.updateProjectionMatrix();renderer.setSize(window.innerWidth,window.innerHeight);});
+
+function hidLoad(){const le=document.getElementById('loading');if(le){le.classList.add('hidden');setTimeout(()=>{le.style.display='none';},900);}}
+function updateProgress(msg){const pe=document.getElementById('loading-progress');if(pe)pe.textContent=msg;}
+
+setTimeout(()=>{if(ld<tot){updateProgress('Some textures failed.');setTimeout(hidLoad,2000);}},20000);
+
+// ============================================================
+// MARITIME TRADE ROUTES — Data
+// ============================================================
+const MARITIME_CARGO = {
+    oil:       { color: '#ff6b6b', label: 'Crude Oil & Tankers' },
+    container: { color: '#4ecdc4', label: 'Container Ships' },
+    bulk:      { color: '#ffe66d', label: 'Bulk Cargo' },
+    lng:       { color: '#a8e6cf', label: 'LNG & Gas Carriers' }
+};
+const PORTS = [
+    { id:'rotterdam',  name:'Rotterdam',   lat:51.9225,  lng:4.4792,   country:'Netherlands' },
+    { id:'shanghai',   name:'Shanghai',    lat:31.2304,  lng:121.4737, country:'China' },
+    { id:'singapore',  name:'Singapore',   lat:1.2644,   lng:103.8220, country:'Singapore' },
+    { id:'dubai',      name:'Dubai',       lat:25.2048,  lng:55.2708,  country:'UAE' },
+    { id:'newyork',    name:'New York',    lat:40.7128,  lng:-74.0060, country:'USA' },
+    { id:'panama',     name:'Panama City', lat:9.0820,   lng:-79.5167, country:'Panama' },
+    { id:'suez',       name:'Port Said',   lat:31.2653,  lng:32.3019,  country:'Egypt' },
+    { id:'losangeles', name:'Los Angeles', lat:33.7405,  lng:-118.2608,country:'USA' },
+    { id:'hamburg',    name:'Hamburg',      lat:53.5511,  lng:9.9937,   country:'Germany' },
+    { id:'yokohama',   name:'Yokohama',    lat:35.4437,  lng:139.6380, country:'Japan' }
+];
+const portById = {};
+PORTS.forEach(p => portById[p.id] = p);
+
+// Maritime waypoints for ocean-only routing
+const W = {
+    GIB:    [36.0, -5.5],    // Strait of Gibraltar
+    SUEZ_S: [29.9, 32.5],    // Suez Canal south
+    BAB:    [12.6, 43.3],    // Bab el-Mandeb
+    HORMUZ: [26.5, 56.5],    // Strait of Hormuz
+    MALACCA:[2.0, 103.0],    // Strait of Malacca
+    SCS:    [12.0, 112.0],   // South China Sea
+    PANAMA: [9.0, -79.5],    // Panama Canal
+    CH:     [50.0, -1.0],    // English Channel
+    NS:     [55.0, 3.0],     // North Sea
+    RED_M:  [20.0, 38.0],    // Red Sea mid
+    GOA:    [12.0, 48.0],    // Gulf of Aden
+    ARAB:   [12.0, 60.0],    // Arabian Sea
+    CARIB:  [15.0, -75.0],   // Caribbean
+    ATL_E:  [35.0, -45.0],   // Mid-Atlantic east
+    ATL_W:  [35.0, -55.0],   // Mid-Atlantic west
+    PAC:    [35.0, -170.0],  // North Pacific mid
+};
+
+// Routes with ocean waypoints (via arrays)
+const ROUTES = [
+    // Oil (red)
+    { from:'dubai',to:'rotterdam',cargo:'oil',distanceNM:6300,travelDays:18,
+      via:[W.HORMUZ,W.GOA,W.BAB,W.RED_M,W.SUEZ_S,W.GIB,W.CH] },
+    { from:'dubai',to:'shanghai',cargo:'oil',distanceNM:6100,travelDays:16,
+      via:[W.HORMUZ,W.ARAB,W.MALACCA,W.SCS] },
+    { from:'suez',to:'rotterdam',cargo:'oil',distanceNM:3600,travelDays:12,
+      via:[W.GIB,W.CH] },
+    { from:'newyork',to:'suez',cargo:'oil',distanceNM:5500,travelDays:15,
+      via:[W.ATL_E,W.GIB,W.SUEZ_S] },
+    // Container (cyan)
+    { from:'shanghai',to:'rotterdam',cargo:'container',distanceNM:10500,travelDays:30,
+      via:[W.SCS,W.MALACCA,W.ARAB,W.GOA,W.BAB,W.RED_M,W.SUEZ_S,W.GIB,W.CH] },
+    { from:'singapore',to:'rotterdam',cargo:'container',distanceNM:8400,travelDays:24,
+      via:[W.ARAB,W.GOA,W.BAB,W.RED_M,W.SUEZ_S,W.GIB,W.CH] },
+    { from:'shanghai',to:'losangeles',cargo:'container',distanceNM:6300,travelDays:14,
+      via:[] }, // direct Pacific
+    { from:'singapore',to:'hamburg',cargo:'container',distanceNM:8400,travelDays:22,
+      via:[W.ARAB,W.GOA,W.BAB,W.RED_M,W.SUEZ_S,W.GIB,W.CH,W.NS] },
+    { from:'rotterdam',to:'newyork',cargo:'container',distanceNM:3400,travelDays:9,
+      via:[] }, // direct Atlantic
+    { from:'hamburg',to:'newyork',cargo:'container',distanceNM:3600,travelDays:10,
+      via:[W.NS,W.ATL_W] },
+    // Bulk (yellow)
+    { from:'losangeles',to:'yokohama',cargo:'bulk',distanceNM:5500,travelDays:13,
+      via:[] }, // direct Pacific
+    { from:'rotterdam',to:'hamburg',cargo:'bulk',distanceNM:350,travelDays:2,
+      via:[] }, // short North Sea
+    { from:'singapore',to:'shanghai',cargo:'bulk',distanceNM:2400,travelDays:6,
+      via:[W.SCS] },
+    // LNG (green)
+    { from:'dubai',to:'singapore',cargo:'lng',distanceNM:3900,travelDays:10,
+      via:[W.HORMUZ,W.ARAB,W.MALACCA] },
+    { from:'rotterdam',to:'yokohama',cargo:'lng',distanceNM:9500,travelDays:26,
+      via:[W.GIB,W.SUEZ_S,W.RED_M,W.BAB,W.GOA,W.ARAB,W.MALACCA,W.SCS] },
+    { from:'losangeles',to:'shanghai',cargo:'lng',distanceNM:6000,travelDays:15,
+      via:[] }, // direct Pacific
+    { from:'newyork',to:'panama',cargo:'lng',distanceNM:2000,travelDays:6,
+      via:[W.CARIB] },
+    { from:'panama',to:'losangeles',cargo:'lng',distanceNM:3100,travelDays:9,
+      via:[] }, // direct Pacific coast
+    { from:'suez',to:'dubai',cargo:'lng',distanceNM:1300,travelDays:4,
+      via:[W.RED_M,W.BAB,W.GOA,W.ARAB,W.HORMUZ] },
+    // Extra cross-links
+    { from:'panama',to:'rotterdam',cargo:'container',distanceNM:4700,travelDays:12,
+      via:[W.ATL_E] },
+    { from:'suez',to:'singapore',cargo:'container',distanceNM:5100,travelDays:14,
+      via:[W.RED_M,W.BAB,W.GOA,W.ARAB,W.MALACCA] },
+    { from:'yokohama',to:'singapore',cargo:'container',distanceNM:3300,travelDays:8,
+      via:[W.SCS,W.MALACCA] },
+    { from:'hamburg',to:'dubai',cargo:'bulk',distanceNM:5700,travelDays:16,
+      via:[W.CH,W.GIB,W.SUEZ_S,W.RED_M,W.BAB,W.GOA,W.ARAB,W.HORMUZ] },
+    { from:'newyork',to:'losangeles',cargo:'bulk',distanceNM:2800,travelDays:7,
+      via:[W.CARIB,W.PANAMA] },
+];
+
+// Great-circle segment between two points
+function gcSeg(lat1,lng1,lat2,lng2,segs){
+    const pts=[],toRad=Math.PI/180;
+    const p1=[lat1*toRad,lng1*toRad],p2=[lat2*toRad,lng2*toRad];
+    const d=2*Math.asin(Math.sqrt(Math.sin((p2[0]-p1[0])/2)**2+Math.cos(p1[0])*Math.cos(p2[0])*Math.sin((p2[1]-p1[1])/2)**2));
+    if(d<0.0001)return[latLonToV3(lat1,lng1,ER*1.03)];
+    for(let i=0;i<=segs;i++){
+        const f=i/segs,A=Math.sin((1-f)*d)/Math.sin(d),B=Math.sin(f*d)/Math.sin(d);
+        const x=A*Math.cos(p1[0])*Math.cos(p1[1])+B*Math.cos(p2[0])*Math.cos(p2[1]);
+        const y=A*Math.cos(p1[0])*Math.sin(p1[1])+B*Math.cos(p2[0])*Math.sin(p2[1]);
+        const z=A*Math.sin(p1[0])+B*Math.sin(p2[0]);
+        pts.push(latLonToV3(Math.atan2(z,Math.sqrt(x*x+y*y))/toRad,Math.atan2(y,x)/toRad,ER*1.03));
+    }
+    return pts;
+}
+
+// Build full path through waypoints
+function greatCirclePath(lat1,lng1,lat2,lng2,via,segs){
+    const allPts=[];
+    const stops=[[lat1,lng1]];
+    if(via&&via.length) stops.push(...via);
+    stops.push([lat2,lng2]);
+    for(let i=0;i<stops.length-1;i++){
+        const seg=gcSeg(stops[i][0],stops[i][1],stops[i+1][0],stops[i+1][1],segs);
+        if(i>0) seg.shift(); // avoid duplicate junction points
+        allPts.push(...seg);
+    }
+    return allPts;
+}
+
+// --- Maritime scene group ---
+const maritimeGroup = new THREE.Group();
+gG.add(maritimeGroup);
+maritimeGroup.visible = false;
+let shRoutes = false;
+
+// Port markers
+const portGroup = new THREE.Group();
+maritimeGroup.add(portGroup);
+PORTS.forEach(p => {
+    const c = document.createElement('canvas');
+    c.width=128; c.height=128;
+    const cx = c.getContext('2d');
+    const g = cx.createRadialGradient(64,64,0,64,64,64);
+    g.addColorStop(0,'rgba(78,205,196,1)'); g.addColorStop(0.3,'rgba(78,205,196,0.6)');
+    g.addColorStop(0.6,'rgba(78,205,196,0.15)'); g.addColorStop(1,'rgba(78,205,196,0)');
+    cx.fillStyle=g; cx.fillRect(0,0,128,128);
+    cx.fillStyle='#fff'; cx.beginPath(); cx.arc(64,64,6,0,Math.PI*2); cx.fill();
+    cx.fillStyle='#4ecdc4'; cx.beginPath(); cx.arc(64,64,4,0,Math.PI*2); cx.fill();
+    const sp = new THREE.Sprite(new THREE.SpriteMaterial({map:new THREE.CanvasTexture(c),transparent:true,blending:THREE.AdditiveBlending,depthWrite:false}));
+    sp.scale.set(4,4,1); sp.position.copy(latLonToV3(p.lat,p.lng,ER*1.035));
+    sp.userData={portId:p.id,portName:p.name,portCountry:p.country,portLat:p.lat,portLng:p.lng};
+    portGroup.add(sp);
+    // Radar ring
+    const rc=document.createElement('canvas'); rc.width=128; rc.height=128;
+    const rx=rc.getContext('2d');
+    const rg=rx.createRadialGradient(64,64,20,64,64,60);
+    rg.addColorStop(0,'rgba(78,205,196,0)'); rg.addColorStop(0.5,'rgba(78,205,196,0.3)');
+    rg.addColorStop(0.75,'rgba(78,205,196,0.1)'); rg.addColorStop(1,'rgba(78,205,196,0)');
+    rx.fillStyle=rg; rx.beginPath(); rx.arc(64,64,60,0,Math.PI*2); rx.fill();
+    const ring=new THREE.Sprite(new THREE.SpriteMaterial({map:new THREE.CanvasTexture(rc),transparent:true,blending:THREE.AdditiveBlending,depthWrite:false}));
+    ring.scale.set(6,6,1); ring.position.copy(latLonToV3(p.lat,p.lng,ER*1.035));
+    ring.userData={isPortRing:true}; portGroup.add(ring);
+    // Label
+    const lcv=document.createElement('canvas'); lcv.width=256; lcv.height=64;
+    const lx=lcv.getContext('2d'); lx.clearRect(0,0,256,64);
+    lx.font='bold 16px Arial,sans-serif'; lx.fillStyle='rgba(78,205,196,0.9)';
+    lx.textAlign='center'; lx.textBaseline='middle'; lx.fillText(p.name,128,32);
+    const lb=new THREE.Sprite(new THREE.SpriteMaterial({map:new THREE.CanvasTexture(lcv),transparent:true,depthTest:false,depthWrite:false,opacity:0.9}));
+    lb.scale.set(5,1.25,1); lb.position.copy(latLonToV3(p.lat,p.lng,ER*1.035+3));
+    portGroup.add(lb);
+});
+
+// Arc routes
+const arcGroup = new THREE.Group();
+maritimeGroup.add(arcGroup);
+const arcLines = [];
+ROUTES.forEach(r => {
+    const pts = greatCirclePath(portById[r.from].lat,portById[r.from].lng,portById[r.to].lat,portById[r.to].lng,r.via,16);
+    const mat = new THREE.LineDashedMaterial({color:new THREE.Color(MARITIME_CARGO[r.cargo].color),transparent:true,opacity:0.8,dashSize:0.8,gapSize:0.4,linewidth:1});
+    const line = new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), mat);
+    line.computeLineDistances();
+    line.userData={routeData:r,fromPort:portById[r.from],toPort:portById[r.to]};
+    arcGroup.add(line); arcLines.push(line);
+});
+document.getElementById('ms-routes').textContent = ROUTES.length;
+document.getElementById('ms-ports').textContent = PORTS.length;
+
+// --- Toggle button ---
+const btnRoutes = document.getElementById('btn-routes');
+const maritimeLegend = document.getElementById('maritime-legend');
+const maritimeStats = document.getElementById('maritime-stats');
+if(btnRoutes) btnRoutes.addEventListener('click',()=>{
+    shRoutes=!shRoutes; maritimeGroup.visible=shRoutes;
+    btnRoutes.classList.toggle('active',shRoutes);
+    if(maritimeLegend) maritimeLegend.classList.toggle('hidden',!shRoutes);
+    if(maritimeStats) maritimeStats.classList.toggle('hidden',!shRoutes);
+});
+
+// --- Route popup ---
+const routePopup = document.getElementById('route-popup');
+document.getElementById('popup-close').addEventListener('click',()=>routePopup.classList.add('hidden'));
+function showRoutePopup(r,x,y){
+    document.getElementById('popup-route').textContent=r.fromPort.name+' \u2192 '+r.toPort.name;
+    const b=document.getElementById('popup-cargo');
+    b.textContent=MARITIME_CARGO[r.cargo].label;
+    b.style.background=MARITIME_CARGO[r.cargo].color+'22';
+    b.style.color=MARITIME_CARGO[r.cargo].color;
+    b.style.border='1px solid '+MARITIME_CARGO[r.cargo].color+'55';
+    document.getElementById('popup-origin').textContent=r.fromPort.name+', '+r.fromPort.country;
+    document.getElementById('popup-dest').textContent=r.toPort.name+', '+r.toPort.country;
+    document.getElementById('popup-distance').textContent=r.distanceNM.toLocaleString()+' NM';
+    document.getElementById('popup-time').textContent=r.travelDays+' days';
+    document.getElementById('popup-cargo-text').textContent=MARITIME_CARGO[r.cargo].label;
+    let left=x+16,top=y-100;
+    if(left+320>window.innerWidth) left=x-336;
+    if(top<20)top=20; if(top+250>window.innerHeight)top=window.innerHeight-260;
+    routePopup.style.left=left+'px'; routePopup.style.top=top+'px';
+    routePopup.classList.remove('hidden');
+}
+
+// --- Maritime hover & click ---
+renderer.domElement.addEventListener('mousemove',(e)=>{
+    if(!maritimeGroup.visible)return;
+    ms.x=(e.clientX/window.innerWidth)*2-1; ms.y=-(e.clientY/window.innerHeight)*2+1;
+    ray.setFromCamera(ms,camera);
+    const pH=ray.intersectObjects(portGroup.children.filter(c=>c.userData.portId));
+    if(pH.length>0){
+        const p=pH[0].object.userData;
+        tooltip.style.display='block'; tooltip.style.left=(e.clientX+12)+'px'; tooltip.style.top=(e.clientY-20)+'px';
+        tooltip.style.background='rgba(10,25,30,0.92)'; tooltip.style.borderColor='rgba(78,205,196,0.5)';
+        tooltip.innerHTML='<strong>'+p.portName+'</strong><br><span style="font-size:0.7rem;color:rgba(160,200,195,0.8)">'+p.portLat.toFixed(2)+'\u00B0 '+(p.portLat>=0?'N':'S')+', '+Math.abs(p.portLng).toFixed(2)+'\u00B0 '+(p.portLng>=0?'E':'W')+'</span>';
+        renderer.domElement.style.cursor='pointer'; return;
+    }
+    const aH=ray.intersectObjects(arcGroup.children);
+    if(aH.length>0){
+        const r=aH[0].object.userData.routeData;
+        if(r){tooltip.style.display='block';tooltip.style.left=(e.clientX+12)+'px';tooltip.style.top=(e.clientY-20)+'px';
+        tooltip.style.background='rgba(10,20,25,0.92)';tooltip.style.borderColor=MARITIME_CARGO[r.cargo].color+'88';
+        tooltip.innerHTML='<strong style="color:'+MARITIME_CARGO[r.cargo].color+'">'+r.fromPort.name+' \u2192 '+r.toPort.name+'</strong><br><span style="font-size:0.7rem;color:rgba(180,200,200,0.7)">'+MARITIME_CARGO[r.cargo].label+' \u2022 '+r.distanceNM.toLocaleString()+' NM</span>';
+        renderer.domElement.style.cursor='pointer'; return;}
+    }
+});
+renderer.domElement.addEventListener('click',(e)=>{
+    if(!maritimeGroup.visible)return;
+    ms.x=(e.clientX/window.innerWidth)*2-1; ms.y=-(e.clientY/window.innerHeight)*2+1;
+    ray.setFromCamera(ms,camera);
+    const pH=ray.intersectObjects(portGroup.children.filter(c=>c.userData.portId));
+    if(pH.length>0){const p=pH[0].object.userData;
+        const tgt=latLonToV3(p.portLat,p.portLng,200);
+        gsapDest=tgt;gsapOrigin=camera.position.clone();gsapT=0;gsapDur=60;cntryMode=true;return;}
+    const aH=ray.intersectObjects(arcGroup.children);
+    if(aH.length>0){const r=aH[0].object.userData.routeData;
+        if(r)showRoutePopup(r,e.clientX,e.clientY);}
+});
+
+animate();
+console.log('🌍 Earth Globe loaded successfully!');

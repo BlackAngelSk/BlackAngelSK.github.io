@@ -1,67 +1,54 @@
 #!/bin/bash
-echo "============================================"
-echo "  Interactive Map - Starting Servers"
-echo "============================================"
-echo
-
+# Globe/Map — Terminal Startup
+set -e
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+cd "$SCRIPT_DIR"
 
-# Kill any existing processes on our ports (cross-platform: works on Linux + macOS)
-echo "Checking for existing servers on ports 8000/8080..."
+echo ""
+echo "╔══════════════════════════════════════════╗"
+echo "║   Globe/Map Server — Starting...         ║"
+echo "╚══════════════════════════════════════════╝"
+echo ""
 
-# lsof -ti works on both Linux and macOS
-kill_port() {
-    local port=$1
-    if command -v lsof &> /dev/null; then
-        local pids=$(lsof -ti :$port 2>/dev/null)
-        if [ -n "$pids" ]; then
-            echo "  Killing processes on port $port: $pids"
-            echo "$pids" | xargs kill -9 2>/dev/null
-        fi
+# Kill existing servers
+for port in 8000 8080; do
+    pids=$(lsof -ti :$port 2>/dev/null || true)
+    if [ -n "$pids" ]; then
+        echo "Killing processes on port $port..."
+        echo "$pids" | xargs kill -9 2>/dev/null || true
     fi
-    # Also try fuser on Linux (if available)
-    if command -v fuser &> /dev/null; then
-        fuser -k $port/tcp 2>/dev/null
-    fi
-}
-
-kill_port 8000
-kill_port 8080
+done
 sleep 1
 
-# Start KML CORS proxy in background
-echo "Starting KML proxy on port 8080..."
-node "$SCRIPT_DIR/proxy.js" &
+echo "Starting CORS proxy on port 8080..."
+node proxy.js &
 PROXY_PID=$!
 
-# Wait for proxy to start
 sleep 1
 
-echo "Starting map server on port 8000..."
-echo
+echo "Starting HTTP server on port 8000..."
+echo ""
 echo "  Map:   http://localhost:8000/map.html"
 echo "  Globe: http://localhost:8000/index.html"
-echo
+echo ""
 echo "  Press Ctrl+C to stop both servers."
-echo
+echo ""
+
+# Open browser after 2s
+(sleep 2 && xdg-open http://localhost:8000 2>/dev/null || open http://localhost:8000 2>/dev/null || true) &
 
 # Cleanup on exit
 cleanup() {
-    echo
+    echo ""
     echo "Stopping servers..."
-    kill $PROXY_PID 2>/dev/null
-    kill_port 8000
-    kill_port 8080
+    kill $PROXY_PID 2>/dev/null || true
+    for port in 8000 8080; do
+        pids=$(lsof -ti :$port 2>/dev/null || true)
+        [ -n "$pids" ] && echo "$pids" | xargs kill -9 2>/dev/null || true
+    done
     exit 0
 }
 trap cleanup SIGINT SIGTERM
 
-# Start HTTP server in foreground (use python3 if available, fallback to python)
-if command -v python3 &> /dev/null; then
-    python3 -m http.server 8000 --directory "$SCRIPT_DIR"
-elif command -v python &> /dev/null; then
-    python -m http.server 8000 --directory "$SCRIPT_DIR"
-else
-    echo "ERROR: Python not found. Install Python 3 and try again."
-    exit 1
-fi
+# Start HTTP server in foreground
+python3 -m http.server 8000 --directory "$SCRIPT_DIR"
