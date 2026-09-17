@@ -144,14 +144,18 @@ function serveStatic(req, res, pathname) {
 }
 
 createServer(function (req, res) {
+  var parsedUrl = new URL(req.url, 'http://localhost');
+  var pathname = parsedUrl.pathname;
+  var targetUrl = parsedUrl.searchParams.get('url');
+
+  /* Log every request */
+  console.log(req.method + ' ' + pathname + (targetUrl ? ' → proxy: ' + targetUrl.slice(0, 80) : ''));
+
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
   if (req.method === 'OPTIONS') { res.writeHead(204); res.end(); return; }
-
-  var parsedUrl = new URL(req.url, 'http://localhost');
-  var pathname = parsedUrl.pathname;
 
   /* ── Health check ──────────────────────────────── */
   if (pathname === '/ping') {
@@ -161,8 +165,6 @@ createServer(function (req, res) {
   }
 
   /* ── Proxy request (has ?url= param) ───────────── */
-  var targetUrl = parsedUrl.searchParams.get('url');
-
   if (targetUrl) {
     if (!targetUrl.startsWith('https://')) {
       res.writeHead(400, { 'Content-Type': 'text/plain' });

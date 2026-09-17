@@ -3244,32 +3244,57 @@ function checkProxyStatus() {
     /* Try multiple detection strategies:
        1. Relative /ping — works when map is served from the proxy (same origin)
        2. Absolute http://localhost:8080/ping — works when map is on a different port
-       3. no-cors fallback — works from file:// or cross-origin */
-    function tryUrl(url, mode) {
-        return fetch(url, mode ? { mode: mode } : undefined)
-            .then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.text(); })
-            .then(text => {
-                if (text === 'pong' || text.includes('pong')) {
-                    statusEl.textContent = '✅ Proxy is running!';
-                    statusEl.className = 'proxy-ok';
-                    detailEl.textContent = 'Connected to proxy — ' + text.trim();
-                    $('#proxy-check-btn').style.display = 'none';
-                    $('#proxy-retry-btn').style.display = '';
-                    if (proxyPollTimer) { clearInterval(proxyPollTimer); proxyPollTimer = null; }
-                    return true;
-                }
-                throw new Error('Unexpected response');
-            });
+       3. no-cors fallback — works from file:// or cross-origin (opaque response) */
+    function tryFetch(url, useCors) {
+        var opts = useCors === false ? { mode: 'no-cors' } : undefined;
+        return new Promise(function (resolve, reject) {
+            fetch(url, opts)
+                .then(function (r) {
+                    /* no-cors: response is opaque (status 0), but if fetch didn't throw, proxy is alive */
+                    if (useCors === false) { resolve('pong'); return; }
+                    /* cors: read the response body */
+                    if (!r.ok) throw new Error('HTTP ' + r.status);
+                    return r.text();
+                })
+                .then(resolve)
+                .catch(reject);
+        });
     }
 
-    /* Strategy 1: relative URL (same-origin) */
-    tryUrl('/ping')
-        .catch(() => /* Strategy 2: absolute URL */ tryUrl('http://localhost:8080/ping'))
-        .catch(() => /* Strategy 3: no-cors fallback */ tryUrl('http://localhost:8080/ping', 'no-cors'))
-        .catch(() => {
+    function showProxyOk() {
+        statusEl.textContent = '✅ Proxy is running!';
+        statusEl.className = 'proxy-ok';
+        detailEl.textContent = 'Connected to proxy at ' + window.location.origin;
+        $('#proxy-check-btn').style.display = 'none';
+        $('#proxy-retry-btn').style.display = '';
+        if (proxyPollTimer) { clearInterval(proxyPollTimer); proxyPollTimer = null; }
+    }
+
+    /* Strategy 1: relative URL (same-origin, most reliable) */
+    tryFetch('/ping')
+        .then(function (text) {
+            if (text.indexOf('pong') !== -1) { showProxyOk(); return; }
+            throw new Error('Unexpected');
+        })
+        .catch(function () {
+            /* Strategy 2: absolute URL (cross-origin but CORS allowed) */
+            return tryFetch('http://localhost:8080/ping');
+        })
+        .then(function (text) {
+            if (text && text.indexOf('pong') !== -1) { showProxyOk(); return; }
+            /* Strategy 3: no-cors fallback (from file:// or strict browsers) */
+            return tryFetch('http://localhost:8080/ping', false);
+        })
+        .then(function () {
+            if (statusEl.className === 'proxy-ok') return; /* already shown */
+            showProxyOk();
+        })
+        .catch(function () {
             statusEl.textContent = '❌ Proxy not running yet';
             statusEl.className = 'proxy-fail';
-            detailEl.textContent = 'Open the map from the proxy: http://localhost:8080/map.html\nOr make sure the proxy is running on port 8080.';
+            detailEl.innerHTML = 'Could not reach the proxy on port 8080.<br><br>' +
+                '<b>Solution:</b> Run <code>node proxy.js</code> then open:<br>' +
+                '<a href="http://localhost:8080/map.html" target="_blank">http://localhost:8080/map.html</a>';
         });
 }
 
