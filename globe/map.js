@@ -3949,31 +3949,28 @@ function checkProxyStatus() {
     statusEl.className = '';
     detailEl.textContent = 'Connecting to localhost:8080…';
 
-    fetch('http://localhost:8080/kml?url=' + encodeURIComponent('https://www.google.com/maps'), { mode: 'no-cors' })
-        .then(() => {
-            /* With no-cors we can't read the response, but if it doesn't throw, proxy is up.
-               Do a second opaque HEAD-like check by fetching a known-bad URL —
-               if we get *any* response (even 400), the proxy is alive. */
-            return fetch('http://localhost:8080/');
-        })
-        .then(r => {
-            /* Proxy returned anything — it's alive */
-            statusEl.textContent = '✅ Proxy is running!';
-            statusEl.className = 'proxy-ok';
-            detailEl.textContent = 'Connected to localhost:8080';
+    /* Try normal CORS fetch first, then no-cors fallback */
+    fetch('http://localhost:8080/ping')
+        .then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.text(); })
+        .then(text => {
+            if (text === 'pong') {
+                statusEl.textContent = '✅ Proxy is running!';
+                statusEl.className = 'proxy-ok';
+                detailEl.textContent = 'Connected to localhost:8080 — ' + text;
+            } else {
+                throw new Error('Unexpected response');
+            }
             $('#proxy-check-btn').style.display = 'none';
             $('#proxy-retry-btn').style.display = '';
-
-            /* Auto-stop polling */
             if (proxyPollTimer) { clearInterval(proxyPollTimer); proxyPollTimer = null; }
         })
         .catch(() => {
-            /* Also try direct fetch to the proxy root */
-            fetch('http://localhost:8080/', { mode: 'no-cors' })
+            /* Fallback: no-cors fetch (works from file:// or cross-origin) */
+            fetch('http://localhost:8080/ping', { mode: 'no-cors' })
                 .then(() => {
                     statusEl.textContent = '✅ Proxy is running!';
                     statusEl.className = 'proxy-ok';
-                    detailEl.textContent = 'Connected to localhost:8080';
+                    detailEl.textContent = 'Connected to localhost:8080 (opaque — CORS may limit cross-origin reads)';
                     $('#proxy-check-btn').style.display = 'none';
                     $('#proxy-retry-btn').style.display = '';
                     if (proxyPollTimer) { clearInterval(proxyPollTimer); proxyPollTimer = null; }
@@ -3981,7 +3978,7 @@ function checkProxyStatus() {
                 .catch(() => {
                     statusEl.textContent = '❌ Proxy not running yet';
                     statusEl.className = 'proxy-fail';
-                    detailEl.textContent = 'Make sure you ran the setup script and it says "Proxy is running". Then try again.';
+                    detailEl.textContent = 'Make sure the proxy is running (node proxy.js) on port 8080. Then try again.';
                 });
         });
 }

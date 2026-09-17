@@ -77,6 +77,14 @@ createServer(function (req, res) {
   if (req.method === 'OPTIONS') { res.writeHead(204); res.end(); return; }
 
   var parsedUrl = new URL(req.url, 'http://localhost');
+
+  /* ── Health check ──────────────────────────────── */
+  if (parsedUrl.pathname === '/ping') {
+    res.writeHead(200, { 'Content-Type': 'text/plain' });
+    res.end('pong');
+    return;
+  }
+
   var targetUrl = parsedUrl.searchParams.get('url');
 
   if (!targetUrl) {
