@@ -3947,39 +3947,37 @@ function checkProxyStatus() {
     const detailEl = $('#proxy-status-detail');
     statusEl.textContent = '🔄 Checking proxy…';
     statusEl.className = '';
-    detailEl.textContent = 'Connecting to localhost:8080…';
+    detailEl.textContent = 'Connecting to proxy…';
 
-    /* Try normal CORS fetch first, then no-cors fallback */
-    fetch('http://localhost:8080/ping')
-        .then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.text(); })
-        .then(text => {
-            if (text === 'pong') {
-                statusEl.textContent = '✅ Proxy is running!';
-                statusEl.className = 'proxy-ok';
-                detailEl.textContent = 'Connected to localhost:8080 — ' + text;
-            } else {
-                throw new Error('Unexpected response');
-            }
-            $('#proxy-check-btn').style.display = 'none';
-            $('#proxy-retry-btn').style.display = '';
-            if (proxyPollTimer) { clearInterval(proxyPollTimer); proxyPollTimer = null; }
-        })
-        .catch(() => {
-            /* Fallback: no-cors fetch (works from file:// or cross-origin) */
-            fetch('http://localhost:8080/ping', { mode: 'no-cors' })
-                .then(() => {
+    /* Try multiple detection strategies:
+       1. Relative /ping — works when map is served from the proxy (same origin)
+       2. Absolute http://localhost:8080/ping — works when map is on a different port
+       3. no-cors fallback — works from file:// or cross-origin */
+    function tryUrl(url, mode) {
+        return fetch(url, mode ? { mode: mode } : undefined)
+            .then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.text(); })
+            .then(text => {
+                if (text === 'pong' || text.includes('pong')) {
                     statusEl.textContent = '✅ Proxy is running!';
                     statusEl.className = 'proxy-ok';
-                    detailEl.textContent = 'Connected to localhost:8080 (opaque — CORS may limit cross-origin reads)';
+                    detailEl.textContent = 'Connected to proxy — ' + text.trim();
                     $('#proxy-check-btn').style.display = 'none';
                     $('#proxy-retry-btn').style.display = '';
                     if (proxyPollTimer) { clearInterval(proxyPollTimer); proxyPollTimer = null; }
-                })
-                .catch(() => {
-                    statusEl.textContent = '❌ Proxy not running yet';
-                    statusEl.className = 'proxy-fail';
-                    detailEl.textContent = 'Make sure the proxy is running (node proxy.js) on port 8080. Then try again.';
-                });
+                    return true;
+                }
+                throw new Error('Unexpected response');
+            });
+    }
+
+    /* Strategy 1: relative URL (same-origin) */
+    tryUrl('/ping')
+        .catch(() => /* Strategy 2: absolute URL */ tryUrl('http://localhost:8080/ping'))
+        .catch(() => /* Strategy 3: no-cors fallback */ tryUrl('http://localhost:8080/ping', 'no-cors'))
+        .catch(() => {
+            statusEl.textContent = '❌ Proxy not running yet';
+            statusEl.className = 'proxy-fail';
+            detailEl.textContent = 'Open the map from the proxy: http://localhost:8080/map.html\nOr make sure the proxy is running on port 8080.';
         });
 }
 
