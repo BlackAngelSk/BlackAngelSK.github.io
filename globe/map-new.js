@@ -2124,7 +2124,7 @@ function handleFileImport(file) {
                     if (err && err.isNetworkLink) {
                         const netUrl = err.url;
                         alert('This KMZ contains a Google Maps NetworkLink.\nFetching the full map data…');
-                        const proxies = ['http://localhost:8080/kml?url=', '', 'https://corsproxy.io/?', 'https://api.allorigins.win/raw?url='];
+                        const proxies = [_p + '/kml?url=', '', 'https://corsproxy.io/?', 'https://api.allorigins.win/raw?url='];
                         let attempt = 0;
                         function tryFetch() {
                             const target = proxies[attempt] ? proxies[attempt] + encodeURIComponent(netUrl) : netUrl;
@@ -2179,7 +2179,7 @@ function handleFileImport(file) {
                     const mapName = err.mapName || 'Google Maps';
                     alert('This KML is a Google Maps shortcut file.\nFetching the full map data…');
                     const proxies = [
-                        'http://localhost:8080/kml?url=',
+                        _p + '/kml?url=',
                         '',
                         'https://corsproxy.io/?',
                         'https://api.allorigins.win/raw?url='
@@ -2460,7 +2460,7 @@ function parseGPX(gpxText) {
 function fetchGoogleKML(mid, btn) {
     const kmlUrl = 'https://www.google.com/maps/d/u/0/kml?mid=' + mid + '&forcekml=1';
     const proxies = [
-        'http://localhost:8080/kml?url=',
+        _p + '/kml?url=',
         '',
         'https://corsproxy.io/?',
         'https://api.allorigins.win/raw?url='
@@ -3193,6 +3193,7 @@ function savePreset() {
    ===================================================== */
 let proxyPendingUrl = null;   /* Google Maps URL to retry after proxy starts */
 let proxyPollTimer = null;    /* interval ID for polling proxy status */
+const _p = (location.protocol === 'https:' ? 'https://localhost:8443' : 'http://localhost:8080');
 
 function detectProxyOS() {
     const ua = navigator.userAgent || '';
@@ -3298,7 +3299,7 @@ function retryProxyImport() {
     const mid = parseGoogleMapsUrl(proxyPendingUrl);
     if (mid) {
         const kmlUrl = 'https://www.google.com/maps/d/u/0/kml?mid=' + mid + '&forcekml=1';
-        fetch('http://localhost:8080/kml?url=' + encodeURIComponent(kmlUrl))
+        fetch(_p + '/kml?url=' + encodeURIComponent(kmlUrl))
             .then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.text(); })
             .then(kmlText => {
                 importPendingFeatures = parseKML(kmlText);
@@ -3313,7 +3314,7 @@ function retryProxyImport() {
             });
     } else {
         /* Not a Google Maps URL — just try direct fetch through proxy */
-        fetch('http://localhost:8080/kml?url=' + encodeURIComponent(proxyPendingUrl))
+        fetch(_p + '/kml?url=' + encodeURIComponent(proxyPendingUrl))
             .then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.text(); })
             .then(text => {
                 try {
