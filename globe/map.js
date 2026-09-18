@@ -2794,7 +2794,7 @@ function fetchYandexMapData(yandexData) {
 }
 
 function fetchYandexConstructorMap(hash, btn) {
-    const proxyBase = 'http://localhost:8080/?url=';
+    const proxyBase = _p + '/?url=';
     const pageUrl = 'https://yandex.com/maps/?um=constructor:' + hash;
 
     return fetch(proxyBase + encodeURIComponent(pageUrl))
