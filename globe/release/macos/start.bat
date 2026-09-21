@@ -1,24 +1,28 @@
 @echo off
+setlocal
+cd /d "%~dp0"
 echo ============================================
-echo   Interactive Map - Starting Servers
+echo   Globe/Map - Starting servers
 echo ============================================
 echo.
 
-REM Start the KML CORS proxy in a separate window
-echo Starting KML proxy on port 8080...
-start "KML Proxy - localhost:8080" node "%~dp0proxy.js"
+where node >nul 2>nul
+if %errorlevel%==0 (
+    echo Node.js found - starting globe-server.js ...
+    node "%~dp0globe-server.js"
+) else (
+    echo Node.js not found - using globe-server.exe ...
+    if exist "%~dp0globe-server.exe" (
+        "%~dp0globe-server.exe"
+    ) else (
+        echo ERROR: neither Node.js nor globe-server.exe found in:
+        echo   %~dp0
+        echo.
+        pause
+        exit /b 1
+    )
+)
 
-REM Wait a moment for the proxy to start
-timeout /t 2 /nobreak >nul
-
-echo Starting map server on port 8000...
 echo.
-echo   Map:  http://localhost:8000/map.html
-echo   Globe: http://localhost:8000/index.html
-echo.
-echo   Close this window to stop the map server.
-echo   Close the proxy window to stop the proxy.
-echo.
-
-REM Start the HTTP server in this window
-python -m http.server 8000 --directory "%~dp0"
+echo Server stopped.
+pause

@@ -2124,7 +2124,7 @@ function handleFileImport(file) {
                     if (err && err.isNetworkLink) {
                         const netUrl = err.url;
                         alert('This KMZ contains a Google Maps NetworkLink.\nFetching the full map data…');
-                        const proxies = [_p + '/kml?url=', '', 'https://corsproxy.io/?', 'https://api.allorigins.win/raw?url='];
+                        const proxies = [_p + '/kml?url=', _pAlt + '/kml?url=', '', 'https://corsproxy.io/?', 'https://api.allorigins.win/raw?url='];
                         let attempt = 0;
                         function tryFetch() {
                             const target = proxies[attempt] ? proxies[attempt] + encodeURIComponent(netUrl) : netUrl;
@@ -2179,7 +2179,7 @@ function handleFileImport(file) {
                     const mapName = err.mapName || 'Google Maps';
                     alert('This KML is a Google Maps shortcut file.\nFetching the full map data…');
                     const proxies = [
-                        _p + '/kml?url=',
+                        _p + '/kml?url=', _pAlt + '/kml?url=',
                         '',
                         'https://corsproxy.io/?',
                         'https://api.allorigins.win/raw?url='
@@ -2460,7 +2460,7 @@ function parseGPX(gpxText) {
 function fetchGoogleKML(mid, btn) {
     const kmlUrl = 'https://www.google.com/maps/d/u/0/kml?mid=' + mid + '&forcekml=1';
     const proxies = [
-        _p + '/kml?url=',
+        _p + '/kml?url=', _pAlt + '/kml?url=',
         '',
         'https://corsproxy.io/?',
         'https://api.allorigins.win/raw?url='
@@ -2843,6 +2843,11 @@ const SNAP_THRESHOLD = 12;
 let cfgSnapEdge = true;
 
 function makeDraggable(el, handleEl, id) {
+    /* Guard: a panel or its grip may not exist on every page variant.
+       Without this the whole script died with a TypeError and every feature
+       defined after it (including the proxy modal) never initialised. */
+    if (!el) return;
+    if (!handleEl) handleEl = el;
     let isDragging = false, startX, startY, origLeft, origTop;
     el.classList.add('draggable');
     el.dataset.draggableId = id;
@@ -3193,7 +3198,18 @@ function savePreset() {
    ===================================================== */
 let proxyPendingUrl = null;   /* Google Maps URL to retry after proxy starts */
 let proxyPollTimer = null;    /* interval ID for polling proxy status */
-const _p = (location.protocol === 'https:' ? 'https://localhost:8443' : 'http://localhost:8080');
+/* Proxy base URLs. The main one matches the page protocol (an https page can
+   never fetch an http://localhost URL — the browser blocks it as mixed
+   content), and the alternate is kept as a fallback so a proxy that only
+   listens on one protocol still works. */
+const _pLocalHttp  = 'http://localhost:8080';
+const _pLocalHttps = 'https://localhost:8443';
+let _p    = (location.protocol === 'https:' ? _pLocalHttps : _pLocalHttp);
+let _pAlt = (_p === _pLocalHttps ? _pLocalHttp : _pLocalHttps);
+function setProxyBase(base) {
+    _p = base;
+    _pAlt = (base === _pLocalHttps ? _pLocalHttp : _pLocalHttps);
+}
 
 function detectProxyOS() {
     const ua = navigator.userAgent || '';
@@ -3251,20 +3267,27 @@ function checkProxyStatus() {
         if (proxyPollTimer) { clearInterval(proxyPollTimer); proxyPollTimer = null; }
     }
 
-    function tryPing(url, label) {
+    function tryPing(url, label, base) {
         return fetch(url)
             .then(function (r) { if (!r.ok) throw 0; return r.text(); })
-            .then(function (t) { if (t.indexOf('pong') !== -1) { showProxyOk(label); throw 'done'; } throw 0; });
+            .then(function (t) {
+                if (t.indexOf('pong') !== -1) {
+                    if (base) setProxyBase(base);   /* remember which protocol answered */
+                    showProxyOk(label);
+                    throw 'done';
+                }
+                throw 0;
+            });
     }
 
     /* Strategy 1: relative URL (same-origin) */
     tryPing('/ping', 'Same-origin /ping OK')
         .catch(function (e) { if (e === 'done') return Promise.reject(e); return null; })
         /* Strategy 2: HTTP localhost */
-        .then(function () { return tryPing('http://localhost:8080/ping', 'http://localhost:8080 OK'); })
+        .then(function () { return tryPing('http://localhost:8080/ping', 'Proxy OK on http://localhost:8080', _pLocalHttp); })
         .catch(function (e) { if (e === 'done') return Promise.reject(e); return null; })
         /* Strategy 3: HTTPS localhost (for HTTPS websites) */
-        .then(function () { return tryPing('https://localhost:8443/ping', 'https://localhost:8443 OK'); })
+        .then(function () { return tryPing('https://localhost:8443/ping', 'Proxy OK on https://localhost:8443', _pLocalHttps); })
         .catch(function (e) { if (e === 'done') return Promise.reject(e); return null; })
         /* Strategy 4: no-cors fallback */
         .then(function () { return fetch('http://localhost:8080/ping', { mode: 'no-cors' }); })
@@ -3273,9 +3296,16 @@ function checkProxyStatus() {
             if (e === 'done') return;
             statusEl.textContent = '❌ Proxy not running yet';
             statusEl.className = 'proxy-fail';
+            const httpsPage = (location.protocol === 'https:');
             detailEl.innerHTML =
-                '<b>If your site is HTTPS:</b> Open <a href="https://localhost:8443/map.html" target="_blank">https://localhost:8443/map.html</a> once to trust the certificate, then reload this page.<br><br>' +
-                '<b>If running locally:</b> Open <a href="http://localhost:8080/map.html" target="_blank">http://localhost:8080/map.html</a>';
+                '<b>This page is ' + (httpsPage ? 'HTTPS' : 'HTTP') + '.</b> A browser refuses to let an HTTPS page call <code>http://localhost:8080</code> (mixed content), ' +
+                'so the proxy must also listen on <b>HTTPS 8443</b>.<br><br>' +
+                '<b>1.</b> Start the proxy again — the current server (' + (httpsPage ? 'globe-server.exe / proxy.js v5+' : 'any') + ') must print both ' +
+                '“http://localhost:8080” and “https://localhost:8443”.<br>' +
+                '<b>2.</b> Open <a href="https://localhost:8443/ping" target="_blank">https://localhost:8443/ping</a> and accept the certificate ' +
+                '(Advanced → Continue to localhost), then click “Check Proxy Status” again.<br><br>' +
+                '<b>Local copy of the map:</b> <a href="http://localhost:8080/map.html" target="_blank">http://localhost:8080/map.html</a> — ' +
+                'this page is HTTP, so the proxy works there even without HTTPS.';
         });
 }
 

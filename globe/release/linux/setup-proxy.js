@@ -15,7 +15,9 @@ const { execSync, spawn } = require('child_process');
 const SCRIPT_DIR = __dirname;
 const PROXY_SCRIPT = path.join(SCRIPT_DIR, 'proxy.js');
 const PROXY_PORT = 8080;
-const REPO_RAW = 'https://github.com/BlackAngelSk/BlackAngelSK.github.io/main/globe/proxy.js';
+const REPO_RAW = 'https://raw.githubusercontent.com/BlackAngelSK/BlackAngelSK.github.io/master/globe/proxy.js';
+const CERT_RAW = 'https://raw.githubusercontent.com/BlackAngelSK/BlackAngelSK.github.io/master/globe/.proxy-cert.pem';
+const KEY_RAW  = 'https://raw.githubusercontent.com/BlackAngelSK/BlackAngelSK.github.io/master/globe/.proxy-key.pem';
 
 // ── Colors ─────────────────────────────────────────────────────
 const C = {
@@ -175,11 +177,13 @@ if (fs.existsSync(PROXY_SCRIPT)) {
         process.exit(1);
     }
 
-    // Verify file size
+    // Verify it is really JavaScript — a 404 saves an HTML/JSON page that
+    // node refuses to run.
     const stat = fs.statSync(PROXY_SCRIPT);
     log(C.reset, `  Downloaded file size: ${stat.size} bytes`);
-    if (stat.size < 50) {
-        err('proxy.js seems too small. Download may have failed (404?).');
+    const head = fs.readFileSync(PROXY_SCRIPT, 'utf8');
+    if (stat.size < 200 || !head.includes('PROXY_VERSION')) {
+        err('Downloaded file is not the proxy script (404 page?).');
         err('Check your internet connection and try again.');
         try { fs.unlinkSync(PROXY_SCRIPT); } catch {}
         process.exit(1);
@@ -197,11 +201,13 @@ console.log();
 log(C.green, `[4/4] Starting KML proxy on port ${PROXY_PORT}...`);
 console.log();
 log(C.green, '  ============================================');
-log(C.green, `  Proxy is running at: http://localhost:${PROXY_PORT}`);
+log(C.green, `  Proxy:  http://localhost:${PROXY_PORT}/ping`);
+log(C.green, '  Proxy:  https://localhost:8443/ping');
 log(C.green, '  ============================================');
 console.log();
-log(C.reset, `  Use this URL in the map's Import > URL tab:`);
-log(C.reset, `  http://localhost:${PROXY_PORT}/kml?mid=YOUR_MAP_ID`);
+log(C.reset, '  If the map page is HTTPS (blackangelsk.github.io), open');
+log(C.reset, '  https://localhost:8443/ping once and accept the self-signed');
+log(C.reset, '  certificate (Advanced -> Proceed), then reload the map.');
 console.log();
 
 if (isWin) {
@@ -210,6 +216,14 @@ if (isWin) {
     log(C.reset, '  Press Ctrl+C to stop.');
 }
 console.log();
+
+// Best-effort: fetch the HTTPS certificate next to proxy.js
+for (const [url, file] of [[CERT_RAW, '.proxy-cert.pem'], [KEY_RAW, '.proxy-key.pem']]) {
+    const dest = path.join(SCRIPT_DIR, file);
+    if (!fs.existsSync(dest)) {
+        if (download(url, dest)) log(C.dim, `  Certificate: ${file}`);
+    }
+}
 
 // Start the proxy
 const proxy = spawn(process.execPath, [PROXY_SCRIPT], {

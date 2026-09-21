@@ -193,6 +193,10 @@
                                 <span class="proxy-dl-icon">📄</span>
                                 <span>proxy.js</span>
                             </a>
+                            <a class="proxy-download-btn proxy-dl-win" href="globe-windows.zip" download title="Portable Windows build - unzip and double-click globe-server.exe, no Node.js needed">
+                                <span class="proxy-dl-icon">📦</span>
+                                <span>Windows .zip (no install)</span>
+                            </a>
                         </div>
                     </div>
                 </div>
@@ -213,7 +217,7 @@
                     <div class="proxy-step-num">3</div>
                     <div class="proxy-step-content">
                         <div class="proxy-step-title">Come back here</div>
-                        <div class="proxy-step-desc">Once the script says "Proxy is running", click the button below to check and retry your import.</div>
+                        <div class="proxy-step-desc">Once the script says "Proxy is running", click the button below to check and retry your import.<br><strong>One-time step:</strong> open <a href="https://localhost:8443/ping" target="_blank">https://localhost:8443/ping</a> and accept the certificate ("Advanced" → "Proceed to localhost") — an HTTPS page can only reach the proxy over HTTPS 8443. You should see <code>pong</code>.</div>
                     </div>
                 </div>
 
@@ -227,9 +231,9 @@
                 </div>
 
                 <div class="proxy-footer-links">
-                    <span>Manual: <code>node proxy.js</code> (port 8080)</span>
+                    <span>Open map via proxy: <code>http://localhost:8080/map.html</code></span>
                     <span>·</span>
-                    <span>All OS: <code>node start.js</code></span>
+                    <span>Health: <code>/ping</code></span>
                     <span>·</span>
                     <a href="https://nodejs.org" target="_blank" rel="noopener">Get Node.js</a>
                 </div>
@@ -384,6 +388,6 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/twemoji@14.0.2/dist/twemoji.min.js" crossorigin="anonymous"></script>
-    <script src="map.js?v=15"></script>
+    <script src="map.js?v=16"></script>
 </body>
 </html>

@@ -1,54 +1,23 @@
 #!/bin/bash
-# Globe/Map — Terminal Startup
+# Globe/Map — launcher (proxy 8080+8443 + local file server 8000)
 set -e
-SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-cd "$SCRIPT_DIR"
+cd "$(dirname "$0")"
 
 echo ""
-echo "╔══════════════════════════════════════════╗"
-echo "║   Globe/Map Server — Starting...         ║"
-echo "╚══════════════════════════════════════════╝"
+echo "  Globe/Map — starting (proxy 8080 + 8443, files 8000)"
 echo ""
 
-# Kill existing servers
-for port in 8000 8080; do
-    pids=$(lsof -ti :$port 2>/dev/null || true)
-    if [ -n "$pids" ]; then
-        echo "Killing processes on port $port..."
-        echo "$pids" | xargs kill -9 2>/dev/null || true
+if command -v node >/dev/null 2>&1; then
+    exec node globe-server.js "$@"
+fi
+
+# No Node.js — use a bundled binary if this folder has one
+for bin in globe-server globe-server-arm64.bin globe-server-x64.bin; do
+    if [ -x "$bin" ]; then
+        exec "./$bin" "$@"
     fi
 done
-sleep 1
 
-echo "Starting CORS proxy on port 8080..."
-node proxy.js &
-PROXY_PID=$!
-
-sleep 1
-
-echo "Starting HTTP server on port 8000..."
-echo ""
-echo "  Map:   http://localhost:8000/map.html"
-echo "  Globe: http://localhost:8000/index.html"
-echo ""
-echo "  Press Ctrl+C to stop both servers."
-echo ""
-
-# Open browser after 2s
-(sleep 2 && xdg-open http://localhost:8000 2>/dev/null || open http://localhost:8000 2>/dev/null || true) &
-
-# Cleanup on exit
-cleanup() {
-    echo ""
-    echo "Stopping servers..."
-    kill $PROXY_PID 2>/dev/null || true
-    for port in 8000 8080; do
-        pids=$(lsof -ti :$port 2>/dev/null || true)
-        [ -n "$pids" ] && echo "$pids" | xargs kill -9 2>/dev/null || true
-    done
-    exit 0
-}
-trap cleanup SIGINT SIGTERM
-
-# Start HTTP server in foreground
-python3 -m http.server 8000 --directory "$SCRIPT_DIR"
+echo "  ERROR: neither Node.js nor a globe-server binary found."
+echo "  Install Node.js from https://nodejs.org and run this again."
+exit 1
