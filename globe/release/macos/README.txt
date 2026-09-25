@@ -1,45 +1,69 @@
 Globe/Map Server - macOS
 ========================
 
-QUICK START
------------
-  1. ./globe-server-arm64.bin   (Apple Silicon)
-     ./globe-server-x64.bin     (Intel)
-  2. Your browser opens http://localhost:8000
-  3. ONE-TIME step so the map on https://blackangelsk.github.io works:
-       open  https://localhost:8443/ping  and accept the self-signed
-       certificate ("Show Details" -> "visit this website"); expect "pong"
-  4. Import a Google Maps / Yandex Maps link in the map
+QUICK START (one command)
+-------------------------
+    ./start-mac.command        <- double-click this in Finder, or:
+    ./start.sh                 <- in Terminal
 
-First run may be blocked by Gatekeeper:
-  System Settings > Privacy & Security > "Allow Anyway", or right-click the
-  binary > Open.
-
-IMPORTANT for Apple Silicon (M1/M2/M3): the binaries carry an ad-hoc code
-signature, which is the minimum macOS requires to launch them. Because they
-came from the internet, macOS still flags them as quarantined, so clear that
-flag once:
-
-    xattr -dr com.apple.quarantine .
-    ./globe-server-arm64.bin
-
-If macOS still refuses to start the binary, run the same server through
-Node.js instead:
-
-    brew install node        # if node is missing
-    node globe-server.js     # or simply: ./start.sh
-
-WHY STEP 3 IS NEEDED
---------------------
-The map is published over HTTPS, and browsers refuse to let an HTTPS page call
-http://localhost:8080 (mixed content). The proxy therefore also listens on
-HTTPS 8443 with a self-signed certificate that must be accepted once.
-Without it the proxy prints "running" but the page silently imports nothing.
-
-Both lines must appear at start-up:
+Both clear the macOS quarantine flag themselves, pick the right binary for
+your Mac (Apple Silicon / Intel), prefer Node.js when it is installed, and
+start everything:
 
     Proxy:   http://localhost:8080/ping
-    Proxy:   https://localhost:8443/ping   <- use this from the website
+    Proxy:   https://localhost:8443/ping   <- use this one from the website
+    Map:     http://localhost:8000/map.html
+
+Then open the map (https://blackangelsk.github.io/globe/map.html) and import
+a Google Maps / Yandex Maps link.
+
+ONE-TIME step for the hosted map
+--------------------------------
+The website is HTTPS and a browser refuses to let an HTTPS page call
+http://localhost (mixed content), so the proxy also listens on HTTPS 8443 with
+a self-signed certificate. Accept that certificate once:
+
+    open https://localhost:8443/ping      ->  "Advanced" -> "Proceed to
+                                              localhost (unsafe)"  -> "pong"
+
+Without this the proxy prints "running" but the map silently imports nothing.
+
+IF SOMETHING DOES NOT WORK
+--------------------------
+"A port is already in use" / EADDRINUSE
+  * An earlier copy of the proxy is usually still running. The current version
+    detects it, stops it and takes the port over by itself — just start again.
+  * Another program on the port is reported and left alone; only 8443 matters
+    for the hosted map. To free a port manually:
+        lsof -ti :8080 | xargs kill -9
+        lsof -ti :8443 | xargs kill -9
+
+"The binary will not open / cannot be verified"
+  * Gatekeeper quarantine. ./start.sh does this automatically; otherwise:
+        xattr -dr com.apple.quarantine .
+        chmod +x globe-server-arm64.bin
+
+"Proxy is running, but nothing is imported"
+  * The banner must list BOTH http://localhost:8080 and
+    https://localhost:8443 — otherwise port 8443 is busy (see above).
+  * Open https://localhost:8443/ping and accept the certificate.
+  * Node.js alternative (identical server, no Gatekeeper involved):
+        brew install node
+        node globe-server.js
+
+macOS openssl is LibreSSL
+  * /usr/bin/openssl on older macOS has no -addext and cannot put
+    subjectAltName into a self-signed certificate; Chrome and Safari reject
+    such a certificate. The server detects this, throws the bad certificate
+    away and installs its built-in one. Keep .proxy-cert.pem and
+    .proxy-key.pem next to the server and nothing has to be generated.
+
+RUNNING WITHOUT THE BINARY
+--------------------------
+    node globe-server.js            all-in-one (proxy + files)
+    node globe-server.js --proxy    proxy only
+    node globe-server.js --port 3000
+    node proxy.js                   proxy only, self-updates from GitHub
 
 PORTS
 -----
@@ -47,23 +71,6 @@ PORTS
   8443  CORS proxy + files (HTTPS, self-signed)
   8000  local copy of the map/globe
 
-USAGE
------
-  ./globe-server-arm64.bin --proxy        proxy only
-  ./globe-server-arm64.bin --port 3000    custom local-server port
-  ./globe-server-arm64.bin --help         help
-
-TROUBLESHOOTING
----------------
-"Proxy is running, but nothing is imported"
-  * Make sure the banner lists https://localhost:8443. If not, keep
-    .proxy-cert.pem and .proxy-key.pem next to the binary (the server can also
-    regenerate them with openssl, which ships with macOS).
-  * Open https://localhost:8443/ping and accept the certificate.
-
-Port already in use
-  * lsof -ti :8080 | xargs kill -9   (same for 8443 and 8000)
-
-Node.js instead of the binary
-  * node globe-server.js   — same thing
-  * node proxy.js          — proxy only (8080 + 8443), self-updates from GitHub
+The servers listen on the loopback interface only (127.0.0.1 and ::1), so
+macOS never asks about incoming connections and nothing is exposed to your
+local network.

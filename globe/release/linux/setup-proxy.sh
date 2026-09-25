@@ -11,10 +11,34 @@ NC='\033[0m' # No Color
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 
+# Always use raw.githubusercontent.com + the master branch: github.com/.../main/...
+# returns 404 HTML, and saving that as proxy.js makes node die with a syntax error.
+REPO_RAW="https://raw.githubusercontent.com/BlackAngelSK/BlackAngelSK.github.io/master/globe/proxy.js"
+CERT_RAW="https://raw.githubusercontent.com/BlackAngelSK/BlackAngelSK.github.io/master/globe/.proxy-cert.pem"
+KEY_RAW="https://raw.githubusercontent.com/BlackAngelSK/BlackAngelSK.github.io/master/globe/.proxy-key.pem"
+
 echo -e "${CYAN}============================================${NC}"
 echo -e "${CYAN}  Map Proxy - Auto Setup & Launcher${NC}"
 echo -e "${CYAN}============================================${NC}"
 echo
+
+# ── macOS preparation ──────────────────────────
+if [ "$(uname -s)" = "Darwin" ]; then
+    # A file that came out of a downloaded zip is quarantined and Gatekeeper
+    # refuses to run it until the flag is cleared.
+    xattr -dr com.apple.quarantine "$SCRIPT_DIR" 2>/dev/null || true
+    chmod +x "$SCRIPT_DIR"/*.bin "$SCRIPT_DIR"/globe-server "$SCRIPT_DIR"/*.sh "$SCRIPT_DIR"/*.command 2>/dev/null || true
+    OSSL_VER="$(openssl version 2>/dev/null || echo 'not found')"
+    echo -e "  ${CYAN}macOS openssl: ${OSSL_VER}${NC}"
+    case "$OSSL_VER" in
+        LibreSSL\ 2.*|LibreSSL\ 3.0.*)
+            echo -e "  ${YELLOW}Note: this openssl has no -addext, so it cannot put subjectAltName${NC}"
+            echo -e "  ${YELLOW}into a self-signed certificate. The proxy detects that and installs${NC}"
+            echo -e "  ${YELLOW}its built-in certificate instead — just leave .proxy-cert.pem and${NC}"
+            echo -e "  ${YELLOW}.proxy-key.pem in this folder.${NC}" ;;
+    esac
+    echo
+fi
 
 # ── Step 1: Check for Node.js ──────────────────
 echo -e "[1/4] Checking for Node.js..."
@@ -94,9 +118,6 @@ if [ -f "$SCRIPT_DIR/proxy.js" ]; then
     echo -e "  ${GREEN}proxy.js found.${NC}"
 else
     echo -e "  proxy.js not found locally. Attempting download..."
-    REPO_RAW="https://raw.githubusercontent.com/BlackAngelSK/BlackAngelSK.github.io/master/globe/proxy.js"
-    CERT_RAW="https://raw.githubusercontent.com/BlackAngelSK/BlackAngelSK.github.io/master/globe/.proxy-cert.pem"
-    KEY_RAW="https://raw.githubusercontent.com/BlackAngelSK/BlackAngelSK.github.io/master/globe/.proxy-key.pem"
     echo -e "  Download URL: $REPO_RAW"
 
     # Try curl first, then wget
@@ -139,23 +160,51 @@ else
 fi
 
 # Certificate for the HTTPS listener (needed when the page is served over https)
+cert_ok() {
+    [ -s "$SCRIPT_DIR/.proxy-cert.pem" ] && [ -s "$SCRIPT_DIR/.proxy-key.pem" ] || return 1
+    if command -v node &> /dev/null; then
+        node -e '
+            const fs = require("fs"), crypto = require("crypto");
+            try {
+                const x = new crypto.X509Certificate(fs.readFileSync(process.argv[1]));
+                process.exit(/DNS:localhost|IP Address:127\.0\.0\.1/.test(String(x.subjectAltName || "")) ? 0 : 1);
+            } catch (e) { process.exit(1); }
+        ' "$SCRIPT_DIR/.proxy-cert.pem" && return 0
+        return 1
+    fi
+    openssl x509 -in "$SCRIPT_DIR/.proxy-cert.pem" -noout -text 2>/dev/null | grep -q "DNS:localhost"
+}
+
 if [ ! -f "$SCRIPT_DIR/.proxy-cert.pem" ] || [ ! -f "$SCRIPT_DIR/.proxy-key.pem" ]; then
     curl -fsSL "$CERT_RAW" -o "$SCRIPT_DIR/.proxy-cert.pem" 2>/dev/null || true
     curl -fsSL "$KEY_RAW"  -o "$SCRIPT_DIR/.proxy-key.pem"  2>/dev/null || true
 fi
+
+if cert_ok; then
+    echo -e "  ${GREEN}HTTPS certificate ready (.proxy-cert.pem).${NC}"
+else
+    echo -e "  ${YELLOW}Certificate missing or without subjectAltName — removing it,${NC}"
+    echo -e "  ${YELLOW}the proxy will install its built-in one on start-up.${NC}"
+    rm -f "$SCRIPT_DIR/.proxy-cert.pem" "$SCRIPT_DIR/.proxy-key.pem"
+fi
 echo
 
-# ── Step 3: Check port 8080 ─────────────────────
-echo -e "[3/4] Checking port 8080..."
-
-if lsof -i :8080 -t &> /dev/null 2>&1 || (command -v ss &> /dev/null && ss -tlnp 2>/dev/null | grep -q ':8080'); then
-    echo "  Port 8080 is already in use. Attempting to free it..."
-    PID=$(lsof -i :8080 -t 2>/dev/null | head -1)
-    if [ -n "$PID" ]; then
-        kill -9 "$PID" 2>/dev/null
-        sleep 1
+# ── Step 3: Check the ports ─────────────────────
+echo -e "[3/4] Checking ports 8080 and 8443..."
+for port in 8080 8443; do
+    if command -v lsof &> /dev/null && lsof -nP -iTCP:"$port" -sTCP:LISTEN &> /dev/null; then
+        owner=$(lsof -nP -iTCP:"$port" -sTCP:LISTEN 2>/dev/null | awk 'NR==2{print $1" (PID "$2")"}')
+        if curl -fsS --max-time 2 "http://localhost:$port/ping" 2>/dev/null | grep -q pong; then
+            echo -e "  Port $port: an older copy of this proxy is running ($owner) — the new one will take it over."
+        else
+            echo -e "  ${YELLOW}Port $port is used by another program: $owner${NC}"
+            echo -e "  ${YELLOW}The proxy will skip that port and keep running. Free it with:${NC}"
+            echo "    lsof -ti :$port | xargs kill -9"
+        fi
+    else
+        echo -e "  ${GREEN}Port $port is free.${NC}"
     fi
-fi
+done
 echo
 
 # ── Step 4: Start the proxy ─────────────────────

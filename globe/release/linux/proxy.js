@@ -7,7 +7,7 @@ const crypto = require('crypto');
 
 const HTTP_PORT  = 8080;
 const HTTPS_PORT = 8443;
-const PROXY_VERSION = 5;
+const PROXY_VERSION = 6;
 const SCRIPT_DIR = __dirname;
 const CERT_PATH = path.join(SCRIPT_DIR, '.proxy-cert.pem');
 const KEY_PATH  = path.join(SCRIPT_DIR, '.proxy-key.pem');
@@ -150,21 +150,27 @@ function certStatus() {
 }
 
 function generateCert() {
-    try {
-        execSync(
-            'openssl req -x509 -newkey rsa:2048 -nodes ' +
+    /* macOS ships LibreSSL as /usr/bin/openssl and only LibreSSL >= 3.1 knows
+       -addext. On anything older the flag is rejected, so the first command
+       below MUST NOT be trusted just because it exited 0 — the fallback builds
+       a legacy CN-only certificate that Chrome/Safari refuse. Every generated
+       certificate is therefore validated and an unusable one is discarded in
+       favour of the bundled pair. */
+    const variants = [
+        'openssl req -x509 -newkey rsa:2048 -nodes ' +
             '-keyout "' + KEY_PATH + '" -out "' + CERT_PATH + '" ' +
-            '-days 3650 -subj "/CN=localhost" -addext "subjectAltName=' + CERT_HOSTS + '"',
-            { stdio: 'pipe' }
-        );
-        return true;
-    } catch (e) {
-        try {
-            execSync('openssl req -x509 -newkey rsa:2048 -nodes -keyout "' + KEY_PATH + '" -out "' + CERT_PATH +
-                '" -days 3650 -subj "/CN=localhost"', { stdio: 'pipe' });
-            return true;
-        } catch (e2) { return false; }
+            '-days 3650 -subj "/CN=localhost" ' +
+            '-addext "subjectAltName=' + CERT_HOSTS + '"',
+        'openssl req -x509 -newkey rsa:2048 -nodes -keyout "' + KEY_PATH + '" -out "' + CERT_PATH +
+            '" -days 3650 -subj "/CN=localhost"',
+    ];
+    for (const cmd of variants) {
+        try { execSync(cmd, { stdio: 'pipe' }); } catch (e) { continue; }
+        const st = certStatus();
+        if (st.ok) return true;
+        console.log('[proxy] openssl made an unusable certificate (' + st.why + ') — trying another way');
     }
+    return false;
 }
 
 function downloadFile(url, dest) {
@@ -327,53 +333,170 @@ function handler(req, res) {
   res.end('Not found.\n\nEndpoints:\n  /ping                  — health check\n  /proxy?url=ENCODED_URL — proxy a URL\n  /kml?url=ENCODED_URL   — proxy a URL, forced KML content type\n  /kml?mid=MY_MAPS_ID    — Google My Maps shortcut\n  /*                     — static files\n');
 }
 
+/* ═══ PORT HELPERS ══════════════════════════════════
+   macOS specifics handled here:
+   • "localhost" resolves to ::1 first, so binding 127.0.0.1 alone makes the
+     browser's https://localhost:8443 request fail. Both loopback addresses
+     are served.
+   • A second launch used to die with an unhandled EADDRINUSE (the old proxy
+     kept running in the background) — the stale listener is now detected and
+     stopped, and a foreign program on the port is reported instead of
+     crashing the process.                                          */
+
+function portOwner(port) {
+  try {
+    if (process.platform === 'win32') {
+      var out = execSync('netstat -ano | findstr "LISTENING" | findstr ":' + port + ' "', { encoding: 'utf8', stdio: ['pipe', 'pipe', 'pipe'] });
+      var pid = (out.trim().split(/\s+/).pop() || '');
+      return pid ? { pid: pid, cmd: '?' } : null;
+    }
+    var lsof = execSync('lsof -nP -iTCP:' + port + ' -sTCP:LISTEN -Fpc', { encoding: 'utf8', stdio: ['pipe', 'pipe', 'pipe'] });
+    var m = lsof.match(/^p(\d+)/m), c = lsof.match(/^c(.+)$/m);
+    return m ? { pid: m[1], cmd: c ? c[1].trim() : '?' } : null;
+  } catch (e) { return null; }
+}
+
+function pingLoopback(port, tls) {
+  return new Promise(function (resolve) {
+    var mod = tls ? httpsMod : require('http');
+    var opts = { host: '127.0.0.1', port: port, path: '/ping', timeout: 1500 };
+    if (tls) opts.rejectUnauthorized = false;
+    var req = mod.get(opts, function (res) {
+      var b = '';
+      res.on('data', function (c) { b += c; });
+      res.on('end', function () { resolve(b.indexOf('pong') !== -1); });
+    });
+    req.on('error', function () { resolve(false); });
+    req.on('timeout', function () { req.destroy(); resolve(false); });
+  });
+}
+
+function killPid(pid) {
+  try {
+    execSync(process.platform === 'win32' ? 'taskkill /PID ' + pid + ' /F' : 'kill -9 ' + pid, { stdio: 'pipe' });
+    return true;
+  } catch (e) { return false; }
+}
+
+/* Free a port only when the program holding it is an older copy of this proxy
+   (it answers "pong"). Someone else's server is never killed. */
+async function freeOurStaleListener(port, label) {
+  var owner = portOwner(port);
+  if (!owner) return;
+  if (owner.pid === String(process.pid)) return;   /* never kill ourselves */
+  if (await pingLoopback(port, port === HTTPS_PORT)) {
+    console.log('[proxy] ' + label + ' port ' + port + ' is held by an older proxy (PID ' + owner.pid + ') — stopping it');
+    killPid(owner.pid);
+    await new Promise(function (r) { setTimeout(r, 500); });
+  } else {
+    console.log('[proxy] ' + label + ' port ' + port + ' is used by another program: ' + owner.cmd + ' (PID ' + owner.pid + ')');
+  }
+}
+
 /* ═══ START SERVERS ═════════════════════════════════ */
-function startProxy() {
+var SERVERS = [];
+
+function listenOn(server, port, host) {
+  return new Promise(function (resolve) {
+    server.once('error', function (e) { resolve({ ok: false, err: e, server: server }); });
+    server.listen(port, host, function () { resolve({ ok: true, server: server }); });
+  });
+}
+
+/* One listener per loopback family — loopback only, so the macOS firewall
+   never asks whether the proxy may accept incoming connections. */
+async function listenDual(factory, port, label) {
+  var res = { port: port, label: label, where: [], err: null };
+  var busy = portOwner(port);
+  if (busy) {
+    res.err = new Error('port ' + port + ' is already in use by ' + (busy.cmd || '?') + ' (PID ' + busy.pid + ')');
+    return res;
+  }
+  var r4 = await listenOn(factory(), port, '127.0.0.1');
+  if (r4.ok) { res.where.push('127.0.0.1'); SERVERS.push(r4.server); } else { res.err = r4.err; }
+  if (process.platform !== 'win32') {
+    var r6 = await listenOn(factory(), port, '::1');
+    if (r6.ok) { res.where.push('::1'); SERVERS.push(r6.server); } else if (!res.err) res.err = r6.err;
+  }
+  return res;
+}
+
+async function startProxy() {
   var hasHTTPS = ensureCert();
 
-  /* HTTP server */
-  createServer(handler).listen(HTTP_PORT, function () {
-    console.log('');
-    console.log('╔═══════════════════════════════════════════════════╗');
-    console.log('║  CORS Proxy + Static Server v' + PROXY_VERSION + '                 ║');
-    console.log('╠═══════════════════════════════════════════════════╣');
-    console.log('║  HTTP:  http://localhost:' + HTTP_PORT + '                     ║');
-    if (hasHTTPS) {
-    console.log('║  HTTPS: https://localhost:' + HTTPS_PORT + '  (self-signed)  ║');
-    }
-    console.log('╠═══════════════════════════════════════════════════╣');
-    console.log('║  Local map:   http://localhost:' + HTTP_PORT + '/map.html       ║');
-    if (hasHTTPS) {
-    console.log('║  From site:   https://localhost:' + HTTPS_PORT + '/map.html    ║');
-    }
-    console.log('╚═══════════════════════════════════════════════════╝');
-    console.log('');
-    if (hasHTTPS) {
-    console.log('  HTTPS first-time setup (one click):');
-    console.log('  1. Open https://localhost:' + HTTPS_PORT + '/ping in your browser');
-    console.log('  2. Click "Advanced" → "Proceed to localhost (unsafe)"');
-    console.log('  3. Done — your site can now reach the proxy');
-    console.log('');
-    } else {
-    console.log('  WARNING: HTTPS 8443 is NOT running — a map opened over https://');
-    console.log('  (blackangelsk.github.io) cannot import anything, because browsers');
-    console.log('  block http://localhost requests from an https:// page.');
-    console.log('');
-    }
-  });
+  await freeOurStaleListener(HTTP_PORT, 'HTTP');
+  await freeOurStaleListener(HTTPS_PORT, 'HTTPS');
 
-  /* HTTPS server */
+  var httpRes = await listenDual(function () { return createServer(handler); }, HTTP_PORT, 'HTTP');
+  var httpsRes = null;
   if (hasHTTPS) {
+    var opts;
     try {
-      var opts = {
-        key:  fs.readFileSync(KEY_PATH),
-        cert: fs.readFileSync(CERT_PATH),
-      };
-      httpsMod.createServer(opts, handler).listen(HTTPS_PORT, function () {
-        /* server is ready */
-      });
+      opts = { key: fs.readFileSync(KEY_PATH), cert: fs.readFileSync(CERT_PATH) };
     } catch (e) {
-      console.log('[proxy] HTTPS startup failed: ' + e.message + ' — HTTPS disabled');
+      opts = null;
+      console.log('[proxy] HTTPS certificate unreadable: ' + e.message + ' — HTTPS disabled');
+    }
+    if (opts) {
+      var tlsHandler = handler;
+      httpsRes = await listenDual(function () { return httpsMod.createServer(opts, tlsHandler); }, HTTPS_PORT, 'HTTPS');
     }
   }
+
+  function state(res) {
+    if (!res) return false;
+    if (res.where.length) return true;
+    return false;
+  }
+  var okHTTP = state(httpRes), okHTTPS = state(httpsRes);
+
+  console.log('');
+  console.log('╔═══════════════════════════════════════════════════╗');
+  console.log('║  CORS Proxy + Static Server v' + PROXY_VERSION + '                 ║');
+  console.log('╠═══════════════════════════════════════════════════╣');
+  console.log('║  HTTP:  ' + (okHTTP ? 'http://localhost:' + HTTP_PORT + '                 ' : 'NOT RUNNING (port busy)        ') + '║');
+  console.log('║  HTTPS: ' + (okHTTPS ? 'https://localhost:' + HTTPS_PORT + '  (self-signed)' : 'NOT RUNNING                    ') + '║');
+  console.log('╚═══════════════════════════════════════════════════╝');
+  console.log('');
+  if (okHTTPS) {
+    console.log('  One-time step (only if the map still imports nothing):');
+    console.log('  1. Open https://localhost:' + HTTPS_PORT + '/ping in your browser');
+    console.log('  2. Click "Advanced" → "Proceed to localhost (unsafe)"');
+    console.log('');
+  } else {
+    console.log('  !! HTTPS 8443 is NOT running — a map opened over https://');
+    console.log('     (blackangelsk.github.io) cannot import anything.');
+    if (httpsRes && httpsRes.err) console.log('     Reason: ' + httpsRes.err.message);
+    console.log('     Free the port and start again:');
+    console.log('       lsof -ti :8443 | xargs kill -9');
+    console.log('');
+  }
+  if (!okHTTP) {
+    console.log('  Local (http) map is unavailable — the map at');
+    console.log('     http://localhost:' + HTTP_PORT + '/map.html needs port ' + HTTP_PORT + '.');
+    if (httpRes && httpRes.err) console.log('     Reason: ' + httpRes.err.message);
+    console.log('');
+  }
+  if (okHTTP || okHTTPS) {
+    console.log('  Press Ctrl+C to stop.');
+    console.log('');
+  } else {
+    console.log('  Nothing could be started. Free the ports and run again:');
+    console.log('    lsof -ti :' + HTTP_PORT + ' | xargs kill -9');
+    console.log('    lsof -ti :' + HTTPS_PORT + ' | xargs kill -9');
+    console.log('');
+    process.exit(1);
+  }
+
+  function cleanup() {
+    console.log('');
+    console.log('[proxy] Stopping…');
+    SERVERS.forEach(function (s) { try { s.close(); } catch (e) { } });
+    setTimeout(function () { process.exit(0); }, 200);
+  }
+  process.on('SIGINT', cleanup);
+  process.on('SIGTERM', cleanup);
+  process.on('uncaughtException', function (e) {
+    console.log('[proxy] Unhandled error: ' + e.message + ' (proxy keeps running)');
+  });
 }

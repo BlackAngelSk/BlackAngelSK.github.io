@@ -30,7 +30,7 @@ const { execSync, spawn } = require('child_process');
 const PROXY_PORT = 8080;
 const HTTPS_PORT = 8443;
 const HTTP_PORT = 8000;
-const PROXY_VERSION = 5;
+const PROXY_VERSION = 6;
 
 const CERT_HOSTS = 'DNS:localhost,DNS:*.localhost,IP:127.0.0.1,IP:::1';
 const CERT_URLS = [
@@ -137,22 +137,56 @@ const C = {
 };
 function log(color, msg) { console.log(`${color}${msg}${C.reset}`); }
 
-// ── Kill process on a port ─────────────────────────────────────
-function killPort(port) {
+// ── Ports ──────────────────────────────────────────────────────
+function portOwner(port) {
     try {
         if (process.platform === 'win32') {
-            const r = execSync(`netstat -ano | findstr ":${port}" | findstr "LISTENING"`, { encoding: 'utf8', stdio: ['pipe', 'pipe', 'pipe'] });
-            r.trim().split('\n').filter(Boolean).forEach(line => {
-                const pid = line.trim().split(/\s+/).pop();
-                if (pid && pid !== '0') execSync(`taskkill /PID ${pid} /F`, { stdio: 'pipe' });
-            });
-        } else {
-            const r = execSync(`lsof -ti :${port}`, { encoding: 'utf8', stdio: ['pipe', 'pipe', 'pipe'] });
-            r.trim().split('\n').filter(Boolean).forEach(pid => {
-                execSync(`kill -9 ${pid}`, { stdio: 'pipe' });
-            });
+            const out = execSync(`netstat -ano | findstr "LISTENING" | findstr ":${port} "`, { encoding: 'utf8', stdio: ['pipe', 'pipe', 'pipe'] });
+            const pid = out.trim().split(/\s+/).pop();
+            return pid ? { pid, cmd: '?' } : null;
         }
-    } catch { /* port not in use */ }
+        const out = execSync(`lsof -nP -iTCP:${port} -sTCP:LISTEN -Fpc`, { encoding: 'utf8', stdio: ['pipe', 'pipe', 'pipe'] });
+        const m = out.match(/^p(\d+)/m), c = out.match(/^c(.+)$/m);
+        return m ? { pid: m[1], cmd: c ? c[1].trim() : '?' } : null;
+    } catch { return null; }
+}
+
+/* Does something on this port answer our own /ping with "pong"? */
+function pingLocal(port, tls) {
+    return new Promise((resolve) => {
+        const mod = tls ? https : http;
+        const opts = { host: '127.0.0.1', port, path: '/ping', timeout: 1500 };
+        if (tls) opts.rejectUnauthorized = false;
+        const req = mod.get(opts, (res) => {
+            let b = '';
+            res.on('data', (c) => b += c);
+            res.on('end', () => resolve(b.indexOf('pong') !== -1));
+        });
+        req.on('error', () => resolve(false));
+        req.on('timeout', () => { req.destroy(); resolve(false); });
+    });
+}
+
+function killPid(pid) {
+    try {
+        execSync(process.platform === 'win32' ? `taskkill /PID ${pid} /F` : `kill -9 ${pid}`, { stdio: 'pipe' });
+        return true;
+    } catch { return false; }
+}
+
+/* Free a port only when an older copy of THIS server holds it. Another
+   program's server is never killed — we report it and carry on. */
+async function freePort(port, label) {
+    const owner = portOwner(port);
+    if (!owner || owner.pid === String(process.pid)) return true;
+    if (await pingLocal(port, port === HTTPS_PORT)) {
+        log(C.dim, `  ${label} port ${port}: stopping an older copy (PID ${owner.pid})`);
+        killPid(owner.pid);
+        await new Promise((r) => setTimeout(r, 500));
+        return true;
+    }
+    log(C.yellow, `  ${label} port ${port} is used by ${owner.cmd} (PID ${owner.pid}) — leaving it alone`);
+    return false;
 }
 
 // ══════════════════════════════════════════════════════════════
@@ -205,20 +239,26 @@ function downloadCert() {
 }
 
 function generateCert() {
-    const cmd =
+    /* macOS ships LibreSSL as /usr/bin/openssl and only LibreSSL >= 3.1 knows
+       -addext. On anything older the flag is rejected and the fallback below
+       produces a legacy CN-only certificate that Chrome/Safari refuse, so each
+       attempt is verified and an unusable one is discarded in favour of the
+       bundled pair. */
+    const variants = [
         'openssl req -x509 -newkey rsa:2048 -nodes ' +
-        '-keyout "' + KEY_PATH + '" -out "' + CERT_PATH + '" ' +
-        '-days 3650 -subj "/CN=localhost" ' +
-        '-addext "subjectAltName=' + CERT_HOSTS + '"';
-    try { execSync(cmd, { stdio: 'pipe' }); return true; }
-    catch {
-        // Very old openssl has no -addext; fall back to a legacy CN-only cert.
-        try {
-            execSync('openssl req -x509 -newkey rsa:2048 -nodes -keyout "' + KEY_PATH + '" -out "' + CERT_PATH +
-                '" -days 3650 -subj "/CN=localhost"', { stdio: 'pipe' });
-            return true;
-        } catch { return false; }
+            '-keyout "' + KEY_PATH + '" -out "' + CERT_PATH + '" ' +
+            '-days 3650 -subj "/CN=localhost" ' +
+            '-addext "subjectAltName=' + CERT_HOSTS + '"',
+        'openssl req -x509 -newkey rsa:2048 -nodes -keyout "' + KEY_PATH + '" -out "' + CERT_PATH +
+            '" -days 3650 -subj "/CN=localhost"',
+    ];
+    for (const cmd of variants) {
+        try { execSync(cmd, { stdio: 'pipe' }); } catch { continue; }
+        const st = certStatus();
+        if (st.ok) return true;
+        log(C.yellow, '  openssl produced an unusable certificate (' + st.why + ') — trying another way');
     }
+    return false;
 }
 
 function ensureCert() {
@@ -400,15 +440,25 @@ function makeHandler(withStatic) {
 //  SERVERS
 // ══════════════════════════════════════════════════════════════
 
-function listen(server, port, label) {
+function listenOn(server, port, host) {
     return new Promise(function (resolve) {
-        server.once('error', function (e) {
-            if (e.code === 'EADDRINUSE') log(C.yellow, `  ${label} port ${port} already in use — skipped`);
-            else log(C.red, `  ${label} error: ${e.message}`);
-            resolve(false);
-        });
-        server.listen(port, '127.0.0.1', function () { resolve(true); });
+        server.once('error', function (e) { resolve({ ok: false, err: e, server }); });
+        server.listen(port, host, function () { resolve({ ok: true, server }); });
     });
+}
+
+/* One listener per loopback family. macOS resolves "localhost" to ::1 before
+   127.0.0.1, so binding only IPv4 makes https://localhost:8443 fail there.
+   Loopback only keeps the macOS firewall quiet. */
+async function listenDual(factory, port, label, servers) {
+    const res = { port, label, where: [], err: null };
+    const r4 = await listenOn(factory(), port, '127.0.0.1');
+    if (r4.ok) { res.where.push('127.0.0.1'); servers.push(r4.server); } else { res.err = r4.err; }
+    if (process.platform !== 'win32') {
+        const r6 = await listenOn(factory(), port, '::1');
+        if (r6.ok) { res.where.push('::1'); servers.push(r6.server); } else if (!res.err) res.err = r6.err;
+    }
+    return res;
 }
 
 // ══════════════════════════════════════════════════════════════
@@ -425,9 +475,9 @@ function listen(server, port, label) {
     log(C.reset, '');
 
     log(C.yellow, 'Checking for existing servers…');
-    killPort(PROXY_PORT);
-    killPort(HTTPS_PORT);
-    if (!proxyOnly) killPort(customHttpPort);
+    await freePort(PROXY_PORT, 'Proxy');
+    await freePort(HTTPS_PORT, 'HTTPS');
+    if (!proxyOnly) await freePort(customHttpPort, 'Static');
     log(C.reset, '');
 
     const hasHTTPS = ensureCert();
@@ -444,26 +494,30 @@ function listen(server, port, label) {
     const servers = [];
 
     // Proxy over HTTP (works when the page is served over http)
-    const httpProxy = http.createServer(makeHandler(false));
-    if (await listen(httpProxy, PROXY_PORT, 'Proxy')) servers.push(httpProxy);
+    const httpRes = await listenDual(() => http.createServer(makeHandler(false)), PROXY_PORT, 'Proxy', servers);
 
     // Proxy over HTTPS (REQUIRED when the page is served over https)
+    let httpsRes = null;
     if (httpsOpts) {
-        const httpsServer = https.createServer(httpsOpts, makeHandler(true));
-        if (await listen(httpsServer, HTTPS_PORT, 'HTTPS')) servers.push(httpsServer);
+        httpsRes = await listenDual(() => https.createServer(httpsOpts, makeHandler(true)), HTTPS_PORT, 'HTTPS', servers);
+    } else {
+        httpsRes = { err: new Error('no usable certificate') };
     }
 
     // Local static site
     if (!proxyOnly) {
-        const staticServer = http.createServer(makeHandler(true));
-        if (await listen(staticServer, customHttpPort, 'Static')) servers.push(staticServer);
+        await listenDual(() => http.createServer(makeHandler(true)), customHttpPort, 'Static', servers);
+    }
+
+    for (const r of [httpRes, httpsRes]) {
+        if (r && !r.where.length) log(C.red, `  ${r.label} on port ${r.port} did NOT start: ${r.err ? r.err.message : 'unknown error'}`);
     }
 
     console.log('');
     log(C.green, '  ============================================');
     log(C.green, '  Servers are running!');
     log(C.green, `  Proxy:   http://localhost:${PROXY_PORT}/ping`);
-    if (httpsOpts) log(C.green, `  Proxy:   https://localhost:${HTTPS_PORT}/ping   ← use this from the website`);
+    if (httpsRes && httpsRes.where.length) log(C.green, `  Proxy:   https://localhost:${HTTPS_PORT}/ping   ← use this from the website`);
     if (!proxyOnly) {
         log(C.green, `  Map:     http://localhost:${customHttpPort}/map.html`);
         log(C.green, `  Globe:   http://localhost:${customHttpPort}/index.html`);
@@ -471,7 +525,7 @@ function listen(server, port, label) {
     log(C.green, '  ============================================');
     console.log('');
 
-    if (httpsOpts) {
+    if (httpsRes && httpsRes.where.length) {
         log(C.yellow, '  One-time step so the hosted site can use this proxy:');
         log(C.reset, `    1. Open https://localhost:${HTTPS_PORT}/ping in your browser`);
         log(C.reset, '    2. Click "Advanced" → "Continue to localhost (unsafe)"');
