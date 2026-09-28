@@ -1,13 +1,21 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
-const TEX_URL = {
-  day: 'https://raw.githubusercontent.com/mrdoob/three.js/dev/examples/textures/planets/earth_atmos_2048.jpg',
-  night: 'https://raw.githubusercontent.com/mrdoob/three.js/dev/examples/textures/planets/earth_lights_2048.png',
-  clouds: 'https://raw.githubusercontent.com/mrdoob/three.js/dev/examples/textures/planets/earth_clouds_2048.png',
-  bump: 'https://raw.githubusercontent.com/mrdoob/three.js/dev/examples/textures/planets/earth_normal_2048.jpg',
-  spec: 'https://raw.githubusercontent.com/mrdoob/three.js/dev/examples/textures/planets/earth_specular_2048.jpg',
+// Texture sources — local copies first (vendor/ in globe/textures), then remote mirrors.
+// Pinned to the r160 tag that matches the import map; the `dev` branch moves and
+// earth_clouds_2048.png was removed from it (404), which killed the cloud layer.
+const PLANET_TEX = {
+  day: 'earth_atmos_2048.jpg',
+  night: 'earth_lights_2048.png',
+  clouds: 'earth_clouds_1024.png',
+  bump: 'earth_normal_2048.jpg',
+  spec: 'earth_specular_2048.jpg',
 };
+const TEX_URL = Object.fromEntries(Object.entries(PLANET_TEX).map(([k, f]) => [k, [
+  'textures/' + f,
+  'https://cdn.jsdelivr.net/gh/mrdoob/three.js@r160/examples/textures/planets/' + f,
+  'https://raw.githubusercontent.com/mrdoob/three.js/r160/examples/textures/planets/' + f,
+]]));
 // --- LOD (Level of Detail) System ---
 const LOD_THRESHOLDS=[
   {maxDist:200,segments:192},{maxDist:300,segments:128},
@@ -453,13 +461,26 @@ const loader=new THREE.TextureLoader();
 let ld=0;const tot=5;
 function onL(n){ld++;updateProgress('Loading textures... '+ld+'/'+tot);if(ld>=tot)hidLoad();}
 function onE(n,e){console.warn(n,e);ld++;if(ld>=tot)hidLoad();}
-function mkT(u,ok){return loader.load(u,t=>{
-  t.colorSpace=THREE.SRGBColorSpace;
-  t.anisotropy=renderer.capabilities.getMaxAnisotropy();
-  t.minFilter=THREE.LinearMipmapLinearFilter;
-  t.magFilter=THREE.LinearFilter;
-  if(ok)ok(t);onL(u);
-},undefined,e=>onE(u,e));}
+// Loads the first texture URL that succeeds, walking the mirror list on failure.
+function mkT(urls,ok){
+  const list=Array.isArray(urls)?urls.slice():[urls];
+  const tex=new THREE.Texture();
+  tex.colorSpace=THREE.SRGBColorSpace;
+  tex.anisotropy=renderer.capabilities.getMaxAnisotropy();
+  tex.minFilter=THREE.LinearMipmapLinearFilter;
+  tex.magFilter=THREE.LinearFilter;
+  let i=0;
+  const next=()=>{
+    if(i>=list.length){onE('tex:'+(list[list.length-1]||'?'));return;}
+    const u=list[i++];
+    loader.load(u,t=>{
+      tex.image=t.image;tex.needsUpdate=true;
+      if(ok)ok(tex);onL(u);
+    },undefined,()=>next());
+  };
+  next();
+  return tex;
+}
 
 const dT=mkT(TEX_URL.day);
 const nT=mkT(TEX_URL.night);
@@ -709,7 +730,9 @@ document.addEventListener('fullscreenchange',()=>{
 
 // Map button — navigate to interactive map
 const btnMap=document.getElementById('btn-map');
-if(btnMap)btnMap.addEventListener('click',()=>{window.location.href='map.html';});
+// 🗺 Map button → the new themeable map UI (map-new.html). The older map.html
+// is still served at /globe/map.html for anyone who wants the classic layout.
+if(btnMap)btnMap.addEventListener('click',()=>{window.location.href='map-new.html';});
 
 const btnConflict=document.getElementById('btn-conflicts');
 const conflictLegend=document.getElementById('conflict-legend');

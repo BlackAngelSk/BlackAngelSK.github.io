@@ -642,6 +642,22 @@ canvas {
     min-width: 200px;
 }
 
+/* The three panels below are marked `hidden` in the markup and toggled with
+   classList in app.js, but no rule ever hid them — an empty route popup and the
+   cargo/network panels rendered over the globe at load even with Routes off. */
+#route-popup,
+#maritime-legend,
+#maritime-stats {
+    transition: opacity 0.25s ease, visibility 0.25s ease;
+}
+#route-popup.hidden,
+#maritime-legend.hidden,
+#maritime-stats.hidden {
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+}
+
 .ms-title {
     font-size: 0.68rem;
     text-transform: uppercase;
