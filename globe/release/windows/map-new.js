@@ -50,6 +50,15 @@ const S = {
     _riversLayer: null,
     _riversVisible: false,
     _riversLoading: false,
+    /* polygon / circle drawing (map-new) */
+    polyPts: [],
+    polyPreview: null,
+    polyCursor: null,
+    polyVerts: [],
+    polyCursorLatLng: null,
+    circleCenter: null,
+    circleRadius: 0,
+    circlePreview: null,
 };
 const UNDO_LIMIT = 50;
 
@@ -86,7 +95,9 @@ const STATUS = {
     label: 'Click to place a text label',
     measure: 'Click to measure distance · Dbl-click / Enter to finish · Esc to cancel',
     eraser: 'Click an annotation to erase it',
-    fire: 'Click to place a fire on the map'
+    fire: 'Click to place a fire on the map',
+    polygon: '⬟ Area: click to add points · double-click / Enter to close · Esc to cancel',
+    circle: '◯ Circle: click the centre, move to size it, click again · Esc to cancel'
 };
 
 /* ── DOM shortcuts ────────────────────────────────── */
@@ -663,6 +674,8 @@ function setTool(tool) {
     if (S.tool === 'freehand' && S.drawing) finishFreehand();
     if (S.tool === 'arrow' && S.arrowDrawing) finishArrow();
     if (S.tool === 'measure' && S.msPoints.length > 0) finishMeasure();
+    if (S.tool === 'polygon' && S.polyPts.length > 0) cancelPoly(true);
+    if (S.tool === 'circle' && S.circleCenter) cancelCircle(true);
 
     /* hide label input if switching away */
     if (S.tool === 'label') hideLabelInput();
@@ -686,14 +699,15 @@ function setTool(tool) {
     const icons = {
         pan: '\u{1F4CD}', freehand: '\u270F\uFE0F',
         arrow: '\u27A1\uFE0F', marker: '\u{1F4CC}', label: '\u{1F3F7}\uFE0F', measure: '\u{1F4CF}', eraser: '\u{1F9F9}',
-        fire: '\u{1F525}'
+        fire: '\u{1F525}',
+        polygon: '\u2B1F', circle: '\u25EF'
     };
     $('#status-icon').textContent = icons[tool] || '\u{1F4CD}';
     Array.from(document.body.classList)
         .filter(className => className.indexOf('tool-') === 0)
         .forEach(className => document.body.classList.remove(className));
     document.body.classList.add('tool-' + tool);
-    if (tool !== 'measure') $('#btn-finish').classList.add('hidden');
+    updateFinishButton();
     /* show/hide flag panel when arrow tool is active */
     const flagPanel = $('#flag-panel');
     if (flagPanel) flagPanel.classList.toggle('hidden', tool !== 'arrow');
@@ -1303,6 +1317,8 @@ function toggleLockAll() {
 function updateCount() {
     $('#ann-count').textContent = S.annotations.length + ' annotation' + (S.annotations.length !== 1 ? 's' : '');
     updateLockButton();
+    /* map-new: keep the annotation list panel in sync while it is open */
+    if (!$('#ann-panel').classList.contains('hidden')) renderAnnPanel();
 }
 
 /* =====================================================
@@ -1435,20 +1451,8 @@ function exportGeoJSON() {
         alert('No annotations to export.');
         return;
     }
-    const features = S.annotations.map(a => {
-        const isPoint = a.type === 'marker' || a.type === 'label';
-        return {
-            type: 'Feature',
-            properties: {
-                id: a.id, type: a.type, color: a.color,
-                weight: a.weight, dashStyle: a.dashStyle,
-                text: (a.extra && a.extra.text) || undefined
-            },
-            geometry: isPoint
-                ? { type: 'Point', coordinates: [a.coords[1], a.coords[0]] }
-                : { type: 'LineString', coordinates: a.coords.map(c => [c[1], c[0]]) }
-        };
-    });
+    /* annToFeature handles polygons, circles (radius) and fires correctly */
+    const features = S.annotations.map(annToFeature);
     const geojson = {
         type: 'FeatureCollection',
         crs: { type: 'name', properties: { name: 'urn:ogc:def:crs:OGC:1.3:CRS84' } },
@@ -1763,16 +1767,7 @@ function getSavedMaps() {
 }
 function saveMapToStorage(name, annotations) {
     const saved = getSavedMaps();
-    const features = annotations.map(a => {
-        const isPoint = a.type === 'marker' || a.type === 'label';
-        return {
-            type: 'Feature',
-            properties: { id: a.id, type: a.type, color: a.color, weight: a.weight, dashStyle: a.dashStyle, text: (a.extra && a.extra.text) || undefined },
-            geometry: isPoint
-                ? { type: 'Point', coordinates: [a.coords[1], a.coords[0]] }
-                : { type: 'LineString', coordinates: a.coords.map(c => [c[1], c[0]]) }
-        };
-    });
+    const features = annotations.map(annToFeature);
     const entry = { name, date: new Date().toISOString(), annotationCount: annotations.length, geojson: { type: 'FeatureCollection', features } };
     const idx = saved.findIndex(s => s.name === name);
     if (idx >= 0) saved[idx] = entry; else saved.push(entry);
@@ -1800,12 +1795,10 @@ function closeImportModal() {
 /* ── Expand Multi* geometries ──────────────────── */
 function expandGeometry(geom) {
     if (geom.type === 'MultiLineString') return geom.coordinates.map(c => ({type:'LineString',coordinates:c}));
-    if (geom.type === 'Polygon') return geom.coordinates.map(ring => ({type:'LineString',coordinates:ring}));
-    if (geom.type === 'MultiPolygon') {
-        const out = [];
-        geom.coordinates.forEach(poly => poly.forEach(ring => out.push({type:'LineString',coordinates:ring})));
-        return out;
-    }
+    /* Polygons stay polygons: an area should import as a filled area, and an
+       area exported from this page has to come back in one piece. */
+    if (geom.type === 'Polygon') return [geom];
+    if (geom.type === 'MultiPolygon') return geom.coordinates.map(poly => ({type:'Polygon',coordinates:poly}));
     if (geom.type === 'MultiPoint') return geom.coordinates.map(c => ({type:'Point',coordinates:c}));
     return [geom];
 }
@@ -1830,6 +1823,7 @@ function parseGeoJSONForPreview(data) {
                 geometryType: g.type,
                 geometry: g,
                 text: p.text || undefined,
+                radius: (typeof p.radius === 'number' ? p.radius : undefined),
                 checked: true
             });
         });
@@ -1939,8 +1933,9 @@ function confirmImport() {
             layer.addTo(grp);
             count++;
         } else if (f.geometryType === 'Polygon') {
-            const coords = f.geometry.coordinates.map(c => [c[1], c[0]]);
-            const layer = L.polygon(coords, {
+            /* coordinates[0] is the outer ring — take the ring, not the rings array */
+            const ring = (f.geometry.coordinates[0] || []).map(c => [c[1], c[0]]);
+            const layer = L.polygon(ring, {
                 color: f.color, fillColor: f.fillColor || f.color,
                 fillOpacity: f.fillOpacity || 0.3,
                 weight: Math.max(1, f.weight || 2), renderer: canvasRenderer
@@ -1948,7 +1943,7 @@ function confirmImport() {
             layer.bindTooltip(f.name || '', { sticky: true, className: 'import-tooltip' });
             const prevColor = S.color;
             S.color = f.fillColor || f.color;
-            storeAnnotation(layer, 'polygon', f.geometry.coordinates, { text: f.text || f.name }, { locked: true });
+            storeAnnotation(layer, 'polygon', ring, { text: f.text || f.name }, { locked: true });
             S.color = prevColor;
             layer.addTo(grp);
             attachHighlightHandler(layer);
@@ -1957,6 +1952,21 @@ function confirmImport() {
             const ll = [f.geometry.coordinates[1], f.geometry.coordinates[0]];
             const latlng = L.latLng(ll);
             const text = f.text || f.name || '';
+            if (f.radius) {
+                /* a circle came back from an exported GeoJSON (Point + radius) */
+                const circle = L.circle(latlng, {
+                    radius: f.radius, color: f.color, weight: f.weight || 2,
+                    fillColor: f.color, fillOpacity: 0.25, renderer: canvasRenderer
+                });
+                circle.bindTooltip('Circle · r = ' + fmtDist(f.radius), { sticky: true, className: 'import-tooltip' });
+                const prevC = S.color;
+                S.color = f.color;
+                storeAnnotation(circle, 'circle', ll, { radius: f.radius, text }, { locked: true });
+                S.color = prevC;
+                circle.addTo(grp);
+                count++;
+                return;
+            }
             const marker = L.circleMarker(latlng, {
                 radius: 5, fillColor: f.color, color: '#fff',
                 weight: 1.5, fillOpacity: 0.9, renderer: canvasRenderer
@@ -2635,6 +2645,9 @@ map.on('mousemove', e => {
     if (S.tool === 'arrow' && S.arrowDrawing) moveArrow(e);
     if (S.tool === 'eraser' && S.eraserDragging) eraserDragMove(e);
     if (S.tool === 'measure') moveMeasurePreview(e);
+    if (S.tool === 'polygon' && S.polyPts.length) movePolyCursor(e);
+    if (S.tool === 'circle' && S.circleCenter) moveCircleRadius(e);
+    updateCoordDisplay(e.latlng);
 });
 
 map.on('mouseup', e => {
@@ -2652,12 +2665,18 @@ map.on('click', e => {
         const pt = map.latLngToContainerPoint(e.latlng);
         showLabelInput(e.latlng, { x: pt.x + 100, y: pt.y + document.getElementById('map').offsetTop });
     }
+    if (S.tool === 'polygon') polyClick(e);
+    if (S.tool === 'circle') circleClick(e);
 });
 
 map.on('dblclick', e => {
     if (S.tool === 'measure') {
         if (e && e.originalEvent) L.DomEvent.stop(e.originalEvent);
         finishMeasure();
+    }
+    if (S.tool === 'polygon') {
+        if (e && e.originalEvent) L.DomEvent.stop(e.originalEvent);
+        finishPoly();
     }
     /* Clear highlight when double-clicking empty map area (only in pan mode) */
     if (S.tool === 'pan' && S.highlighted) {
@@ -2681,6 +2700,8 @@ map.on('touchend', () => {
 
 map.on('zoomend', () => {
     $('#zoom-display').textContent = 'Zoom: ' + map.getZoom();
+    const cd = $('#coord-display');
+    if (cd && cd.dataset.lat) updateCoordDisplay(L.latLng(parseFloat(cd.dataset.lat), parseFloat(cd.dataset.lng)));
 });
 
 /* =====================================================
@@ -2746,6 +2767,8 @@ $('#btn-png').addEventListener('click', exportPNG);
 $('#btn-geojson').addEventListener('click', exportGeoJSON);
 $('#btn-finish').addEventListener('click', () => {
     if (S.tool === 'measure') finishMeasure();
+    if (S.tool === 'polygon') finishPoly();
+    if (S.tool === 'circle') finishCircle();
 });
 $('#btn-undo').addEventListener('click', undo);
 $('#btn-redo').addEventListener('click', redo);
@@ -2767,10 +2790,14 @@ document.addEventListener('keydown', e => {
             if (overlayPlacement) { cancelOverlayPlacement(); break; }
                 if (S.tool === 'measure') cancelMeasure();
             if (S.tool === 'label') hideLabelInput();
+            if (S.tool === 'polygon' || S.tool === 'circle') cancelDraw();
+            if (!$('#ann-panel').classList.contains('hidden')) toggleAnnPanel(false);
             break;
         case 'Enter':
             if (!$('#import-modal').classList.contains('hidden')) { confirmImport(); break; }
             if (S.tool === 'measure') finishMeasure();
+            if (S.tool === 'polygon') finishPoly();
+            if (S.tool === 'circle') finishCircle();
             break;
         case '1': setTool('pan');      break;
         case '2': setTool('freehand'); break;
@@ -2780,6 +2807,9 @@ document.addEventListener('keydown', e => {
         case '7': setTool('measure');  break;
         case '8': setTool('eraser');   break;
         case '9': setTool('fire');     break;
+        case '3': setTool('polygon');  break;
+        case '0': setTool('circle');   break;
+        case 'l': case 'L': toggleAnnPanel(); break;
         case 'i': case 'I': openImportModal(); break;
         case 'f': case 'F': toggleFullscreen(); break;
     }
@@ -3768,3 +3798,469 @@ function parseEmoji(el) {
 parseEmoji(document.getElementById('flag-grid'));
 
 console.log('Interactive Map loaded.');
+
+
+/* =====================================================
+   map-new extras  (testing page)
+   • Area (polygon) and Circle (radius) drawing tools
+   • Place search via Nominatim
+   • Live cursor coordinates in the status bar
+   • Annotation list panel
+   ===================================================== */
+
+/* ── Geometry helpers ─────────────────────────────── */
+function polygonAreaM2(pts) {
+    /* spherical excess approximation — good enough for map-sized shapes */
+    if (!pts || pts.length < 3) return 0;
+    const R = 6378137, rad = Math.PI / 180;
+    let total = 0;
+    for (let i = 0; i < pts.length; i++) {
+        const p1 = pts[i], p2 = pts[(i + 1) % pts.length];
+        total += (p2[1] - p1[1]) * rad * (2 + Math.sin(p1[0] * rad) + Math.sin(p2[0] * rad));
+    }
+    return Math.abs(total * R * R / 2);
+}
+function fmtArea(m2) {
+    if (!m2) return '';
+    return m2 >= 1e6 ? (m2 / 1e6).toFixed(2) + ' km²' : m2.toFixed(0) + ' m²';
+}
+const VERTEX_STYLE = {
+    radius: 4, color: '#ffffff', weight: 1.5,
+    fillColor: '#ffdd00', fillOpacity: 1, renderer: canvasRenderer
+};
+
+/* ── Live coordinates ─────────────────────────────── */
+function updateCoordDisplay(latlng) {
+    const el = $('#coord-display');
+    if (!el) return;
+    if (!latlng) { el.textContent = '—'; delete el.dataset.lat; delete el.dataset.lng; return; }
+    el.dataset.lat = latlng.lat;
+    el.dataset.lng = latlng.lng;
+    el.textContent = latlng.lat.toFixed(5) + ', ' + latlng.lng.toFixed(5) + ' · z' + map.getZoom();
+}
+
+/* ── Shared drawing preview helpers ───────────────── */
+function clearDrawPreview() {
+    ['polyPreview', 'polyCursor', 'circlePreview'].forEach(k => {
+        if (S[k]) { map.removeLayer(S[k]); S[k] = null; }
+    });
+    (S.polyVerts || []).forEach(v => map.removeLayer(v));
+    S.polyVerts = [];
+}
+
+function updateFinishButton() {
+    const active =
+        (S.tool === 'measure' && S.msPoints.length >= 2) ||
+        (S.tool === 'polygon' && S.polyPts.length >= 3) ||
+        (S.tool === 'circle' && !!S.circleCenter);
+    const btn = $('#btn-finish');
+    if (btn) btn.classList.toggle('hidden', !active);
+}
+
+/* ── Area (polygon) tool ──────────────────────────── */
+function updatePolyPreview() {
+    if (!S.polyPreview) return;
+    const pts = S.polyPts.slice();
+    if (S.polyCursorLatLng && pts.length) pts.push(S.polyCursorLatLng);
+    S.polyPreview.setLatLngs(pts);
+}
+
+function polyClick(e) {
+    if (S.tool !== 'polygon') return;
+    S.polyPts.push([e.latlng.lat, e.latlng.lng]);
+    S.polyVerts.push(L.circleMarker(e.latlng, VERTEX_STYLE).addTo(map));
+    if (!S.polyPreview) {
+        S.polyPreview = L.polygon([], {
+            color: S.color, weight: S.weight, dashArray: DASH[S.dashStyle],
+            fillColor: S.color, fillOpacity: 0.2, interactive: false,
+            renderer: canvasRenderer
+        }).addTo(map);
+    }
+    if (S.polyCursorLatLng) {
+        if (!S.polyCursor) {
+            S.polyCursor = L.circleMarker(L.latLng(S.polyCursorLatLng), VERTEX_STYLE).addTo(map);
+        } else {
+            S.polyCursor.setLatLng(S.polyCursorLatLng);
+        }
+    }
+    updatePolyPreview();
+    updateFinishButton();
+    const n = S.polyPts.length;
+    $('#status-text').textContent = '⬟ ' + n + ' point' + (n !== 1 ? 's' : '') +
+        ' · ' + fmtArea(polygonAreaM2(S.polyPts)) +
+        ' — click to add · double-click / Enter to close · Esc to cancel';
+}
+
+function movePolyCursor(e) {
+    S.polyCursorLatLng = [e.latlng.lat, e.latlng.lng];
+    updatePolyPreview();
+}
+
+function finishPoly() {
+    if (S.tool !== 'polygon') return;
+    const pts = S.polyPts.slice();
+    const cursor = S.polyCursorLatLng ? L.latLng(S.polyCursorLatLng) : null;
+
+    if (pts.length < 3) {
+        cancelPoly(true);
+        $('#status-text').textContent = 'An area needs at least 3 points — nothing was created.';
+        return;
+    }
+
+    /* a double-click fires a normal click first, so drop a trailing duplicate */
+    if (cursor && pts.length >= 4) {
+        const last = L.latLng(pts[pts.length - 1]);
+        if (map.distance(last, cursor) < 1) pts.pop();
+    }
+
+    clearDrawPreview();
+    S.polyPts = [];
+    S.polyCursorLatLng = null;
+
+    const layer = L.polygon(pts, {
+        color: S.color, weight: S.weight, dashArray: DASH[S.dashStyle],
+        fillColor: S.color, fillOpacity: 0.25,
+        lineCap: 'round', lineJoin: 'round', renderer: canvasRenderer
+    }).addTo(map);
+    layer.bindTooltip('Area · ' + pts.length + ' pts · ' + fmtArea(polygonAreaM2(pts)), { sticky: true, className: 'import-tooltip' });
+    storeAnnotation(layer, 'polygon', pts, null);
+    attachHighlightHandler(layer);
+    updateFinishButton();
+    $('#status-text').textContent = 'Area created — ' + pts.length + ' points · ' + fmtArea(polygonAreaM2(pts));
+}
+
+function cancelPoly(silent) {
+    clearDrawPreview();
+    S.polyPts = [];
+    S.polyCursorLatLng = null;
+    updateFinishButton();
+    if (!silent) $('#status-text').textContent = 'Area cancelled.';
+}
+
+/* ── Circle (radius) tool ─────────────────────────── */
+function circleClick(e) {
+    if (S.tool !== 'circle') return;
+    if (!S.circleCenter) {
+        S.circleCenter = e.latlng;
+        S.circleRadius = 0;
+        S.polyVerts.push(L.circleMarker(e.latlng, VERTEX_STYLE).addTo(map));
+        S.circlePreview = L.circle(e.latlng, {
+            radius: 0, color: S.color, weight: S.weight, dashArray: DASH[S.dashStyle],
+            fillColor: S.color, fillOpacity: 0.2, interactive: false,
+            renderer: canvasRenderer
+        }).addTo(map);
+        $('#status-text').textContent = '◯ Circle: move the mouse to set the radius, click again to place it · Esc to cancel';
+        updateFinishButton();
+        return;
+    }
+    finishCircle();
+}
+
+function moveCircleRadius(e) {
+    if (!S.circleCenter || !S.circlePreview) return;
+    const r = map.distance(S.circleCenter, e.latlng);
+    S.circleRadius = r;
+    S.circlePreview.setRadius(r);
+    $('#status-text').textContent = '◯ Radius ' + fmtDist(r) + ' · area ' + fmtArea(Math.PI * r * r) + ' — click to place · Esc to cancel';
+}
+
+function finishCircle() {
+    if (S.tool !== 'circle') return;
+    if (!S.circleCenter || !(S.circleRadius > 1)) { cancelCircle(true); return; }
+    const center = S.circleCenter;
+    const r = S.circleRadius;
+    clearDrawPreview();
+    S.circleCenter = null;
+    S.circleRadius = 0;
+    const layer = L.circle(center, {
+        radius: r, color: S.color, weight: S.weight, dashArray: DASH[S.dashStyle],
+        fillColor: S.color, fillOpacity: 0.25, renderer: canvasRenderer
+    }).addTo(map);
+    layer.bindTooltip('Circle · r = ' + fmtDist(r), { sticky: true, className: 'import-tooltip' });
+    storeAnnotation(layer, 'circle', [center.lat, center.lng], { radius: r });
+    updateFinishButton();
+    $('#status-text').textContent = 'Circle created — radius ' + fmtDist(r) + ' · area ' + fmtArea(Math.PI * r * r);
+}
+
+function cancelCircle(silent) {
+    clearDrawPreview();
+    S.circleCenter = null;
+    S.circleRadius = 0;
+    updateFinishButton();
+    if (!silent) $('#status-text').textContent = 'Circle cancelled.';
+}
+
+function cancelDraw() {
+    if (S.tool === 'polygon') cancelPoly();
+    else if (S.tool === 'circle') cancelCircle();
+}
+
+/* ── GeoJSON / storage conversion (shared) ────────── */
+function annIsPoint(a) {
+    return a.type === 'marker' || a.type === 'label' || a.type === 'fire' || a.type === 'circle';
+}
+function annToFeature(a) {
+    const props = {
+        id: a.id, type: a.type, color: a.color,
+        weight: a.weight, dashStyle: a.dashStyle,
+        text: (a.extra && a.extra.text) || undefined
+    };
+    let geometry;
+    if (annIsPoint(a)) {
+        if (a.type === 'circle' && a.extra && a.extra.radius) props.radius = a.extra.radius;
+        geometry = { type: 'Point', coordinates: [a.coords[1], a.coords[0]] };
+    } else if (a.type === 'polygon') {
+        /* importers store a Polygon as nested rings; our own tool stores [lat,lng] pairs */
+        const nested = Array.isArray(a.coords[0]) && Array.isArray(a.coords[0][0]);
+        const ring = nested ? a.coords[0] : a.coords;
+        const closed = ring.slice();
+        if (closed.length && (closed[0][0] !== closed[closed.length - 1][0] || closed[0][1] !== closed[closed.length - 1][1])) {
+            closed.push(closed[0]);
+        }
+        geometry = { type: 'Polygon', coordinates: [closed.map(c => [c[1], c[0]])] };
+    } else {
+        geometry = { type: 'LineString', coordinates: a.coords.map(c => [c[1], c[0]]) };
+    }
+    return { type: 'Feature', properties: props, geometry };
+}
+
+/* ── Place search (Nominatim, no API key) ─────────── */
+let geoMarker = null;
+
+function clearGeoMarker() {
+    if (geoMarker) { map.removeLayer(geoMarker); geoMarker = null; }
+    const box = $('#geo-results');
+    if (box) box.innerHTML = '';
+}
+
+async function geoSearch(q) {
+    const box = $('#geo-results');
+    if (!box) return;
+    q = (q || '').trim();
+    if (q.length < 3) { box.innerHTML = '<div class="geo-hint">Type at least 3 characters.</div>'; return; }
+    box.innerHTML = '<div class="geo-hint">Searching…</div>';
+    try {
+        const url = 'https://nominatim.openstreetmap.org/search?format=jsonv2&limit=6&q=' + encodeURIComponent(q);
+        const res = await fetch(url, { headers: { 'Accept': 'application/json' } });
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        const list = await res.json();
+        if (!Array.isArray(list) || list.length === 0) {
+            box.innerHTML = '<div class="geo-hint">Nothing found for “' + escapeHtml(q) + '”.</div>';
+            return;
+        }
+        box.innerHTML = '';
+        list.forEach(r => {
+            const parts = String(r.display_name || '').split(',');
+            const b = document.createElement('button');
+            b.type = 'button';
+            b.className = 'geo-result';
+            b.innerHTML = '<span class="geo-result-name">' + escapeHtml(parts.slice(0, 2).join(',').trim()) + '</span>'
+                + (parts.length > 2 ? '<span class="geo-result-sub">' + escapeHtml(parts.slice(2, 5).join(',').trim()) + '</span>' : '');
+            b.addEventListener('click', () => showGeoResult(r));
+            box.appendChild(b);
+        });
+    } catch (err) {
+        box.innerHTML = '<div class="geo-hint">Search failed: ' + escapeHtml(err.message) + '</div>';
+    }
+}
+
+function showGeoResult(r) {
+    const lat = parseFloat(r.lat), lon = parseFloat(r.lon);
+    if (!isFinite(lat) || !isFinite(lon)) return;
+    if (geoMarker) map.removeLayer(geoMarker);
+    const short = String(r.display_name || '').split(',').slice(0, 2).join(',');
+    geoMarker = L.circleMarker([lat, lon], {
+        radius: 9, color: '#00d0ff', weight: 3,
+        fillColor: '#00d0ff', fillOpacity: 0.25, renderer: canvasRenderer
+    }).addTo(map);
+    geoMarker.bindPopup('<b>' + escapeHtml(short) + '</b>', { maxWidth: 260 }).openPopup();
+
+    const bb = (r.boundingbox || []).map(Number);
+    if (bb.length === 4 && bb.every(n => isFinite(n))) {
+        const bounds = L.latLngBounds([[bb[0], bb[2]], [bb[1], bb[3]]]);
+        if (bounds.isValid()) map.fitBounds(bounds.pad(0.2));
+        else map.setView([lat, lon], 14);
+    } else {
+        map.flyTo([lat, lon], 14);
+    }
+    const box = $('#geo-results');
+    if (box) box.innerHTML = '';
+    $('#status-text').textContent = '📍 ' + String(r.display_name || '').slice(0, 100);
+}
+
+/* ── Annotation list panel ────────────────────────── */
+const ANN_ICON = {
+    freehand: '✏️', arrow: '➡️', marker: '📌', label: '🏷️',
+    fire: '🔥', measure: '📏', polygon: '⬟', circle: '◯'
+};
+function annName(a) {
+    if (a.extra && a.extra.text) return a.extra.text;
+    return (ANN_ICON[a.type] || '•') + ' ' + a.type + ' #' + a.id;
+}
+function annCenter(a) {
+    try {
+        if (a.layer.getBounds) {
+            const b = a.layer.getBounds();
+            if (b.isValid()) return { center: b.getCenter(), bounds: b };
+        }
+        if (a.layer.getLatLng) return { center: a.layer.getLatLng(), bounds: null };
+    } catch (e) { /* ignore */ }
+    return null;
+}
+
+function zoomToAnnotation(a) {
+    const c = annCenter(a);
+    if (!c) return;
+    if (c.bounds && map.getBounds().contains(c.bounds)) return;   /* already visible */
+    if (c.bounds) map.fitBounds(c.bounds.pad(0.3));
+    else map.setView(c.center, Math.max(map.getZoom(), 13));
+}
+
+function applyAnnName(a) {
+    const txt = (a.extra && a.extra.text) || '';
+    try {
+        if (a.type === 'label' && a.layer.setIcon) {
+            a.layer.setIcon(L.divIcon({
+                className: '',
+                html: '<div class="label-marker" style="border-color:' + a.color + ';color:#ffffff">' + escapeHtml(txt) + '</div>',
+                iconSize: null, iconAnchor: [0, 0]
+            }));
+        } else if (txt && a.layer.bindTooltip) {
+            if (a.layer.getTooltip && a.layer.getTooltip()) a.layer.setTooltipContent(txt);
+            else a.layer.bindTooltip(txt, { sticky: true, className: 'import-tooltip' });
+        }
+    } catch (e) { /* styling is best effort */ }
+}
+
+function renderAnnPanel() {
+    const list = $('#ann-panel-list');
+    const count = $('#ann-panel-count');
+    if (!list) return;
+    if (count) count.textContent = '(' + S.annotations.length + ')';
+
+    if (S.annotations.length === 0) {
+        list.innerHTML = '<div class="ann-empty">Nothing on the map yet.<br>Draw something or import a KML/GeoJSON file.</div>';
+        return;
+    }
+
+    const frag = document.createDocumentFragment();
+    S.annotations.forEach(a => {
+        const row = document.createElement('div');
+        row.className = 'ann-row' + (a._hidden ? ' ann-row-hidden' : '');
+
+        const sw = document.createElement('span');
+        sw.className = 'ann-swatch';
+        sw.style.background = a.color || '#888';
+        row.appendChild(sw);
+
+        const name = document.createElement('span');
+        name.className = 'ann-row-name';
+        name.innerHTML = escapeHtml(annName(a)) + '<span class="ann-row-type">' + a.type + '</span>';
+        row.appendChild(name);
+
+        if (a.locked) {
+            const lock = document.createElement('span');
+            lock.className = 'ann-row-type';
+            lock.textContent = '🔒';
+            name.appendChild(lock);
+        }
+
+        const actions = document.createElement('span');
+        actions.className = 'ann-row-actions';
+        const mk = (label, title, fn) => {
+            const b = document.createElement('button');
+            b.type = 'button';
+            b.textContent = label;
+            b.title = title;
+            b.addEventListener('click', fn);
+            actions.appendChild(b);
+        };
+        mk('⤢', 'Zoom to it', () => zoomToAnnotation(a));
+        mk(a._hidden ? '🚫' : '👁', a._hidden ? 'Show on the map' : 'Hide from the map', () => {
+            if (a._hidden) { a.layer.addTo(map); a._hidden = false; }
+            else { map.removeLayer(a.layer); a._hidden = true; }
+            renderAnnPanel();
+        });
+        mk('✎', 'Rename', () => {
+            const current = (a.extra && a.extra.text) || '';
+            const val = prompt('Name for this annotation:', current);
+            if (val === null) return;
+            a.extra = Object.assign({}, a.extra, { text: val.trim() });
+            applyAnnName(a);
+            renderAnnPanel();
+        });
+        mk('🗑', 'Delete', () => { removeAnnotation(a.id); renderAnnPanel(); });
+        row.appendChild(actions);
+
+        frag.appendChild(row);
+    });
+    list.innerHTML = '';
+    list.appendChild(frag);
+}
+
+function toggleAnnPanel(show) {
+    const panel = $('#ann-panel');
+    if (!panel) return;
+    const willShow = (typeof show === 'boolean') ? show : panel.classList.contains('hidden');
+    if (willShow) { renderAnnPanel(); panel.classList.remove('hidden'); }
+    else panel.classList.add('hidden');
+}
+
+function zoomToAllAnnotations() {
+    if (S.annotations.length === 0) return;
+    const b = L.latLngBounds([]);
+    let any = false;
+    S.annotations.forEach(a => {
+        const c = annCenter(a);
+        if (!c) return;
+        if (c.bounds) { b.extend(c.bounds); any = true; }
+        else { b.extend(c.center); any = true; }
+    });
+    if (any) { map.fitBounds(b.pad(0.2)); toggleAnnPanel(false); }
+}
+
+/* ── Wiring for the new UI ────────────────────────── */
+(function wireMapNewExtras() {
+    const coord = $('#coord-display');
+    if (coord) {
+        coord.addEventListener('click', () => {
+            const lat = coord.dataset.lat, lng = coord.dataset.lng;
+            if (!lat || !lng) return;
+            const text = parseFloat(lat).toFixed(5) + ', ' + parseFloat(lng).toFixed(5);
+            const flash = () => {
+                coord.textContent = 'copied ✓';
+                setTimeout(() => updateCoordDisplay(L.latLng(parseFloat(lat), parseFloat(lng))), 900);
+            };
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(text).then(flash).catch(flash);
+            } else flash();
+        });
+    }
+
+    const geoInput = $('#geo-input');
+    if (geoInput) {
+        geoInput.addEventListener('keydown', e => {
+            e.stopPropagation();
+            if (e.key === 'Enter') { e.preventDefault(); geoSearch(geoInput.value); }
+            if (e.key === 'Escape') { e.preventDefault(); clearGeoMarker(); }
+        });
+    }
+    const geoGo = $('#geo-go');
+    if (geoGo) geoGo.addEventListener('click', () => geoSearch(geoInput ? geoInput.value : ''));
+    const geoClear = $('#geo-clear');
+    if (geoClear) geoClear.addEventListener('click', clearGeoMarker);
+
+    const listBtn = $('#btn-ann-list');
+    if (listBtn) listBtn.addEventListener('click', () => toggleAnnPanel());
+    const closeBtn = $('#ann-panel-close');
+    if (closeBtn) closeBtn.addEventListener('click', () => toggleAnnPanel(false));
+    const panel = $('#ann-panel');
+    if (panel) panel.addEventListener('click', e => { if (e.target === panel) toggleAnnPanel(false); });
+    const exportBtn = $('#ann-panel-export');
+    if (exportBtn) exportBtn.addEventListener('click', exportGeoJSON);
+    const zoomAllBtn = $('#ann-panel-zoom-all');
+    if (zoomAllBtn) zoomAllBtn.addEventListener('click', zoomToAllAnnotations);
+
+    updateCoordDisplay(null);
+    console.log('map-new extras ready: area + circle tools, place search, coordinates, annotation list.');
+})();

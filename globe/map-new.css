@@ -2332,3 +2332,182 @@ body.layout-editing #sidebar {
 #theme-dropdown::-webkit-scrollbar { width: 5px; }
 #theme-dropdown::-webkit-scrollbar-thumb { background: rgba(100, 160, 255, 0.35); border-radius: 3px; }
 .theme-dropdown-title:not(:first-child) { margin-top: 4px; border-top: 1px solid rgba(100, 160, 255, 0.12); padding-top: 8px; }
+
+
+/* =====================================================
+   map-new additions: live coordinates, place search,
+   annotation list panel
+   ===================================================== */
+
+/* ── Live cursor coordinates in the status bar ─────── */
+#coord-display {
+    margin-left: auto;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 11px;
+    letter-spacing: 0.4px;
+    font-variant-numeric: tabular-nums;
+    opacity: 0.75;
+    cursor: pointer;
+    user-select: none;
+    white-space: nowrap;
+    transition: opacity 0.15s ease, color 0.15s ease;
+}
+#coord-display:hover { opacity: 1; }
+#coord-display.copied { opacity: 1; color: #46d67a; }
+
+/* ── Place search (sidebar) ────────────────────────── */
+.geo-row { display: flex; gap: 6px; align-items: stretch; }
+.geo-row input {
+    flex: 1 1 auto;
+    min-width: 0;
+    background: rgba(0, 0, 0, 0.35);
+    border: 1px solid rgba(100, 160, 255, 0.25);
+    border-radius: 6px;
+    color: inherit;
+    font: inherit;
+    font-size: 12px;
+    padding: 6px 8px;
+    outline: none;
+}
+.geo-row input:focus { border-color: rgba(120, 190, 255, 0.65); }
+.geo-row button {
+    flex: 0 0 auto;
+    background: rgba(100, 160, 255, 0.14);
+    border: 1px solid rgba(100, 160, 255, 0.3);
+    border-radius: 6px;
+    color: inherit;
+    cursor: pointer;
+    font-size: 12px;
+    padding: 0 9px;
+}
+.geo-row button:hover { background: rgba(100, 160, 255, 0.28); }
+#geo-results { margin-top: 6px; display: flex; flex-direction: column; gap: 4px; }
+#geo-results:empty { display: none; }
+.geo-result {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    text-align: left;
+    width: 100%;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(100, 160, 255, 0.18);
+    border-radius: 6px;
+    color: inherit;
+    cursor: pointer;
+    font: inherit;
+    padding: 6px 8px;
+}
+.geo-result:hover { background: rgba(100, 160, 255, 0.18); border-color: rgba(120, 190, 255, 0.5); }
+.geo-result-name { font-size: 12px; font-weight: 600; }
+.geo-result-sub { font-size: 10px; opacity: 0.65; }
+.geo-hint { font-size: 11px; opacity: 0.6; padding: 4px 2px; }
+
+/* ── Annotation list panel ─────────────────────────── */
+#ann-panel {
+    position: fixed;
+    inset: 0;
+    z-index: 3000;
+    background: rgba(4, 8, 20, 0.55);
+    backdrop-filter: blur(3px);
+    -webkit-backdrop-filter: blur(3px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+#ann-panel.hidden { display: none; }
+#ann-panel-content {
+    width: min(560px, 92vw);
+    max-height: 78vh;
+    display: flex;
+    flex-direction: column;
+    background: rgba(10, 16, 34, 0.97);
+    border: 1px solid rgba(100, 160, 255, 0.3);
+    border-radius: 12px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
+    color: #e8eeff;
+    overflow: hidden;
+}
+.ann-panel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 12px 14px;
+    border-bottom: 1px solid rgba(100, 160, 255, 0.2);
+}
+.ann-panel-header h3 { margin: 0; font-size: 14px; font-weight: 600; }
+.ann-panel-header #ann-panel-count { font-size: 11px; opacity: 0.65; font-weight: 400; }
+.ann-panel-header button {
+    background: none;
+    border: none;
+    color: inherit;
+    cursor: pointer;
+    font-size: 15px;
+    opacity: 0.7;
+    padding: 2px 6px;
+}
+.ann-panel-header button:hover { opacity: 1; }
+#ann-panel-list { overflow-y: auto; padding: 6px; }
+.ann-row { display: flex; align-items: center; gap: 8px; padding: 7px 9px; border-radius: 8px; }
+.ann-row:hover { background: rgba(100, 160, 255, 0.12); }
+.ann-row.ann-row-hidden { opacity: 0.45; }
+.ann-swatch {
+    flex: 0 0 auto;
+    width: 12px;
+    height: 12px;
+    border-radius: 3px;
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.35);
+}
+.ann-row-name {
+    flex: 1 1 auto;
+    min-width: 0;
+    font-size: 12px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.ann-row-type { font-size: 10px; opacity: 0.6; margin-left: 4px; }
+.ann-row-actions { display: flex; gap: 4px; flex: 0 0 auto; }
+.ann-row-actions button {
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(100, 160, 255, 0.2);
+    border-radius: 6px;
+    color: inherit;
+    cursor: pointer;
+    font-size: 11px;
+    line-height: 1;
+    padding: 4px 6px;
+}
+.ann-row-actions button:hover { background: rgba(100, 160, 255, 0.25); }
+.ann-empty { padding: 22px 12px; text-align: center; font-size: 12px; opacity: 0.6; }
+.ann-panel-footer {
+    display: flex;
+    gap: 8px;
+    padding: 10px 14px;
+    border-top: 1px solid rgba(100, 160, 255, 0.2);
+}
+.ann-panel-btn {
+    flex: 1 1 auto;
+    background: rgba(100, 160, 255, 0.14);
+    border: 1px solid rgba(100, 160, 255, 0.3);
+    border-radius: 8px;
+    color: inherit;
+    cursor: pointer;
+    font: inherit;
+    font-size: 12px;
+    padding: 7px 10px;
+}
+.ann-panel-btn:hover { background: rgba(100, 160, 255, 0.3); }
+
+/* ── Light themes ──────────────────────────────────── */
+.theme-daylight #ann-panel-content,
+.theme-glass #ann-panel-content {
+    background: rgba(252, 253, 255, 0.98);
+    border-color: rgba(60, 110, 190, 0.3);
+    color: #16233c;
+}
+.theme-daylight .geo-result,
+.theme-glass .geo-result { background: rgba(20, 50, 110, 0.05); }
+.theme-daylight .geo-row input,
+.theme-glass .geo-row input { background: rgba(255, 255, 255, 0.9); color: #16233c; }
+.theme-daylight #coord-display, .theme-glass #coord-display { color: #16233c; }

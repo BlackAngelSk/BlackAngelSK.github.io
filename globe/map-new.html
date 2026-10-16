@@ -6,7 +6,7 @@
     <title>Interactive Map — BlackAngelSK</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link rel="icon" href="../logo-mark.svg" type="image/svg+xml">
-    <link rel="stylesheet" href="map-new.css?v=13">
+    <link rel="stylesheet" href="map-new.css?v=14">
 </head>
 <body>
     <div id="map"></div>
@@ -24,6 +24,12 @@
                 </button>
                 <button class="top-tool-btn" data-tool="freehand" title="Freehand Drawing (2)">
                     <span class="top-tool-icon">✏️</span><span class="top-tool-label">Draw</span>
+                </button>
+                <button class="top-tool-btn" data-tool="polygon" title="Draw area / polygon (3)">
+                    <span class="top-tool-icon">⬟</span><span class="top-tool-label">Area</span>
+                </button>
+                <button class="top-tool-btn" data-tool="circle" title="Draw circle / radius (0)">
+                    <span class="top-tool-icon">◯</span><span class="top-tool-label">Circle</span>
                 </button>
                 <button class="top-tool-btn" data-tool="arrow" title="Draw Arrow (4)">
                     <span class="top-tool-icon">➡️</span><span class="top-tool-label">Arrow</span>
@@ -134,10 +140,20 @@
             <button id="btn-rivers" class="sidebar-btn" title="Toggle major world rivers">🌊 Rivers</button>
         </div>
         <div class="sidebar-section">
+            <div class="sidebar-title">Find place</div>
+            <div class="geo-row">
+                <input id="geo-input" type="text" placeholder="City, street, country…" autocomplete="off" spellcheck="false">
+                <button id="geo-go" title="Search on OpenStreetMap">🔍</button>
+                <button id="geo-clear" title="Clear the result">✕</button>
+            </div>
+            <div id="geo-results"></div>
+        </div>
+        <div class="sidebar-section">
             <div class="sidebar-title">Data</div>
             <button id="btn-import" class="sidebar-btn" title="Import GeoJSON (I)">📂 Import</button>
             <button id="btn-overlay" class="sidebar-btn" title="Image Overlay">🖼️ Overlay</button>
             <button id="btn-save-map" class="sidebar-btn" title="Save current annotations">💾 Save</button>
+            <button id="btn-ann-list" class="sidebar-btn" title="Annotation list (L)">📋 List</button>
         </div>
         <div class="sidebar-section">
             <div class="sidebar-title">Actions</div>
@@ -429,6 +445,21 @@
         </div>
     </div>
 
+    <!-- Annotation List Panel (map-new) -->
+    <div id="ann-panel" class="hidden">
+        <div id="ann-panel-content">
+            <div class="ann-panel-header">
+                <h3>📋 Annotations <span id="ann-panel-count"></span></h3>
+                <button id="ann-panel-close" title="Close (Esc)">✕</button>
+            </div>
+            <div id="ann-panel-list"></div>
+            <div class="ann-panel-footer">
+                <button id="ann-panel-export" class="ann-panel-btn">📦 Export GeoJSON</button>
+                <button id="ann-panel-zoom-all" class="ann-panel-btn">⛶ Zoom to fit all</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Hidden compatibility elements for JS -->
     <div id="toolbar" class="hidden" data-draggable="toolbar" style="display:none"></div>
     <div id="bottom-bar" class="hidden" data-draggable="bottom-bar" style="display:none"></div>
@@ -437,13 +468,14 @@
     <div id="status-bar">
         <span id="status-icon">📍</span>
         <span id="status-text">Ready — Pan mode</span>
+        <span id="coord-display" title="Cursor coordinates — click to copy">—</span>
     </div>
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/twemoji@14.0.2/dist/twemoji.min.js" crossorigin="anonymous"></script>
-    <script src="map-new.js?v=12"></script>
+    <script src="map-new.js?v=13"></script>
 
     <!-- Theme Switcher Script -->
     <script>
