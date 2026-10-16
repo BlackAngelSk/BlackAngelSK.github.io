@@ -3906,13 +3906,13 @@ function savePreset() {
    ===================================================== */
 let proxyPendingUrl = null;   /* Google Maps URL to retry after proxy starts */
 let proxyPollTimer = null;    /* interval ID for polling proxy status */
-/* Proxy base URLs. The main one matches the page protocol (an https page can
-   never fetch an http://localhost URL — the browser blocks it as mixed
-   content), and the alternate is kept as a fallback so a proxy that only
-   listens on one protocol still works. */
+/* Proxy base URLs. Plain HTTP first: Chrome, Edge, Firefox and Brave treat
+   http://localhost as a trustworthy origin, so even an https:// page may call
+   it directly. HTTPS 8443 is kept only as a fallback for a proxy started with
+   --https (Safari has no localhost exception). */
 const _pLocalHttp  = 'http://localhost:8080';
 const _pLocalHttps = 'https://localhost:8443';
-let _p    = (location.protocol === 'https:' ? _pLocalHttps : _pLocalHttp);
+let _p    = _pLocalHttp;
 let _pAlt = (_p === _pLocalHttps ? _pLocalHttp : _pLocalHttps);
 function setProxyBase(base) {
     _p = base;
@@ -3944,11 +3944,19 @@ function openProxyModal(pendingUrl) {
         document.body.classList.add('proxy-show-unix');
     }
 
+    /* The --https path is only needed on Safari (it has no localhost exception
+       for mixed content); hide that note everywhere else. */
+    const safariNote = $('#proxy-safari-note');
+    if (safariNote) {
+        const isSafari = /safari/i.test(navigator.userAgent) && !/chrome|chromium|crios|edg|android/i.test(navigator.userAgent);
+        safariNote.style.display = isSafari ? '' : 'none';
+    }
+
     /* Reset status area */
     const statusEl = $('#proxy-status-text');
     statusEl.textContent = '⏳ Waiting for proxy…';
     statusEl.className = '';
-    $('#proxy-status-detail').textContent = 'Run the setup script, then click "Check Proxy Status".';
+    $('#proxy-status-detail').textContent = 'Start the proxy (start.bat / start.sh / start-mac.command), then click "Check Proxy Status".';
     $('#proxy-check-btn').style.display = '';
     $('#proxy-retry-btn').style.display = 'none';
 }
@@ -4004,16 +4012,15 @@ function checkProxyStatus() {
             if (e === 'done') return;
             statusEl.textContent = '❌ Proxy not running yet';
             statusEl.className = 'proxy-fail';
-            const httpsPage = (location.protocol === 'https:');
             detailEl.innerHTML =
-                '<b>This page is ' + (httpsPage ? 'HTTPS' : 'HTTP') + '.</b> A browser refuses to let an HTTPS page call <code>http://localhost:8080</code> (mixed content), ' +
-                'so the proxy must also listen on <b>HTTPS 8443</b>.<br><br>' +
-                '<b>1.</b> Start the proxy again — the current server (' + (httpsPage ? 'globe-server.exe / proxy.js v5+' : 'any') + ') must print both ' +
-                '“http://localhost:8080” and “https://localhost:8443”.<br>' +
-                '<b>2.</b> Open <a href="https://localhost:8443/ping" target="_blank">https://localhost:8443/ping</a> and accept the certificate ' +
-                '(Advanced → Continue to localhost), then click “Check Proxy Status” again.<br><br>' +
-                '<b>Local copy of the map:</b> <a href="http://localhost:8080/map.html" target="_blank">http://localhost:8080/map.html</a> — ' +
-                'this page is HTTP, so the proxy works there even without HTTPS.';
+                '<b>The local proxy is not answering on <code>http://localhost:8080</code>.</b><br><br>' +
+                '<b>1.</b> Start it — double-click <code>start.bat</code> (Windows) or <code>start-mac.command</code> (macOS), ' +
+                'or run <code>./start.sh</code> in a terminal (Linux). Plain HTTP: no certificate, nothing to accept.<br>' +
+                '<b>2.</b> Leave that window open and click “Check Proxy Status” again.<br><br>' +
+                '<b>Safari only:</b> it blocks http://localhost from an https page. Start the server with <code>--https</code> and ' +
+                'open <a href="https://localhost:8443/ping" target="_blank">https://localhost:8443/ping</a> once to accept the certificate.<br><br>' +
+                '<b>Local copy of the map:</b> <a href="http://localhost:8080/map.html" target="_blank">http://localhost:8080/map.html</a> ' +
+                '(served by the proxy itself).';
         });
 }
 

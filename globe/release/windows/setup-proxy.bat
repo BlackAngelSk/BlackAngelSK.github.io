@@ -90,56 +90,20 @@ if !errorlevel! neq 0 (
 )
 echo   proxy.js OK.
 
-:: ── Certificate for the HTTPS listener ────────
-echo   Checking HTTPS certificate...
-if not exist "!SCRIPT_DIR!.proxy-cert.pem" (
-    where curl.exe >nul 2>&1
-    if !errorlevel! equ 0 (
-        curl.exe -fsSL "!RAW!/.proxy-cert.pem" -o "!SCRIPT_DIR!.proxy-cert.pem"
-    ) else (
-        powershell -Command "[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; Invoke-WebRequest -Uri '!RAW!/.proxy-cert.pem' -OutFile '!SCRIPT_DIR!.proxy-cert.pem' -UseBasicParsing"
-    )
-)
-if not exist "!SCRIPT_DIR!.proxy-key.pem" (
-    where curl.exe >nul 2>&1
-    if !errorlevel! equ 0 (
-        curl.exe -fsSL "!RAW!/.proxy-key.pem" -o "!SCRIPT_DIR!.proxy-key.pem"
-    ) else (
-        powershell -Command "[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; Invoke-WebRequest -Uri '!RAW!/.proxy-key.pem' -OutFile '!SCRIPT_DIR!.proxy-key.pem' -UseBasicParsing"
-    )
-)
-echo   Certificate ready.
-echo.
-
-:: ── Check for existing proxy process ──────────
-echo [3/4] Checking ports 8080 and 8443...
-for %%P in (8080 8443) do (
-    netstat -ano | findstr ":%%P" | findstr "LISTENING" >nul 2>&1
-    if !errorlevel! equ 0 (
-        echo   Port %%P is in use - freeing it...
-        for /f "tokens=5" %%p in ('netstat -ano ^| findstr ":%%P" ^| findstr "LISTENING"') do (
-            taskkill /PID %%p /F >nul 2>&1
-        )
-    )
-)
-timeout /t 1 /nobreak >nul
+:: ── Port note ────────────────────────────────
+echo [3/4] Port 8080 - the proxy stops an older copy of itself automatically.
 echo.
 
 :: ── Start the proxy ──────────────────────────
-echo [4/4] Starting KML proxy ^(HTTP 8080 + HTTPS 8443^)...
+echo [4/4] Starting the KML proxy (plain HTTP 8080)...
 echo.
 echo   ============================================
-echo   Proxy:  http://localhost:8080/ping
-echo   Proxy:  https://localhost:8443/ping
+echo   Proxy + map:  http://localhost:8080/map.html
+echo   Health check: http://localhost:8080/ping
 echo   ============================================
 echo.
-echo   The map on https://blackangelsk.github.io is an HTTPS page, so it can
-echo   only reach the proxy over HTTPS. One-time step:
-echo.
-echo     1. Open  https://localhost:8443/ping  in your browser
-echo     2. The certificate warning appears - click "Advanced" then
-echo        "Continue to localhost (unsafe)"
-echo     3. You should see "pong" - now reload the map and import again
+echo   Plain HTTP - no certificate, nothing to accept.
+echo   Leave this window open and go back to the map.
 echo.
 echo   Close this window or press Ctrl+C to stop.
 echo.

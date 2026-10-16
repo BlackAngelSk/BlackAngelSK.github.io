@@ -1,42 +1,44 @@
-Globe/Map Server - macOS
+Globe/Map Server — macOS
 ========================
 
-QUICK START (one command)
--------------------------
-    ./start-mac.command        <- double-click this in Finder, or:
-    ./start.sh                 <- in Terminal
+QUICK START (one double-click)
+------------------------------
+    start-mac.command          <- double-click this in Finder
 
-Both clear the macOS quarantine flag themselves, pick the right binary for
-your Mac (Apple Silicon / Intel), prefer Node.js when it is installed, and
-start everything:
+or, in Terminal:
 
-    Proxy:   http://localhost:8080/ping
-    Proxy:   https://localhost:8443/ping   <- use this one from the website
-    Map:     http://localhost:8000/map.html
+    ./start.sh
 
-Then open the map (https://blackangelsk.github.io/globe/map.html) and import
-a Google Maps / Yandex Maps link.
+The script clears the macOS quarantine flag, picks the right binary for your
+Mac (Apple Silicon / Intel) or uses Node.js when it is installed, and starts
+everything:
 
-ONE-TIME step for the hosted map
---------------------------------
-The website is HTTPS and a browser refuses to let an HTTPS page call
-http://localhost (mixed content), so the proxy also listens on HTTPS 8443 with
-a self-signed certificate. Accept that certificate once:
+    Proxy + map:  http://localhost:8080/map.html
+    Health check: http://localhost:8080/ping
 
-    open https://localhost:8443/ping      ->  "Advanced" -> "Proceed to
-                                              localhost (unsafe)"  -> "pong"
+Your browser opens automatically. Then import a Google Maps / Yandex Maps link
+in the map.
 
-Without this the proxy prints "running" but the map silently imports nothing.
+Plain HTTP — no certificate, nothing to accept.
+
+SAFARI USERS — READ THIS
+------------------------
+The website is https://blackangelsk.github.io. Chrome, Edge, Firefox and Brave
+treat http://localhost as a trustworthy origin, so that page may call
+http://localhost:8080 directly. Safari has no such exception and blocks it.
+
+  Fix: start with HTTPS as well, in Terminal:
+      ./start.sh --https
+  then open https://localhost:8443/ping once and accept the self-signed
+  certificate ("Advanced" → "Continue to localhost"). You should see "pong".
 
 IF SOMETHING DOES NOT WORK
 --------------------------
 "A port is already in use" / EADDRINUSE
-  * An earlier copy of the proxy is usually still running. The current version
+  * An earlier copy of the server is usually still running. The current version
     detects it, stops it and takes the port over by itself — just start again.
-  * Another program on the port is reported and left alone; only 8443 matters
-    for the hosted map. To free a port manually:
+  * Another program on the port is reported and left alone. To free it:
         lsof -ti :8080 | xargs kill -9
-        lsof -ti :8443 | xargs kill -9
 
 "The binary will not open / cannot be verified"
   * Gatekeeper quarantine. ./start.sh does this automatically; otherwise:
@@ -44,22 +46,17 @@ IF SOMETHING DOES NOT WORK
         chmod +x globe-server-arm64.bin
 
 "Proxy is running, but nothing is imported"
-  * The banner must list BOTH http://localhost:8080 and
-    https://localhost:8443 — otherwise port 8443 is busy (see above).
-  * Open https://localhost:8443/ping and accept the certificate.
-  * Node.js alternative (identical server, no Gatekeeper involved):
+  * Check http://localhost:8080/ping — it must answer "pong".
+  * Safari: use --https (see above).
+  * Node.js alternative (no Gatekeeper involved):
         brew install node
         node globe-server.js
 
-macOS openssl is LibreSSL
-  * /usr/bin/openssl on older macOS has no -addext and cannot put
-    subjectAltName into a self-signed certificate; Chrome and Safari reject
-    such a certificate. The server detects this, throws the bad certificate
-    away and installs its built-in one. Keep .proxy-cert.pem and
-    .proxy-key.pem next to the server and nothing has to be generated.
+Nothing happens when double-clicking
+  * Open Terminal in this folder and run  ./start.sh  to read the message.
 
-RUNNING WITHOUT THE BINARY
---------------------------
+RUNNING WITHOUT THE START SCRIPT
+--------------------------------
     node globe-server.js            all-in-one (proxy + files)
     node globe-server.js --proxy    proxy only
     node globe-server.js --port 3000
@@ -67,9 +64,9 @@ RUNNING WITHOUT THE BINARY
 
 PORTS
 -----
-  8080  CORS proxy (HTTP)
-  8443  CORS proxy + files (HTTPS, self-signed)
-  8000  local copy of the map/globe
+  8080  proxy + local copy of the map   (http://localhost:8080/map.html)
+  8000  second static server            (http://localhost:8000/map.html)
+  8443  only with --https               (https://localhost:8443/ping)
 
 The servers listen on the loopback interface only (127.0.0.1 and ::1), so
 macOS never asks about incoming connections and nothing is exposed to your

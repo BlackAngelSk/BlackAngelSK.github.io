@@ -16,8 +16,6 @@ const SCRIPT_DIR = __dirname;
 const PROXY_SCRIPT = path.join(SCRIPT_DIR, 'proxy.js');
 const PROXY_PORT = 8080;
 const REPO_RAW = 'https://raw.githubusercontent.com/BlackAngelSK/BlackAngelSK.github.io/master/globe/proxy.js';
-const CERT_RAW = 'https://raw.githubusercontent.com/BlackAngelSK/BlackAngelSK.github.io/master/globe/.proxy-cert.pem';
-const KEY_RAW  = 'https://raw.githubusercontent.com/BlackAngelSK/BlackAngelSK.github.io/master/globe/.proxy-key.pem';
 
 // ── Colors ─────────────────────────────────────────────────────
 const C = {
@@ -44,28 +42,6 @@ function cmdExists(cmd) {
     const check = isWin ? `where ${cmd}` : `command -v ${cmd}`;
     try { execSync(check, { stdio: 'pipe' }); return true; }
     catch { return false; }
-}
-
-/** Kill process on a given port */
-function killPort(port) {
-    try {
-        if (process.platform === 'win32') {
-            const result = run(`netstat -ano | findstr ":${port}" | findstr "LISTENING"`);
-            if (result) {
-                result.trim().split('\n').filter(Boolean).forEach(line => {
-                    const pid = line.trim().split(/\s+/).pop();
-                    if (pid && pid !== '0') run(`taskkill /PID ${pid} /F`);
-                });
-            }
-        } else {
-            const result = run(`lsof -ti :${port}`);
-            if (result && result.trim()) {
-                result.trim().split('\n').filter(Boolean).forEach(pid => {
-                    run(`kill -9 ${pid}`);
-                });
-            }
-        }
-    } catch { /* ignore */ }
 }
 
 /** Download a file */
@@ -192,22 +168,22 @@ if (fs.existsSync(PROXY_SCRIPT)) {
 }
 console.log();
 
-// ── Step 3: Check port ─────────────────────────────────────────
-log(C.cyan, `[3/4] Checking port ${PROXY_PORT}...`);
-killPort(PROXY_PORT);
+// ── Step 3: Port note ──────────────────────────────────────────
+log(C.cyan, `[3/4] Port ${PROXY_PORT}`);
+log(C.reset, '  The proxy stops an older copy of itself automatically.');
+log(C.reset, `  If another program holds the port, free it: lsof -ti :${PROXY_PORT} | xargs kill -9`);
 console.log();
 
 // ── Step 4: Start proxy ────────────────────────────────────────
-log(C.green, `[4/4] Starting KML proxy on port ${PROXY_PORT}...`);
+log(C.green, `[4/4] Starting the KML proxy on port ${PROXY_PORT} (plain HTTP)...`);
 console.log();
 log(C.green, '  ============================================');
-log(C.green, `  Proxy:  http://localhost:${PROXY_PORT}/ping`);
-log(C.green, '  Proxy:  https://localhost:8443/ping');
+log(C.green, `  Proxy + map:  http://localhost:${PROXY_PORT}/map.html`);
+log(C.green, `  Health check: http://localhost:${PROXY_PORT}/ping`);
 log(C.green, '  ============================================');
 console.log();
-log(C.reset, '  If the map page is HTTPS (blackangelsk.github.io), open');
-log(C.reset, '  https://localhost:8443/ping once and accept the self-signed');
-log(C.reset, '  certificate (Advanced -> Proceed), then reload the map.');
+log(C.reset, '  Plain HTTP - no certificate, nothing to accept. Leave this window open');
+log(C.reset, '  and go back to the map.');
 console.log();
 
 if (isWin) {
@@ -216,14 +192,6 @@ if (isWin) {
     log(C.reset, '  Press Ctrl+C to stop.');
 }
 console.log();
-
-// Best-effort: fetch the HTTPS certificate next to proxy.js
-for (const [url, file] of [[CERT_RAW, '.proxy-cert.pem'], [KEY_RAW, '.proxy-key.pem']]) {
-    const dest = path.join(SCRIPT_DIR, file);
-    if (!fs.existsSync(dest)) {
-        if (download(url, dest)) log(C.dim, `  Certificate: ${file}`);
-    }
-}
 
 // Start the proxy
 const proxy = spawn(process.execPath, [PROXY_SCRIPT], {

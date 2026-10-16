@@ -1,53 +1,56 @@
-Globe/Map Server - Linux
+Globe/Map Server — Linux
 ========================
 
 QUICK START
 -----------
-  1. chmod +x globe-server
-  2. ./globe-server
-  3. Your browser opens http://localhost:8000
-  4. ONE-TIME step so the map on https://blackangelsk.github.io works:
-       open  https://localhost:8443/ping  and accept the self-signed
-       certificate ("Advanced" -> "Proceed"); you should see "pong"
-  5. Import a Google Maps / Yandex Maps link in the map
+  1. Keep all the files in this folder together
+  2. Run:   ./start.sh
+  3. The proxy starts and your browser opens http://localhost:8080/map.html
+  4. Import a Google Maps / Yandex Maps link in the map
 
-WHY STEP 4 IS NEEDED
---------------------
-The map is published over HTTPS, and browsers refuse to let an HTTPS page call
-http://localhost:8080 (mixed content). The proxy therefore also listens on
-HTTPS 8443 with a self-signed certificate that must be accepted once.
-Without it the proxy prints "running" but the page silently imports nothing.
+That is all. The server runs over plain HTTP — no certificate, no browser
+warning to click through, nothing to install.
 
-Both lines must appear at start-up:
-
-    Proxy:   http://localhost:8080/ping
-    Proxy:   https://localhost:8443/ping   <- use this from the website
+No Node.js on this machine? The folder also contains a self-contained binary
+(globe-server); start.sh uses it automatically when node is missing.
 
 PORTS
 -----
-  8080  CORS proxy (HTTP)
-  8443  CORS proxy + files (HTTPS, self-signed)
-  8000  local copy of the map/globe
+  8080  proxy + local copy of the map   (http://localhost:8080/map.html)
+  8000  second static server            (http://localhost:8000/map.html)
+
+WHY NO HTTPS
+------------
+The map is published as https://blackangelsk.github.io. Chrome, Edge, Firefox
+and Brave treat http://localhost as a trustworthy origin, so that page may
+call http://localhost:8080 directly — no mixed-content block, no certificate.
+Safari has no such exception: there run  ./start.sh --https  and open
+https://localhost:8443/ping once to accept the self-signed certificate.
 
 USAGE
 -----
-  ./globe-server                  proxy + local file server
-  ./globe-server --proxy          proxy only
-  ./globe-server --port 3000      custom local-server port
-  ./globe-server --help           help
+  ./start.sh                 proxy + local file server (opens the browser)
+  ./start.sh --proxy         proxy only
+  ./start.sh --no-open       do not open the browser
+  ./start.sh --https         also listen on https://localhost:8443 (Safari)
+  ./start.sh --port 3000     custom local-server port
+  ./start.sh --help          help
+
+  With Node.js you can also run the server directly:
+    node globe-server.js     same options as above
+    node proxy.js            the proxy alone (self-updates from GitHub)
+    node start.js            same as globe-server.js
 
 TROUBLESHOOTING
 ---------------
 "Proxy is running, but nothing is imported"
-  * Check that the start-up banner lists https://localhost:8443. If it does
-    not, the certificate is missing: keep .proxy-cert.pem and .proxy-key.pem
-    next to the binary (the server also regenerates them with openssl).
-  * Open https://localhost:8443/ping and accept the certificate.
+  * Use Chrome, Edge, Firefox or Brave (Safari: see WHY NO HTTPS above).
+  * Open http://localhost:8080/ping — it must answer "pong".
+  * Reload the map page, then import again.
 
 Port already in use
-  * lsof -ti :8080 | xargs kill -9   (same for 8443 and 8000)
+  * The server replaces an older copy of itself automatically. If a different
+    program holds the port:  lsof -ti :8080 | xargs kill -9
 
-Node.js instead of the binary
-  * node globe-server.js   — same thing
-  * node proxy.js          — proxy only (8080 + 8443), self-updates from GitHub
-  * node start.js          — proxy 8080 + python http.server on 8000
+"Permission denied" when running start.sh
+  * chmod +x start.sh globe-server

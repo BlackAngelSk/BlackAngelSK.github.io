@@ -1,6 +1,17 @@
 #!/bin/bash
-# Double-clickable launcher for macOS (Finder runs .command files in Terminal).
-cd "$(dirname "$0")"
+# ============================================================
+#   Globe/Map — macOS double-click launcher
+#   Finder runs .command files in Terminal; this just prepares
+#   the folder (Gatekeeper quarantine) and calls start.sh.
+# ============================================================
+
+cd "$(dirname "$0")" || exit 1
+
 xattr -dr com.apple.quarantine . 2>/dev/null || true
-chmod +x ./*.bin ./globe-server ./start.sh 2>/dev/null || true
-exec ./start.sh "$@"
+chmod +x ./start.sh ./globe-server ./globe-server-*.bin 2>/dev/null || true
+
+./start.sh "$@"
+
+echo
+echo "The server has stopped. Press Enter to close this window."
+read -r _

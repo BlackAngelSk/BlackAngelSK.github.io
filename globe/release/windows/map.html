@@ -165,7 +165,7 @@
                 <button id="proxy-modal-close" title="Close (Esc)">✕</button>
             </div>
             <div class="proxy-body">
-                <p class="proxy-explain">To import Google Maps, a local proxy server is needed to bypass CORS restrictions. This script will <strong>auto-install Node.js</strong> if you don't have it, download the proxy, and start it.</p>
+                <p class="proxy-explain">To import Google Maps, a local proxy server is needed to bypass CORS restrictions. Grab the build for your OS, unzip it and start it — it runs over plain <strong>HTTP</strong>, so there is <strong>no certificate to accept</strong> and nothing to configure.</p>
 
                 <div class="proxy-os-section">
                     <div class="proxy-os-label">Your platform: <strong id="proxy-os-name">Detecting…</strong></div>
@@ -174,28 +174,28 @@
                 <div class="proxy-step">
                     <div class="proxy-step-num">1</div>
                     <div class="proxy-step-content">
-                        <div class="proxy-step-title">Download the setup script</div>
-                        <div class="proxy-step-desc">Click the button for your OS. It handles everything automatically.</div>
+                        <div class="proxy-step-title">Download the build for your OS</div>
+                        <div class="proxy-step-desc">Portable builds — unzip and run the start file inside. Nothing to install. Already have Node.js? Take the all-OS script.</div>
                         <div class="proxy-download-row">
-                            <a class="proxy-download-btn proxy-dl-all" href="setup-proxy.js" download title="Cross-platform: runs on Windows, Linux, macOS (requires Node.js)">
+                            <a class="proxy-download-btn proxy-dl-win" href="globe-windows.zip" download title="Windows: unzip, then double-click start.bat inside the folder">
+                                <span class="proxy-dl-icon">🪟</span>
+                                <span>Windows .zip (no install)</span>
+                            </a>
+                            <a class="proxy-download-btn proxy-dl-unix" href="globe-linux.zip" download title="Linux: unzip, then run ./start.sh inside the folder">
+                                <span class="proxy-dl-icon">🐧</span>
+                                <span>Linux .zip (no install)</span>
+                            </a>
+                            <a class="proxy-download-btn proxy-dl-unix" href="globe-macos.zip" download title="macOS: unzip, then double-click start-mac.command inside the folder">
+                                <span class="proxy-dl-icon">🍎</span>
+                                <span>macOS .zip (no install)</span>
+                            </a>
+                            <a class="proxy-download-btn proxy-dl-all" href="setup-proxy.js" download title="Already have Node.js? This cross-platform script downloads the proxy and starts it">
                                 <span class="proxy-dl-icon">🌐</span>
                                 <span>All OS (Node.js)</span>
                             </a>
-                            <a id="proxy-dl-bat" class="proxy-download-btn proxy-dl-win" href="setup-proxy.bat" download>
-                                <span class="proxy-dl-icon">🪟</span>
-                                <span>Windows (.bat)</span>
-                            </a>
-                            <a id="proxy-dl-sh" class="proxy-download-btn proxy-dl-unix" href="setup-proxy.sh" download>
-                                <span class="proxy-dl-icon">🐧</span>
-                                <span>Linux / Mac (.sh)</span>
-                            </a>
-                            <a class="proxy-download-btn proxy-dl-all" href="proxy.js" download title="Download proxy.js directly">
+                            <a class="proxy-download-btn proxy-dl-all" href="proxy.js" download title="Just the proxy — run it with node proxy.js">
                                 <span class="proxy-dl-icon">📄</span>
                                 <span>proxy.js</span>
-                            </a>
-                            <a class="proxy-download-btn proxy-dl-win" href="globe-windows.zip" download title="Portable Windows build - unzip and double-click globe-server.exe, no Node.js needed">
-                                <span class="proxy-dl-icon">📦</span>
-                                <span>Windows .zip (no install)</span>
                             </a>
                         </div>
                     </div>
@@ -206,9 +206,9 @@
                     <div class="proxy-step-content">
                         <div class="proxy-step-title">Run the script</div>
                         <div class="proxy-step-desc" id="proxy-run-instructions">
-                            <span class="proxy-cmd-win">Double-click <code>setup-proxy.bat</code> or run in CMD:<br><code>setup-proxy.bat</code></span>
-                            <span class="proxy-cmd-unix">Open a terminal and run:<br><code>bash setup-proxy.sh</code> or <code>node setup-proxy.js</code></span>
-                            <span class="proxy-cmd-all">Open a terminal and run:<br><code>node setup-proxy.js</code></span>
+                            <span class="proxy-cmd-win">Double-click <code>start.bat</code> in the unzipped folder</span>
+                            <span class="proxy-cmd-unix">Unzip, then run in a terminal:<br><code>cd globe &amp;&amp; ./start.sh</code><br>(macOS: just double-click <code>start-mac.command</code>)</span>
+                            <span class="proxy-cmd-all">Unzip and run the start file inside the folder:<br><code>start.bat</code> · <code>./start.sh</code> · <code>start-mac.command</code></span>
                         </div>
                     </div>
                 </div>
@@ -217,7 +217,7 @@
                     <div class="proxy-step-num">3</div>
                     <div class="proxy-step-content">
                         <div class="proxy-step-title">Come back here</div>
-                        <div class="proxy-step-desc">Once the script says "Proxy is running", click the button below to check and retry your import.<br><strong>One-time step:</strong> open <a href="https://localhost:8443/ping" target="_blank">https://localhost:8443/ping</a> and accept the certificate ("Advanced" → "Proceed to localhost") — an HTTPS page can only reach the proxy over HTTPS 8443. You should see <code>pong</code>.</div>
+                        <div class="proxy-step-desc">Once the window says <strong>“Proxy is running”</strong>, click the button below to check and retry your import.<br>It is plain <strong>HTTP</strong> — no certificate, nothing to accept.<br><span id="proxy-safari-note" style="display:none"><strong>Safari only:</strong> it blocks http://localhost from an https page. Start the server again with <code>--https</code> and open <a href="https://localhost:8443/ping" target="_blank">https://localhost:8443/ping</a> once to accept the certificate.</span></div>
                     </div>
                 </div>
 

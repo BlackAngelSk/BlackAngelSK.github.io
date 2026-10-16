@@ -1,22 +1,31 @@
 #!/usr/bin/env node
 /**
- * globe-server.js — All-in-one server for the Globe/Map project.
+ * globe-server.js — Globe/Map all-in-one server.
  *
- *   • CORS proxy on http://localhost:8080   AND   https://localhost:8443
- *   • Static file server on http://localhost:8000  (+ https://localhost:8443)
+ *   • CORS proxy + static files on  http://localhost:8080
+ *   • static files + CORS proxy on  http://localhost:8000
  *
- * No external dependencies beyond the Node.js stdlib.
+ * PLAIN HTTP BY DEFAULT — no certificate, no warning to click through,
+ * nothing to accept. Just start it and it works.
  *
- * Why both HTTP and HTTPS: the public site (https://blackangelsk.github.io)
- * cannot fetch an http:// localhost URL — the browser blocks it as mixed
- * content. So an HTTPS listener is REQUIRED for the hosted map to reach the
- * proxy. HTTPS uses a self-signed certificate; the user opens
- * https://localhost:8443/ping once and accepts it.
+ *   Chrome, Edge, Firefox and Brave treat http://localhost as a trustworthy
+ *   origin, so a page served from https://blackangelsk.github.io may call
+ *   http://localhost:8080 directly (no mixed-content block). That is why no
+ *   HTTPS listener is needed.
  *
- * Certificate resolution order:
- *   1. .proxy-cert.pem / .proxy-key.pem next to this script (or next to the exe)
- *   2. openssl (if installed) — regenerated with a proper subjectAltName
- *   3. download the bundled pair from the GitHub repo
+ *   Safari does NOT have that exception. If you use Safari, start the server
+ *   with --https: it then also listens on https://localhost:8443 with a
+ *   self-signed certificate that has to be accepted once.
+ *
+ * No external dependencies — Node.js stdlib only.
+ *
+ * Usage:
+ *   globe-server                 proxy + static server, opens the browser
+ *   globe-server --proxy         proxy only (no second static server)
+ *   globe-server --no-open       do not open the browser
+ *   globe-server --https         ALSO listen on https://localhost:8443 (Safari)
+ *   globe-server --port 3000     custom static-server port
+ *   globe-server --help          this text
  */
 
 const http = require('http');
@@ -27,10 +36,10 @@ const crypto = require('crypto');
 const { execSync, spawn } = require('child_process');
 
 // ── Configuration ──────────────────────────────────────────────
-const PROXY_PORT = 8080;
-const HTTPS_PORT = 8443;
-const HTTP_PORT = 8000;
-const PROXY_VERSION = 6;
+const PROXY_PORT = 8080;      // CORS proxy + static files
+const HTTPS_PORT = 8443;      // only with --https
+const HTTP_PORT = 8000;       // second static server
+const SERVER_VERSION = 7;
 
 const CERT_HOSTS = 'DNS:localhost,DNS:*.localhost,IP:127.0.0.1,IP:::1';
 const CERT_URLS = [
@@ -39,9 +48,8 @@ const CERT_URLS = [
 ];
 
 /* ═══ BUNDLED FALLBACK CERTIFICATE ══════════════════
-   Embedded so HTTPS always works, even on a machine without openssl and
-   without internet (the .proxy-*.pem files are shipped next to this file
-   anyway; this is only the last-resort copy). Self-signed, localhost-only.
+   Only used with --https, on a machine without openssl and without internet.
+   Self-signed, localhost-only.
    ═══════════════════════════════════════════════════ */
 const BUNDLED_CERT = `-----BEGIN CERTIFICATE-----
 MIIDRjCCAi6gAwIBAgIUMdg7GIPvrlckYkhjf4NkmkxnNYUwDQYJKoZIhvcNAQEL
@@ -93,7 +101,7 @@ Gxt7BY5zfSND9ETnADmmNDwj
 -----END PRIVATE KEY-----`;
 
 
-// ── Script directory (works both as plain .js and as a pkg-compiled .exe) ──
+// ── Script directory (works both as plain .js and as a pkg-compiled binary) ──
 function scriptDir() {
     if (process.pkg) return path.dirname(process.execPath);
     if (typeof __dirname === 'string' && __dirname && !__dirname.startsWith('/snapshot')) return __dirname;
@@ -107,24 +115,30 @@ const KEY_PATH = path.join(SCRIPT_DIR, '.proxy-key.pem');
 const args = process.argv.slice(2);
 let customHttpPort = HTTP_PORT;
 let proxyOnly = false;
+let wantHTTPS = false;
+let openBrowser = true;
 
 for (let i = 0; i < args.length; i++) {
     if (args[i] === '--proxy') proxyOnly = true;
+    else if (args[i] === '--no-open') openBrowser = false;
+    else if (args[i] === '--https') wantHTTPS = true;
     else if (args[i] === '--port' && args[i + 1]) { customHttpPort = parseInt(args[i + 1], 10); i++; }
     else if (args[i] === '--help' || args[i] === '-h') {
         console.log(`
-  globe-server — All-in-one Globe/Map server
+  globe-server ${SERVER_VERSION} — Globe/Map all-in-one server (plain HTTP)
 
   Usage:
-    globe-server                     Start proxy + static server
-    globe-server --proxy             Start only the proxy
-    globe-server --port 3000         Custom static-server port
-    globe-server --help              Show this help
+    globe-server                     proxy + static server, opens the browser
+    globe-server --proxy             proxy only
+    globe-server --no-open           do not open the browser
+    globe-server --https             ALSO listen on https://localhost:8443
+    globe-server --port 3000         custom static-server port
+    globe-server --help              this text
 
   Ports:
-    8080  CORS proxy              (http://localhost:8080/ping)
-    8443  CORS proxy + files      (https://localhost:8443/ping, self-signed)
-    8000  static files            (http://localhost:8000/map.html)
+    8080  proxy + local copy of the map   (http://localhost:8080/map.html)
+    8000  second static server            (http://localhost:8000/map.html)
+    8443  only with --https               (https://localhost:8443/ping)
 `);
         process.exit(0);
     }
@@ -174,6 +188,12 @@ function killPid(pid) {
     } catch { return false; }
 }
 
+function freePortHint(port) {
+    if (process.platform === 'win32') return `    netstat -ano | findstr ":${port}"   then   taskkill /PID <pid> /F`;
+    if (process.platform === 'darwin') return `    lsof -ti :${port} | xargs kill -9   (or: sudo lsof -ti :${port} | xargs kill -9)`;
+    return `    lsof -ti :${port} | xargs kill -9   (or: ss -ltnp | grep :${port})`;
+}
+
 /* Free a port only when an older copy of THIS server holds it. Another
    program's server is never killed — we report it and carry on. */
 async function freePort(port, label) {
@@ -190,16 +210,16 @@ async function freePort(port, label) {
 }
 
 // ══════════════════════════════════════════════════════════════
-//  CERTIFICATE
+//  CERTIFICATE (only for --https)
 // ══════════════════════════════════════════════════════════════
 
 function certStatus() {
-    /* Parse the certificate with Node itself — no openssl needed on Windows.
-       Chrome/Edge reject a certificate that has no subjectAltName for
-       localhost (a legacy CN-only cert), so it must be checked properly. */
+    /* Parsed with Node itself, so it also works on Windows without openssl.
+       Chrome/Edge reject a certificate with no subjectAltName for localhost
+       (a legacy CN-only cert), so that is checked properly. */
     let pem, key;
-    try { pem = fs.readFileSync(CERT_PATH, 'utf8'); } catch (e) { return { ok: false, why: 'missing' }; }
-    try { key = fs.readFileSync(KEY_PATH, 'utf8'); } catch (e) { return { ok: false, why: 'key missing' }; }
+    try { pem = fs.readFileSync(CERT_PATH, 'utf8'); } catch { return { ok: false, why: 'missing' }; }
+    try { key = fs.readFileSync(KEY_PATH, 'utf8'); } catch { return { ok: false, why: 'key missing' }; }
     if (!/BEGIN CERTIFICATE/.test(pem) || !/PRIVATE KEY/.test(key)) return { ok: false, why: 'unreadable files' };
 
     let x;
@@ -240,10 +260,9 @@ function downloadCert() {
 
 function generateCert() {
     /* macOS ships LibreSSL as /usr/bin/openssl and only LibreSSL >= 3.1 knows
-       -addext. On anything older the flag is rejected and the fallback below
-       produces a legacy CN-only certificate that Chrome/Safari refuse, so each
-       attempt is verified and an unusable one is discarded in favour of the
-       bundled pair. */
+       -addext. Older versions reject the flag and the fallback builds a legacy
+       CN-only certificate that Chrome/Safari refuse, so every generated
+       certificate is validated and an unusable one is discarded. */
     const variants = [
         'openssl req -x509 -newkey rsa:2048 -nodes ' +
             '-keyout "' + KEY_PATH + '" -out "' + CERT_PATH + '" ' +
@@ -269,30 +288,19 @@ function ensureCert() {
     }
     if (st.why !== 'missing') log(C.yellow, '  Existing certificate unusable: ' + st.why);
 
-    if (generateCert()) {
-        log(C.green, '  Self-signed SSL certificate created');
-        return true;
-    }
+    if (generateCert()) { log(C.green, '  Self-signed SSL certificate created'); return true; }
 
     log(C.yellow, '  openssl not available — using the bundled certificate');
     try {
         fs.writeFileSync(CERT_PATH, BUNDLED_CERT);
         fs.writeFileSync(KEY_PATH, BUNDLED_KEY);
-        if (certStatus().ok) {
-            log(C.green, '  Bundled certificate installed');
-            return true;
-        }
+        if (certStatus().ok) { log(C.green, '  Bundled certificate installed'); return true; }
     } catch (e) { log(C.yellow, '  Could not write certificate files: ' + e.message); }
 
     log(C.yellow, '  Trying to download the certificate…');
-    if (downloadCert()) {
-        log(C.green, '  Certificate downloaded');
-        return true;
-    }
+    if (downloadCert()) { log(C.green, '  Certificate downloaded'); return true; }
 
-    log(C.red, '  No usable certificate — HTTPS DISABLED.');
-    log(C.yellow, '  HTTPS is required when the map runs on https://blackangelsk.github.io');
-    log(C.yellow, '  Fix: copy .proxy-cert.pem + .proxy-key.pem next to this file (both are in the release folder).');
+    log(C.red, '  No usable certificate — the --https listener stays off.');
     return false;
 }
 
@@ -336,7 +344,7 @@ function midToKmlUrl(mid) {
 }
 
 function detectContentType(targetUrl) {
-    if (/google\.[a-z.]+\/maps\/d\//i.test(targetUrl)) return 'application/vnd.google-earth.kml+xml; charset=utf-8';
+    if (/google\.[a-z.]+\.[a-z]+\/maps\/d\//i.test(targetUrl)) return 'application/vnd.google-earth.kml+xml; charset=utf-8';
     if (/yandex\.[a-z.]+\/maps/i.test(targetUrl)) return 'text/html; charset=utf-8';
     return null;
 }
@@ -345,12 +353,12 @@ function corsHeaders(res) {
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'GET, HEAD, OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-    // Chrome "Private Network Access": a public HTTPS page reaching a local
-    // server sends a preflight that only passes with this header.
+    /* Chrome "Private Network Access": a public HTTPS page reaching a local
+       server sends a preflight that only passes with this header. */
     res.setHeader('Access-Control-Allow-Private-Network', 'true');
 }
 
-/** Handles /ping and /proxy?url=…, /kml?url=…, /kml?mid=… . Returns true if it answered. */
+/** Handles /ping, /proxy?url=…, /kml?url=…, /kml?mid=… . Returns true if it answered. */
 function handleProxyRoute(req, res, parsedUrl) {
     var pathname = parsedUrl.pathname;
     var targetUrl = parsedUrl.searchParams.get('url');
@@ -411,7 +419,9 @@ function serveStatic(res, pathname) {
     return true;
 }
 
-function makeHandler(withStatic) {
+/* Both ports answer the proxy API AND serve the map/globe files, so
+   http://localhost:8080/map.html works as documented. */
+function makeHandler() {
     return function (req, res) {
         corsHeaders(res);
         if (req.method === 'OPTIONS') { res.writeHead(204); res.end(); return; }
@@ -425,7 +435,7 @@ function makeHandler(withStatic) {
             parsedUrl.pathname + (target ? ' → ' + target.slice(0, 100) : ''));
 
         if (handleProxyRoute(req, res, parsedUrl)) return;
-        if (withStatic && serveStatic(res, parsedUrl.pathname)) return;
+        if (serveStatic(res, parsedUrl.pathname)) return;
 
         res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' });
         res.end('Not found.\n\nEndpoints:\n  /ping                   — health check (expects "pong")\n' +
@@ -448,10 +458,15 @@ function listenOn(server, port, host) {
 }
 
 /* One listener per loopback family. macOS resolves "localhost" to ::1 before
-   127.0.0.1, so binding only IPv4 makes https://localhost:8443 fail there.
+   127.0.0.1, so binding only IPv4 makes http://localhost fail there.
    Loopback only keeps the macOS firewall quiet. */
 async function listenDual(factory, port, label, servers) {
     const res = { port, label, where: [], err: null };
+    const busy = portOwner(port);
+    if (busy) {
+        res.err = new Error(`port ${port} is already in use by ${busy.cmd || '?'} (PID ${busy.pid})`);
+        return res;
+    }
     const r4 = await listenOn(factory(), port, '127.0.0.1');
     if (r4.ok) { res.where.push('127.0.0.1'); servers.push(r4.server); } else { res.err = r4.err; }
     if (process.platform !== 'win32') {
@@ -467,7 +482,7 @@ async function listenDual(factory, port, label, servers) {
 
 (async function main() {
     log(C.cyan, '============================================');
-    log(C.cyan, `  Globe/Map Server v${PROXY_VERSION} — All-in-One`);
+    log(C.cyan, `  Globe/Map Server v${SERVER_VERSION} — plain HTTP`);
     log(C.cyan, '============================================');
     log(C.reset, `  Platform: ${process.platform} (${process.arch})`);
     log(C.reset, `  Node.js:  ${process.version}`);
@@ -476,81 +491,85 @@ async function listenDual(factory, port, label, servers) {
 
     log(C.yellow, 'Checking for existing servers…');
     await freePort(PROXY_PORT, 'Proxy');
-    await freePort(HTTPS_PORT, 'HTTPS');
     if (!proxyOnly) await freePort(customHttpPort, 'Static');
+    if (wantHTTPS) await freePort(HTTPS_PORT, 'HTTPS');
     log(C.reset, '');
 
-    const hasHTTPS = ensureCert();
     let httpsOpts = null;
-    if (hasHTTPS) {
-        try {
-            httpsOpts = { key: fs.readFileSync(KEY_PATH), cert: fs.readFileSync(CERT_PATH) };
-        } catch (e) {
-            log(C.red, '  Certificate unreadable: ' + e.message + ' — HTTPS disabled');
-            httpsOpts = null;
+    if (wantHTTPS) {
+        log(C.dim, '  --https requested: preparing the certificate…');
+        if (ensureCert()) {
+            try { httpsOpts = { key: fs.readFileSync(KEY_PATH), cert: fs.readFileSync(CERT_PATH) }; }
+            catch (e) { log(C.red, '  Certificate unreadable: ' + e.message + ' — HTTPS disabled'); }
         }
     }
 
     const servers = [];
 
-    // Proxy over HTTP (works when the page is served over http)
-    const httpRes = await listenDual(() => http.createServer(makeHandler(false)), PROXY_PORT, 'Proxy', servers);
+    // Proxy + files over plain HTTP — this is the whole point.
+    const httpRes = await listenDual(() => http.createServer(makeHandler()), PROXY_PORT, 'Proxy', servers);
 
-    // Proxy over HTTPS (REQUIRED when the page is served over https)
+    // Optional HTTPS, only with --https
     let httpsRes = null;
     if (httpsOpts) {
-        httpsRes = await listenDual(() => https.createServer(httpsOpts, makeHandler(true)), HTTPS_PORT, 'HTTPS', servers);
-    } else {
-        httpsRes = { err: new Error('no usable certificate') };
+        httpsRes = await listenDual(() => https.createServer(httpsOpts, makeHandler()), HTTPS_PORT, 'HTTPS', servers);
     }
 
-    // Local static site
+    // Second static server
+    let staticRes = null;
     if (!proxyOnly) {
-        await listenDual(() => http.createServer(makeHandler(true)), customHttpPort, 'Static', servers);
+        staticRes = await listenDual(() => http.createServer(makeHandler()), customHttpPort, 'Static', servers);
     }
 
-    for (const r of [httpRes, httpsRes]) {
+    for (const r of [httpRes, httpsRes, staticRes]) {
         if (r && !r.where.length) log(C.red, `  ${r.label} on port ${r.port} did NOT start: ${r.err ? r.err.message : 'unknown error'}`);
     }
 
-    console.log('');
-    log(C.green, '  ============================================');
-    log(C.green, '  Servers are running!');
-    log(C.green, `  Proxy:   http://localhost:${PROXY_PORT}/ping`);
-    if (httpsRes && httpsRes.where.length) log(C.green, `  Proxy:   https://localhost:${HTTPS_PORT}/ping   ← use this from the website`);
-    if (!proxyOnly) {
-        log(C.green, `  Map:     http://localhost:${customHttpPort}/map.html`);
-        log(C.green, `  Globe:   http://localhost:${customHttpPort}/index.html`);
-    }
-    log(C.green, '  ============================================');
-    console.log('');
+    const ok = (r) => !!(r && r.where.length);
 
-    if (httpsRes && httpsRes.where.length) {
-        log(C.yellow, '  One-time step so the hosted site can use this proxy:');
+    console.log('');
+    if (ok(httpRes)) {
+        log(C.green, '  ============================================');
+        log(C.green, '  Proxy is running — nothing else to do.');
+        log(C.green, `  Proxy + map:  http://localhost:${PROXY_PORT}/map.html`);
+        log(C.green, `  Health check: http://localhost:${PROXY_PORT}/ping`);
+        if (ok(staticRes)) log(C.green, `  Also on:      http://localhost:${customHttpPort}/map.html`);
+        log(C.green, '  ============================================');
+    } else {
+        log(C.red, '  The proxy could NOT start on port ' + PROXY_PORT + '.');
+        if (httpRes && httpRes.err) log(C.yellow, '  Reason: ' + httpRes.err.message);
+        log(C.reset, '  Free the port and run again:');
+        log(C.reset, freePortHint(PROXY_PORT));
+    }
+
+    if (wantHTTPS && ok(httpsRes)) {
+        console.log('');
+        log(C.yellow, '  --https is on. One-time step (only needed for Safari):');
         log(C.reset, `    1. Open https://localhost:${HTTPS_PORT}/ping in your browser`);
         log(C.reset, '    2. Click "Advanced" → "Continue to localhost (unsafe)"');
-        log(C.reset, '    3. The website can now import Google Maps KML again');
+    } else if (wantHTTPS) {
         console.log('');
-    } else {
-        log(C.red, '  WARNING: HTTPS 8443 is NOT running.');
-        log(C.yellow, '  The map on https://blackangelsk.github.io will NOT be able to import anything,');
-        log(C.yellow, '  because browsers block http://localhost requests from an https:// page.');
+        log(C.yellow, '  --https was requested but port ' + HTTPS_PORT + ' did not start — plain HTTP still works.');
+    }
+
+    if (!ok(httpRes)) {
         console.log('');
+        process.exit(1);
     }
 
     log(C.dim, '  Press Ctrl+C to stop.');
     console.log('');
 
     // Open the browser once, after everything is up.
-    if (!proxyOnly) {
-        const openUrl = `http://localhost:${customHttpPort}`;
+    if (openBrowser && !proxyOnly) {
+        const openUrl = `http://localhost:${PROXY_PORT}/map.html`;
         setTimeout(() => {
             try {
                 if (process.platform === 'darwin') execSync(`open "${openUrl}"`, { stdio: 'pipe' });
                 else if (process.platform === 'linux') execSync(`xdg-open "${openUrl}"`, { stdio: 'pipe' });
                 else if (process.platform === 'win32') spawn('cmd', ['/c', 'start', '', openUrl], { detached: true, stdio: 'ignore' }).unref();
             } catch { /* not critical */ }
-        }, 1200);
+        }, 1000);
     }
 
     function cleanup() {
@@ -560,4 +579,5 @@ async function listenDual(factory, port, label, servers) {
     }
     process.on('SIGINT', cleanup);
     process.on('SIGTERM', cleanup);
+    process.on('uncaughtException', (e) => log(C.yellow, '  Unhandled error: ' + e.message + ' (server keeps running)'));
 })();
