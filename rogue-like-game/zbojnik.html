@@ -1,0 +1,2940 @@
+<!DOCTYPE html>
+<html lang="sk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ZBOJNÍK — slovenská rozprávková roguelike</title>
+<style>
+/* ==========================================================================
+   ZBOJNÍK — folk embroidery styling (red / cream / pine green)
+   ========================================================================== */
+:root{
+  --red:#7a1f1f; --red-hi:#c0392b; --cream:#f3e6d0; --cream-dim:#c9b48f;
+  --pine:#2f4f2f; --pine-hi:#4b7a3f; --gold:#e0b64a; --ink:#1a1410;
+  --panel:rgba(26,20,16,.92);
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0;background:#100c09;color:var(--cream);
+  font-family:"Courier New",Courier,monospace;overflow:hidden}
+body{height:100vh;display:flex;align-items:center;justify-content:center}
+#game{position:relative;width:1200px;height:750px;max-width:100vw;max-height:100vh;
+  background:#100c09;border:4px solid var(--red);box-shadow:0 0 0 3px var(--cream),0 0 40px #000 inset}
+
+/* ── HUD ─────────────────────────────────────────────── */
+#hud{position:absolute;left:0;right:0;top:0;height:66px;display:flex;align-items:center;
+  gap:10px;padding:6px 10px;background:linear-gradient(#2a1b12,#1a120c);
+  border-bottom:3px solid var(--red);z-index:5;font-size:12px}
+.hud-block{display:flex;align-items:center;gap:6px}
+.hud-block.grow{flex:1;justify-content:center}
+.hud-label{color:var(--cream-dim);text-transform:uppercase;letter-spacing:1px}
+#hearts{display:flex;flex-wrap:wrap;gap:2px;max-width:220px;line-height:1}
+.heart{width:11px;height:11px;background:var(--red-hi);position:relative;transform:rotate(-1deg)}
+.heart.empty{background:#3a2620}
+.heart.dead{animation:none}
+#hpFlash{color:#ffb3b3;font-weight:bold}
+#xpBar{width:120px;height:10px;border:1px solid var(--cream-dim);background:#231912}
+#xpFill{height:100%;width:0;background:linear-gradient(90deg,var(--gold),#f6e0a0)}
+.badges{display:flex;gap:4px;flex-wrap:wrap}
+.badge{border:1px solid var(--cream-dim);background:#231912;padding:1px 5px;font-size:11px;
+  color:var(--cream);cursor:help}
+.badge.buff{border-color:var(--pine-hi);color:#cfe9c0}
+.badge.debuff{border-color:var(--red-hi);color:#ffc4c4}
+.dukat{width:11px;height:11px;border-radius:50%;background:radial-gradient(#ffe9a8,#c69a1e);
+  display:inline-block}
+
+/* ── Stage ───────────────────────────────────────────── */
+#board{position:absolute;left:0;top:66px;background:#0b0906;display:block}
+#logWrap{position:absolute;left:0;bottom:0;right:0;height:112px;background:var(--panel);
+  border-top:3px solid var(--red);padding:4px 8px;overflow:hidden;z-index:5;font-size:12px;line-height:1.35}
+#log{list-style:none;margin:0;padding:0}
+#log li{opacity:.55}
+#log li:last-child{opacity:1}
+#log li.r{color:#ff9a9a}#log li.g{color:#a8e6a0}#log li.y{color:var(--gold)}
+#log li.b{color:#9ec8ff}#log li.f{color:#ffd9a0}#log li.sys{color:#c9b48f}
+
+/* ── Buttons / panels ────────────────────────────────── */
+button{font-family:inherit;font-size:13px;cursor:pointer;padding:8px 14px;color:var(--cream);
+  background:#33241a;border:2px solid var(--cream);border-radius:2px;letter-spacing:1px}
+button:hover{background:var(--red);border-color:var(--cream)}
+button.primary{background:var(--red);border-color:var(--gold)}
+button.primary:hover{background:var(--red-hi)}
+.screen{position:absolute;inset:0;z-index:20;display:none;flex-direction:column;align-items:center;
+  justify-content:center;gap:14px;background:rgba(10,7,5,.94);text-align:center;padding:22px;
+  overflow-y:auto}
+.screen.on{display:flex}
+.title{font-size:54px;letter-spacing:10px;color:var(--cream);text-shadow:3px 3px 0 var(--red)}
+.subtitle{color:var(--gold);letter-spacing:3px;font-size:14px}
+.embroidered{border:4px double var(--red);padding:16px 22px;background:
+  repeating-linear-gradient(45deg,#2a1b12 0 8px,#33241a 8px 16px)}
+.panel{border:2px solid var(--cream-dim);background:var(--panel);padding:14px 18px;
+  max-width:820px;text-align:left;font-size:13px;line-height:1.6}
+.panel h3{margin:0 0 8px;color:var(--gold);letter-spacing:2px}
+.row{display:flex;gap:10px;align-items:center;justify-content:center;flex-wrap:wrap}
+input[type=text]{font-family:inherit;font-size:13px;padding:7px 9px;background:#231912;
+  color:var(--cream);border:2px solid var(--cream-dim);width:170px}
+.cards{display:flex;gap:12px;flex-wrap:wrap;justify-content:center}
+.card{width:240px;border:2px solid var(--cream-dim);background:#231912;padding:12px;cursor:pointer;
+  text-align:left;font-size:13px}
+.card:hover{border-color:var(--gold);background:#33241a}
+.card h4{margin:0 0 6px;color:var(--gold);font-size:13px;letter-spacing:1px}
+.card .en{color:var(--cream-dim);font-size:11px}
+.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.slot{border:2px solid var(--cream-dim);background:#231912;padding:6px;min-height:58px;font-size:11px;
+  cursor:pointer;position:relative}
+.slot:hover{border-color:var(--gold)}
+.slot .n{color:var(--cream-dim);position:absolute;right:4px;top:2px;font-size:10px}
+.slot .sk{color:var(--cream);display:block;margin-top:2px}
+.slot .st{color:var(--gold);font-size:10px}
+.stat{display:flex;justify-content:space-between;gap:10px}
+.hi{color:var(--gold)}
+.dim{color:var(--cream-dim)}
+.stat-line{margin:2px 0}
+</style>
+</head>
+<body>
+<div id="game">
+  <!-- ── HUD ─────────────────────────────────────────── -->
+  <div id="hud">
+    <div class="hud-block">
+      <span class="hud-label">Životy</span>
+      <div id="hearts"></div>
+      <div>
+        <div><span class="hud-label">Úroveň</span> <span id="hudLevel">1</span>
+          <span id="hpFlash"></span></div>
+        <div id="xpBar"><div id="xpFill"></div></div>
+      </div>
+    </div>
+    <div class="hud-block grow">
+      <span class="dukat"></span><span id="hudGold">0</span>
+      <span class="hud-label">Zlato (dukáty)</span>
+      <span class="hud-label">Plocha</span><span id="hudDepth">1</span>
+      <span id="hudZone">Dunajské nížiny</span>
+      <span class="hud-label">Seed</span><span id="hudSeed">—</span>
+    </div>
+    <div class="hud-block">
+      <span class="hud-label">Výstroj</span>
+      <div class="badges" id="gear"></div>
+      <div class="badges" id="buffs"></div>
+      <span class="badge" id="hudTurn" title="Ťahy / Turns">t0</span>
+    </div>
+  </div>
+
+  <!-- ── PLAY AREA ───────────────────────────────────── -->
+  <canvas id="board" width="1200" height="560"></canvas>
+  <div id="logWrap"><ul id="log"></ul></div>
+
+  <!-- ── TITLE ───────────────────────────────────────── -->
+  <div class="screen on" id="titleScreen">
+    <div class="embroidered">
+      <div class="title">ZBOJNÍK</div>
+      <div class="subtitle">slovenská rozprávková roguelike &bull; a Slovak folklore roguelike</div>
+    </div>
+    <canvas id="titleArt" width="560" height="150" style="border:3px double #7a1f1f"></canvas>
+    <div class="panel" style="max-width:620px;text-align:center">
+      <p style="margin:0">Si mladý zbojník a ideš cez celú krajinu až na Kriváň,
+      aby si spálil Morenu a privolal jar.<br>
+      <span class="dim">You are a young outlaw travelling from the Danube lowlands
+      to the summit of Kriváň to burn Morena, the winter goddess, and bring back spring.</span></p>
+    </div>
+    <div class="row">
+      <button class="primary" id="btnNew">Nová hra / New Game</button>
+      <button id="btnContinue">Pokračovať / Continue</button>
+    </div>
+    <div class="row"><span class="dim">Seed:</span>
+      <input type="text" id="seedInput" placeholder="náhodný / random" maxlength="24" spellcheck="false">
+      <button id="btnSeed">Hrať so seedom / Play seed</button>
+      <button id="btnHowTo">Ako hrať / How to Play</button>
+    </div>
+    <div class="dim" id="titleBest"></div>
+    <div class="panel" style="max-width:640px;font-size:12px">
+      <b class="hi">Jánošík:</b> <span id="ghostLine">„Dobre si začal, synak! Len pozor na vodníkov —
+      ťahajú pod vodu, keď sa im postavíš chrbtom.“</span>
+    </div>
+  </div>
+
+  <!-- ── HOW TO PLAY ─────────────────────────────────── -->
+  <div class="screen" id="howtoScreen">
+    <div class="title" style="font-size:32px">AKO HRAŤ / HOW TO PLAY</div>
+    <div class="panel">
+      <h3>Ovládanie / Controls</h3>
+      <p><b>WASD</b> alebo <b>šípky</b> — pohyb a útok do strany / move &amp; bump-attack.
+      <b>Q E Z C</b> (alebo <b>WASD+Shift</b>) — šikmé smery / diagonals.<br>
+      <b>Myš</b> — klikni na dlaždicu a jeden krok k nej / click a tile to step toward it.<br>
+      <b>Medzerník</b> — čakať (odpočinok) / wait &amp; rest.
+      <b>F</b> — hodiť valaškou po najbližšom viditeľnom nepriateľovi / throw valaška.<br>
+      <b>I</b> — batoh / inventory. <b>1–9</b> — použi jedlo, nápoj alebo predmet / use item.<br>
+      <b>G</b> — zdvihni, <b>&gt;</b> — choď po schodoch dolu, <b>&lt;</b> — naspäť nahor.
+      <b>R</b> — nová hra, <b>Esc</b> — pauza, <b>M</b> — zvuk.</p>
+      <h3>Ako to funguje / How it works</h3>
+      <p>Hra je ťahová: kým ty urobíš krok, pohnú sa aj nepriatelia, ktorých vidíš.
+      Do nepriateľa sa nevráža — vráža sa do neho <i>útokom</i> (chodíš doň).
+      Zranenie = <b>ÚTOK − OBRANA</b>, minimálne 1. Kritický zásah = 10 % (×1,5).<br>
+      Skúsenosti z vrážd, na každej úrovni si vyberieš jeden z troch darov.
+      Jedlo lieči, kapustnica ruší strigu, fujara uspí všetko okolo.<br>
+      „Deviatka“ u svišťa Cvrila: hoď tromi kockami, keď ti padne deväť alebo viac, vyhrávaš dvojnásobok.</p>
+      <h3>Ako vyhrať / How to win</h3>
+      <p>Prejdi päť krajov (12 plôch) až na vrchol Kriváňa. Morena má dve fázy —
+      najprv ľad, potom oheň. Keď jej horí telo, valaška je dvakrát silnejšia.
+      Spáľ zimu, privolaj jar.</p>
+    </div>
+    <button class="primary" id="btnHowToBack">Späť / Back</button>
+  </div>
+
+  <!-- ── PAUSE ───────────────────────────────────────── -->
+  <div class="screen" id="pauseScreen">
+    <div class="title" style="font-size:34px">PAUZA</div>
+    <div class="panel" id="pauseStats" style="min-width:420px"></div>
+    <div class="row">
+      <button class="primary" id="btnResume">Pokračovať / Resume</button>
+      <button id="btnPauseInv">Batoh / Inventory</button>
+      <button id="btnPauseHow">Ako hrať / How to Play</button>
+      <button id="btnEasy">Ľahký režim / Easy mode</button>
+      <button id="btnMute">Zvuk / Mute</button>
+      <button id="btnQuit">Nová hra / Restart</button>
+    </div>
+    <div class="dim">Hra sa ukladá pri každom zostupe — „Pokračovať“ na titulke ťa vráti späť.</div>
+  </div>
+
+  <!-- ── LEVEL UP ────────────────────────────────────── -->
+  <div class="screen" id="levelupScreen">
+    <div class="title" style="font-size:30px">DAR OD JÁNOŠÍKA</div>
+    <div class="panel" style="max-width:640px;text-align:center" id="ghostUpgrade"></div>
+    <div class="cards" id="upgradeCards"></div>
+  </div>
+
+  <!-- ── INVENTORY ───────────────────────────────────── -->
+  <div class="screen" id="invScreen">
+    <div class="title" style="font-size:30px">BATOH / INVENTORY</div>
+    <div class="panel" id="invStats" style="min-width:520px"></div>
+    <div class="grid" id="invGrid" style="width:760px"></div>
+    <div class="panel" style="font-size:12px">
+      Klikni na predmet a použi ho / jedlo zjz, zbraň si obleč.
+      Čísla 1–9 používajú predmety priamo v hre.
+    </div>
+    <button class="primary" id="btnInvClose">Zavrieť / Close</button>
+  </div>
+
+  <!-- ── SHOP ────────────────────────────────────────── -->
+  <div class="screen" id="shopScreen">
+    <div class="title" style="font-size:30px">CVRIL — SVIŠŤ S KLEPETOM</div>
+    <div class="dim" id="shopGold"></div>
+    <div class="panel" style="min-width:760px">
+      <h3>Na predaj / For sale</h3>
+      <div class="grid" id="shopBuy"></div>
+      <h3 style="margin-top:12px">Výkup / Sell your gear</h3>
+      <div class="grid" id="shopSell"></div>
+      <h3 style="margin-top:12px">Hra „Deviatka“</h3>
+      <div class="row" id="diceRow">
+        <span class="dim">Stav (bet)</span>
+        <input type="text" id="betInput" value="20" style="width:80px">
+        <button id="btnRoll">Hoď kockami / Roll dice</button>
+        <span id="diceResult"></span>
+      </div>
+    </div>
+    <button class="primary" id="btnShopClose">Odísť / Leave</button>
+  </div>
+
+  <!-- ── DEATH ───────────────────────────────────────── -->
+  <div class="screen" id="deathScreen">
+    <div class="title" style="color:#ff9a9a;font-size:40px">ZOMREL SI</div>
+    <div class="subtitle">You died — smrť je v roguelike navždy. / Death is permanent.</div>
+    <div class="panel" id="deathStats" style="min-width:460px"></div>
+    <div class="row">
+      <button class="primary" id="btnRetry">Skús znova / Retry</button>
+      <button id="btnReplaySeed">Ten istý seed / Replay seed</button>
+      <button id="btnDeathTitle">Titulka / Title</button>
+    </div>
+  </div>
+
+  <!-- ── VICTORY ─────────────────────────────────────── -->
+  <div class="screen" id="victoryScreen">
+    <div class="title" style="color:#ffe08a;font-size:38px">MORENA JE SPÁLENÁ</div>
+    <div class="subtitle">Morena is burned — jar sa vracia do krajiny. / Spring returns to the land.</div>
+    <canvas id="springArt" width="600" height="170" style="border:3px double #4b7a3f"></canvas>
+    <div class="panel" id="victoryStats" style="min-width:460px"></div>
+    <div class="row">
+      <button class="primary" id="btnPlayAgain">Hrať znova / Play again</button>
+      <button id="btnVictoryTitle">Titulka / Title</button>
+    </div>
+  </div>
+</div>
+
+<script>
+"use strict";
+/* ============================================================================
+ *  ZBOJNÍK — a Slovak folklore roguelike in one self-contained file.
+ *
+ *  Sections:
+ *    1  constants & config        9  NPCs & merchant
+ *    2  RNG (mulberry32)         10  boss fight (Morena)
+ *    3  map generation           11  input
+ *    4  entities                 12  renderer (canvas pixel art)
+ *    5  FOV & fog of war         13  UI screens
+ *    6  AI                       14  audio (WebAudio synth)
+ *    7  combat & status          15  game loop & state machine
+ *    8  items, inventory, loot   16  save / load
+ * ==========================================================================*/
+
+/* ============================================================================
+ * 1. CONSTANTS & CONFIG
+ * ==========================================================================*/
+const CFG = {
+  TILE: 40, COLS: 30, ROWS: 14,          // 1200 x 560 world (fits under the HUD, above the log)
+  FOV_RADIUS: 8,
+  MAX_DEPTH: 12,                          // 12 plôch / floors, zone 5 ends at 12 (Kriváň)
+  INV_SLOTS: 12,
+  VALASKA_CHARGES: 5,
+  VALASKA_RANGE: 6,
+  CRIT_CHANCE: 0.10, CRIT_MULT: 1.5,
+  ANIM_MS: 110,                           // snappy move animation
+  EASY_MULT: 0.70                        // easy mode: 70 % enemy damage
+};
+
+/* Tile codes */
+const T_WALL = 0, T_FLOOR = 1, T_STAIRS_DOWN = 2, T_STAIRS_UP = 3, T_DOOR = 4,
+      T_WATER = 5, T_VINE = 6, T_SNOW = 7, T_THIN = 8, T_WALL_ICE = 9;
+
+/* Trap / hazard codes (stored in a parallel layer) */
+const H_NONE = 0, H_SPIKE = 1, H_FIRE = 2, H_ICE = 3, H_LADDER = 4, H_SHRINE = 5;
+
+/* Furniture / feature codes (decor layer: draws on top, blocks nothing by itself) */
+const D_NONE = 0, D_BRAZIER = 1, D_BARREL = 2, D_CHEST = 3, D_TENT = 4, D_PILLOW = 5,
+      D_BUCKET = 6, D_CHURN = 7, D_PLAQUE = 8, D_HAY = 9, D_TAPESTRY = 10,
+      D_LADDERDRAW = 11, D_LILY = 12, D_BONES = 13, D_FLOWERS = 14, D_GRAVE = 15;
+
+/* ── The five zones ─────────────────────────────────────────────────────── */
+const ZONES = [
+  { id: 0, sk: 'Dunajské nížiny', en: 'Danube Lowlands',
+    depths: [1, 2], lvl: [1, 2], mist: 0,
+    pal: { bg:'#0d1207', floor:'#4d6b28', floor2:'#5c7d31', wall:'#3a2a16', lip:'#6a5230',
+           accent:'#d9c26a', fog:'#20281a', water:'#2f6b8a' } },
+  { id: 1, sk: 'Červený Kameň', en: 'Red Stone Castle',
+    depths: [3, 4], lvl: [2, 4], mist: 0,
+    pal: { bg:'#100a0c', floor:'#5a4a4a', floor2:'#6a5757', wall:'#4a2020', lip:'#7a3030',
+           accent:'#c94f3d', fog:'#241a1c', water:'#3a5a7a' } },
+  { id: 2, sk: 'Slovenský raj', en: 'Slovak Paradise',
+    depths: [5, 7], lvl: [4, 6], mist: 1,
+    pal: { bg:'#07100f', floor:'#3f5a52', floor2:'#4a6a60', wall:'#243b38', lip:'#3d6a5e',
+           accent:'#6fd0c0', fog:'#16241f', water:'#2f8fa8' } },
+  { id: 3, sk: 'Spišský hrad', en: 'Spiš Castle',
+    depths: [8, 9], lvl: [6, 8], mist: 0,
+    pal: { bg:'#0a0d11', floor:'#6a7076', floor2:'#7a8086', wall:'#3d444b', lip:'#8a9199',
+           accent:'#cfd6dd', fog:'#1c2026', water:'#2f5f8a' } },
+  { id: 4, sk: 'Vysoké Tatry', en: 'High Tatras',
+    depths: [10, 12], lvl: [8, 10], mist: 2,
+    pal: { bg:'#080b14', floor:'#c9d6e6', floor2:'#b6c6dc', wall:'#4a5a78', lip:'#dfe9f5',
+           accent:'#8fd6ff', fog:'#1a2233', water:'#5fa8d8' } }
+];
+const zoneForDepth = d => ZONES[Math.max(0, ZONES.findIndex(z => d >= z.depths[0] && d <= z.depths[1]))];
+const isCaveRegion = d => d === 11;   // a dark cave stretch in the Tatras: shorter light
+
+/* ── Room themes: flavour + what gets seeded inside ─────────────────────── */
+const ROOM_THEMES = [
+  { id:'plain',   sk:'sieň',        en:'hall',     weight: 5 },
+  { id:'armory',  sk:'zbrojnica',   en:'armory',   weight: 2 },
+  { id:'pantry',  sk:'špajza',      en:'pantry',   weight: 2 },
+  { id:'shrine',  sk:'kaplnka',     en:'shrine',   weight: 2 },
+  { id:'cellar',  sk:'pivnica',     en:'cellar',   weight: 2 },
+  { id:'grotto',  sk:'jaskyňa',     en:'grotto',   weight: 2 },
+  { id:'merchant',sk:'stánok',      en:'stall',    weight: 0 }   // assigned by the generator
+];
+
+/* ── Enemies ─────────────────────────────────────────────────────────────
+ * speed   : actions per turn (1 = normal, 2 = fast, 0.5 = slow)
+ * special : pull | double | curse | blink | charm | charge | cone | boss1/boss2
+ * ──────────────────────────────────────────────────────────────────────── */
+const ENEMIES = {
+  zbojnik:  { sk:'Zbojník',   en:'Bandit',        hp:15, atk:4, def:0, xp:8,  speed:1,   minZ:0, maxZ:2, spr:'zbojnik',  sp:'#' },
+  vlk:      { sk:'Vlk',       en:'Wolf',          hp:12, atk:3, def:0, xp:6,  speed:1,   minZ:0, maxZ:1, spr:'wolf',     sp:'#' },
+  vodnik:   { sk:'Vodník',    en:'Water demon',   hp:25, atk:5, def:1, xp:16, speed:1,   minZ:0, maxZ:3, spr:'vodnik',   sp:'pull' },
+  polednica:{ sk:'Polednica', en:'Noon witch',    hp:20, atk:6, def:1, xp:20, speed:1,   minZ:1, maxZ:3, spr:'polednica',sp:'double' },
+  striga:   { sk:'Striga',    en:'Night witch',   hp:30, atk:4, def:0, xp:24, speed:1,   minZ:2, maxZ:4, spr:'striga',   sp:'curse' },
+  divozenka:{ sk:'Divoženka', en:'Wild woman',    hp:22, atk:3, def:0, xp:22, speed:1,   minZ:2, maxZ:4, spr:'divozenka',sp:'charm' },
+  medved:   { sk:'Medveď',    en:'Bear',          hp:45, atk:7, def:2, xp:34, speed:0.5, minZ:3, maxZ:4, spr:'medved',   sp:'charge' },
+  vlkolak:  { sk:'Vlkolak',   en:'Werewolf',      hp:28, atk:6, def:1, xp:32, speed:2,   minZ:3, maxZ:4, spr:'vlkolak',  sp:'blink' },
+  kostlivec:{ sk:'Kostlivec', en:'Skeleton',      hp:24, atk:6, def:2, xp:22, speed:1,   minZ:3, maxZ:4, spr:'kostlivec',sp:'' },
+  drak:     { sk:'Drak',      en:'Dragon',        hp:90, atk:9, def:3, xp:90, speed:1,   minZ:1, maxZ:4, spr:'drak',     sp:'cone' },
+  morena:   { sk:'Morena',    en:'Morena',        hp:160, atk:10, def:3, xp:400, speed:1, minZ:4, maxZ:4, spr:'morena',  sp:'boss1' }
+};
+
+/* ── Items ───────────────────────────────────────────────────────────────
+ * kind: food | drink | weapon | armour | head | tool | key | torch | holy
+ * fx   : heal, atk, def, crit, speedTurns, sleepTurns, fov, aoe, charges, cures
+ * ──────────────────────────────────────────────────────────────────────── */
+const ITEMS = {
+  halusky:  { sk:'Bryndzové halušky', en:'Bryndza dumplings', kind:'food', heal:20, price:18, minD:1, stack:true, spr:'food',
+              flavor:'Bryndza z Oravy, slanina, cibuľka. Sýte ako celý deň v lese.' },
+  parenica: { sk:'Parenica',          en:'Steamed cheese curl', kind:'food', heal:12, price:12, minD:1, stack:true, spr:'food',
+              flavor:'Oštiepok stočený do slimáka. Voňal až do tretej dediny.' },
+  lokse:    { sk:'Lokše',             en:'Potato flatbreads', kind:'food', heal:8, price:6, minD:1, stack:true, spr:'food',
+              flavor:'Lokše pečené na peci, masti na nich nešetrili.' },
+  medove:   { sk:'Medové rezy',       en:'Honey slices', kind:'food', heal:15, price:14, minD:1, stack:true, spr:'food',
+              flavor:'Med z Tatier, orechy z Gemera. Sladká úľava.' },
+  kapustnica:{ sk:'Kapustnica',       en:'Sauerkraut soup', kind:'food', heal:99, cures:'curse', price:30, minD:2, stack:true, spr:'food',
+              flavor:'Kysnutá kapusta s klobásou — platí aj za strigu.' },
+  sulance:  { sk:'Šúľance s makom',   en:'Poppy seed noodles', kind:'food', heal:10, speedTurns:20, price:16, minD:1, stack:true, spr:'food',
+              flavor:'Makovica, cukor, maslo. Bežíš ako zajac.' },
+  kofola:   { sk:'Kofola',            en:'Kofola', kind:'drink', extraAction:true, price:26, minD:1, stack:true, spr:'drink',
+              flavor:'Slovenská kola. Dá ti jeden krok navyše.' },
+  tatransky:{ sk:'Tatranský čaj',     en:'Tatra tea', kind:'drink', atk:3, atkTurns:15, drunkTurns:1, price:24, minD:3, stack:true, spr:'drink',
+              flavor:'Slivovica z vetvičky. Silná — jeden ťah sa len usmievaš.' },
+  valaska:  { sk:'Valaška',           en:"Shepherd's axe", kind:'weapon', atk:2, price:0, minD:1, stack:false, spr:'weapon',
+              flavor:'Valaška — v ruke aj vo vzduchu. Dá sa hodiť na 6 dlaždíc.' },
+  sabla:    { sk:'Šabľa',             en:'Sabre', kind:'weapon', atk:3, price:60, minD:8, stack:false, spr:'weapon',
+              flavor:'Oceľ z Kotlíny. Tanec aj práca.' },
+  ostep:    { sk:'Oštep',             en:'Spear', kind:'weapon', atk:2, reach:2, price:40, minD:5, stack:false, spr:'weapon',
+              flavor:'Dosiahne aj cez dlaždicu. Neboj sa byť ďaleko.' },
+  luk:      { sk:'Luk',               en:'Bow', kind:'weapon', atk:1, rangedEvery:2, price:45, minD:5, stack:false, spr:'weapon',
+              flavor:'Každý druhý ťah vie vystreliť na viditeľného nepriateľa.' },
+  kroj:     { sk:'Kroj',              en:'Embroidered vest', kind:'armour', def:2, price:36, minD:1, stack:false, spr:'armour',
+              flavor:'Výšivka červená, niť biela — vidieť ťa ďaleko.' },
+  kozuch:   { sk:'Kožuch',            en:'Sheepskin coat', kind:'armour', def:3, coldImmune:true, price:70, minD:8, stack:false, spr:'armour',
+              flavor:'Teplý ako náručie. Vo fujavici nenahraditeľný.' },
+  prilba:   { sk:'Prilba',            en:'Helmet', kind:'armour', def:2, price:34, minD:3, stack:false, spr:'armour',
+              flavor:'Puknutá, ale drží. Aj tak lepšie ako klobúk.' },
+  siraky:   { sk:'Širáky',            en:'Brimmed felt hat', kind:'head', def:1, crit:0.05, price:25, minD:1, stack:false, spr:'head',
+              flavor:'Širáky — ako zbojník sa v nich cítiš o hlavu vyšší.' },
+  kamzik:   { sk:'Kozí roh',          en:'Chamois horn', kind:'tool', atk:1, price:22, minD:1, stack:false, spr:'tool',
+              flavor:'Zavesený na krku. Dodáva odvahu.' },
+  fujara:   { sk:'Fujara',            en:'Fujara', kind:'tool', sleepTurns:3, price:48, minD:2, stack:false, spr:'tool', unique:true,
+              flavor:'Zahraj a všetci do 6 dlaždíc zaspia. Raz za 10 ťahov.' },
+  kluc:     { sk:'Kľúč',              en:'Key', kind:'key', price:14, minD:1, stack:true, spr:'key',
+              flavor:'Odomkne truhlu a zneškodní darty. Jednoduché, ale spasí.' },
+  svetlo:   { sk:'Svetlo',            en:'Torch', kind:'torch', fov:3, turns:20, price:20, minD:1, stack:true, spr:'torch',
+              flavor:'Smolná fakľa. Na 20 ťahov vidíš o tri dlaždice ďalej.' },
+  svatena:  { sk:'Svätená voda',      en:'Holy water', kind:'holy', aoe:20, price:28, minD:1, stack:true, spr:'holy',
+              flavor:'Zo studničky pri svätyni. Všetko naokolo to popáli.' },
+  jvalaska: { sk:'Valaška Jánošíkova',en:"Jánošík's valaška", kind:'weapon', atk:6, critBandit:true, legendary:true,
+              price:0, minD:6, stack:false, spr:'weapon',
+              flavor:'Požičaná z pomníka. Proti zbojníkom zasiahne vždy kriticky.' },
+  jfujara:  { sk:'Fujara Kráľa Mateja',en:"King Matthias' fujara", kind:'tool', sleepTurns:5, legendary:true,
+              price:0, minD:6, stack:false, spr:'tool', unique:true,
+              flavor:'Sedem dierok, jeden kráľ, celé lesy v spánku.' },
+  plaszt:   { sk:'Plášť Moreny',      en:"Morena's cloak", kind:'armour', def:2, immuneAll:true, legendary:true,
+              price:0, minD:7, stack:false, spr:'armour',
+              flavor:'Zima v látke. Žiadna kliatba sa ťa nedrží.' }
+};
+
+/* ── Level-up gifts (Jánošík's ghost offers three of these) ─────────────── */
+const UPGRADES = [
+  { id:'hp',    sk:'+20 max. životov',        en:'+20 max HP',        apply:p=>{p.maxHp+=20;p.hp+=20;} },
+  { id:'atk',   sk:'+2 útok',                 en:'+2 ATK',            apply:p=>{p.atk+=2;} },
+  { id:'def',   sk:'+2 obrana',               en:'+2 DEF',            apply:p=>{p.def+=2;} },
+  { id:'vrange',sk:'Valaška letí o dlaždicu ďalej', en:'+1 valaška range', apply:p=>{p.throwRange+=1;} },
+  { id:'crit',  sk:'+10 % šanca na krit',     en:'+10% crit chance',  apply:p=>{p.crit+=0.10;} },
+  { id:'fire',  sk:'Zásah: 25 % šanca na oheň',en:'On-hit 25% burn',  apply:p=>{p.burnOnHit=0.25;} },
+  { id:'inv',   sk:'+1 miesto v batohu',      en:'+1 inventory slot', apply:p=>{p.invSlots+=1;} },
+  { id:'regen', sk:'Každých 10 krokov +5 životov', en:'+5 HP / 10 steps', apply:p=>{p.regen=true;} },
+  { id:'fov',   sk:'Dohľad o 2 dlaždice ďalej',en:'+2 FOV tiles',     apply:p=>{p.fovBonus+=2;} },
+  { id:'water', sk:'Vodníci už ťa nestiahnu', en:'Vodníci cannot pull you', apply:p=>{p.noPull=true;} },
+  { id:'thorns',sk:'Ostne: útočník dostane 2', en:'Thorns 2 damage',  apply:p=>{p.thorns=2;} },
+  { id:'luck',  sk:'+15 % viac dukátov',      en:'+15% gold',         apply:p=>{p.goldBonus=0.15;} }
+];
+
+/* ── Flavour lines ──────────────────────────────────────────────────────── */
+const GHOST_LINES = [
+  'Dobre si začal, synak!', 'Toto nie je vinohrad, mladý!', 'Valašku drž pevne — aj letí, aj seká.',
+  'Vodník ťahá pod vodu, keď mu stúpiš na ľaliu.', 'Každý zbojník bol raz len chlapec s hladom.',
+  'Spi sladko, ale nie tu.', 'Na Spiši fúka vždy, aj keď je ticho.', 'Kto sa bojí vlkolaka, nespí v lese.',
+  'Kapustnica je liek. A babka mala pravdu.', 'Kriváň je ďaleko, ale nohy máš mladé.'
+];
+const PROVERBS = [
+  'Kto skoro ráno vstáva, tomu Pán Boh dáva.',
+  'Bez práce nie sú koláče.',
+  'Kto druhému jamu kope, sám do nej padne.',
+  'Tichá voda brehy myje.',
+  'Čo sa v mladosti naučíš, na starosť akoby si našiel.',
+  'Doma je najlepšie, ale zbojníka ťahá les.',
+  'Vrana k vrane sadá, rovný rovného si hľadá.',
+  'Aká matka, taká Katka.'
+];
+const AMBIENT = [
+  'Vankúš s výšivkou. Niekto tu spával.', 'Vedro je plné dažďovej vody.',
+  'Maselnica sa ešte točí, aj keď tu nikto nie je.', 'Vonia to po dyme a slanine.',
+  'Sneh sa ligoce ako rozsypané dukáty.', 'Odniekiaľ zdola počuť vodu.',
+  'Mach na múre je ako zelená mapa.', 'Fujara ticho leží na lavici — kto ju tu nechal?'
+];
+
+/* ============================================================================
+ * 2. RNG (seeded, mulberry32) — one stream per run so a seed replays a world
+ * ==========================================================================*/
+function hashSeed(str) {
+  let h = 1779033703 ^ str.length;
+  for (let i = 0; i < str.length; i++) {
+    h = Math.imul(h ^ str.charCodeAt(i), 3432918353);
+    h = (h << 13) | (h >>> 19);
+  }
+  return function () {
+    h = Math.imul(h ^ (h >>> 16), 2246822507);
+    h = Math.imul(h ^ (h >>> 13), 3266489909);
+    return (h ^= h >>> 16) >>> 0;
+  };
+}
+let RNG = null;
+function seedRng(seedStr) {
+  let a = hashSeed(String(seedStr))();
+  RNG = {
+    next() { a |= 0; a = (a + 0x6D2B79F5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a);
+             t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; },
+    int(n) { return Math.floor(this.next() * n); },
+    range(lo, hi) { return lo + this.int(hi - lo + 1); },
+    pick(arr) { return arr[this.int(arr.length)]; },
+    chance(p) { return this.next() < p; },
+    weighted(table) {
+      let total = 0; for (const e of table) total += (e.weight || e.w || 0);
+      let k = this.next() * total;
+      for (const e of table) { k -= (e.weight || e.w || 0); if (k < 0) return e; }
+      return table[table.length - 1];
+    }
+  };
+  return RNG;
+}
+function randomSeed() {
+  const w = ['jano', 'morena', 'tatry', 'dunaj', 'krivan', 'spis', 'raj', 'zboj', 'fujara'];
+  return w[Math.floor(Math.random() * w.length)] + '-' + Math.floor(Math.random() * 9000 + 1000);
+}
+
+/* ── Tiny helpers ──────────────────────────────────────────────────────── */
+const $ = id => document.getElementById(id);
+const clamp = (v, lo, hi) => v < lo ? lo : v > hi ? hi : v;
+const dist = (a, b) => Math.abs(a.x - b.x) + Math.abs(a.y - b.y);
+const cheb = (a, b) => Math.max(Math.abs(a.x - b.x), Math.abs(a.y - b.y));
+const DIRS8 = [[0,-1],[1,-1],[1,0],[1,1],[0,1],[-1,1],[-1,0],[-1,-1]];
+const DIRS4 = [[0,-1],[1,0],[0,1],[-1,0]];
+const sk = n => n;   // readability marker for Slovak literals
+
+/* Global run state (a single object so save/load is one JSON blob) */
+let G = null;
+
+/* ============================================================================
+ * 3. MAP GENERATION — rooms + corridors, themes, secrets, loot, enemies, traps
+ * ==========================================================================*/
+const W = () => CFG.COLS, H = () => CFG.ROWS;
+const idx = (x, y) => y * CFG.COLS + x;
+const inMap = (x, y) => x >= 0 && y >= 0 && x < CFG.COLS && y < CFG.ROWS;
+
+function blankMap() {
+  return {
+    tiles: new Uint8Array(CFG.COLS * CFG.ROWS),
+    corr: new Uint8Array(CFG.COLS * CFG.ROWS),
+    hazard: new Uint8Array(CFG.COLS * CFG.ROWS),
+    decor: new Uint8Array(CFG.COLS * CFG.ROWS),
+    seen: new Uint8Array(CFG.COLS * CFG.ROWS),
+    visible: new Uint8Array(CFG.COLS * CFG.ROWS),
+    rooms: [], up: null, down: null
+  };
+}
+const tileAt = (x, y) => inMap(x, y) ? G.map.tiles[idx(x, y)] : T_WALL;
+const hazardAt = (x, y) => inMap(x, y) ? G.map.hazard[idx(x, y)] : H_NONE;
+const decorAt = (x, y) => inMap(x, y) ? G.map.decor[idx(x, y)] : D_NONE;
+/** Walkable for the player and monsters: everything except solid stone and doors-mid-swing. */
+function walkable(x, y) {
+  const t = tileAt(x, y);
+  return inMap(x, y) && t !== T_WALL && t !== T_THIN && t !== T_DOOR;
+}
+function roomCentre(r) { return { x: r.x + (r.w >> 1), y: r.y + (r.h >> 1) }; }
+function roomAt(x, y) { return G.map.rooms.find(r => x >= r.x && x < r.x + r.w && y >= r.y && y < r.y + r.h) || null; }
+function inMerchantRoom(x, y) { const r = roomAt(x, y); return !!(r && r.theme === 'merchant'); }
+
+function carveRoom(r, tile) {
+  for (let y = r.y; y < r.y + r.h; y++)
+    for (let x = r.x; x < r.x + r.w; x++)
+      if (inMap(x, y)) G.map.tiles[idx(x, y)] = tile === undefined ? T_FLOOR : tile;
+}
+function carveCorridor(ax, ay, bx, by) {
+  if (RNG.chance(0.5)) { carveH(ax, bx, ay); carveV(ay, by, bx); }
+  else { carveV(ay, by, ax); carveH(ax, bx, by); }
+}
+/* Corridors are mostly one tile wide, so a blocking entity standing on one can seal
+ * a level. Every corridor tile is recorded here and kept clear of NPCs. */
+function carveH(x1, x2, y) {
+  for (let x = Math.min(x1, x2); x <= Math.max(x1, x2); x++)
+    if (inMap(x, y)) { G.map.tiles[idx(x, y)] = T_FLOOR; G.map.corr[idx(x, y)] = 1; }
+}
+function carveV(y1, y2, x) {
+  for (let y = Math.min(y1, y2); y <= Math.max(y1, y2); y++)
+    if (inMap(x, y)) { G.map.tiles[idx(x, y)] = T_FLOOR; G.map.corr[idx(x, y)] = 1; }
+}
+
+/** Flood fill over walkable tiles from a start position. */
+function reachableFrom(sx, sy, pred) {
+  const test = pred || walkable;
+  const seen = new Uint8Array(CFG.COLS * CFG.ROWS);
+  const q = [[sx, sy]];
+  seen[idx(sx, sy)] = 1;
+  while (q.length) {
+    const [x, y] = q.pop();
+    for (const [dx, dy] of DIRS4) {
+      const nx = x + dx, ny = y + dy;
+      if (inMap(nx, ny) && !seen[idx(nx, ny)] && test(nx, ny)) { seen[idx(nx, ny)] = 1; q.push([nx, ny]); }
+    }
+  }
+  return seen;
+}
+
+/** Never ship a disconnected level: flood fill and carve a corridor to any orphan floor. */
+function ensureConnectivity(sx, sy) {
+  for (let pass = 0; pass < 30; pass++) {
+    const seen = reachableFrom(sx, sy);
+    let orphan = null;
+    for (let y = 1; y < CFG.ROWS - 1 && !orphan; y++)
+      for (let x = 1; x < CFG.COLS - 1; x++)
+        if (G.map.tiles[idx(x, y)] === T_FLOOR && !seen[idx(x, y)]) { orphan = { x, y }; break; }
+    if (!orphan) return true;
+    let best = null, bd = 1e9;
+    for (let y = 1; y < CFG.ROWS - 1; y++)
+      for (let x = 1; x < CFG.COLS - 1; x++) {
+        if (!seen[idx(x, y)] || G.map.tiles[idx(x, y)] !== T_FLOOR) continue;
+        const d = Math.abs(x - orphan.x) + Math.abs(y - orphan.y);
+        if (d < bd) { bd = d; best = { x, y }; }
+      }
+    if (!best) return false;
+    carveCorridor(orphan.x, orphan.y, best.x, best.y);
+  }
+  return false;
+}
+
+/**
+ * Rooms may sit one tile apart (that single tile is the shared wall) but never
+ * touch. The earlier +1 padding demanded a two-tile gap, which is why a 30x14
+ * grid could not fit the 6-9 rooms the design calls for.
+ */
+function overlaps(a, b) {
+  return !(a.x + a.w < b.x || b.x + b.w < a.x || a.y + a.h < b.y || b.y + b.h < a.y);
+}
+
+/** Build one level: rooms, corridors, themes, furniture, hazards, stairs, secrets. */
+function generateLevel(depth) {
+  const zone = zoneForDepth(depth);
+  G.map = blankMap();
+  G.map.zone = zone;
+
+  /* ── Rooms ── */
+  const targetRooms = RNG.range(6, 9);
+  const rooms = [];
+  for (let attempt = 0; attempt < 600 && rooms.length < targetRooms; attempt++) {
+    // Shrink the rooms as the attempts pile up: a 30x18 grid only fits 6-9 rooms
+    // when the big ones stop hogging the space.
+    const shrink = attempt > 100 ? 1 : 0;
+    const w = RNG.range(4, 7 - shrink), h = RNG.range(3, 4);
+    const r = { x: RNG.range(1, CFG.COLS - w - 2), y: RNG.range(1, CFG.ROWS - h - 2), w, h };
+    if (rooms.some(o => overlaps(r, o))) continue;
+    carveRoom(r);
+    if (rooms.length) {
+      const p = roomCentre(rooms[rooms.length - 1]), c = roomCentre(r);
+      carveCorridor(p.x, p.y, c.x, c.y);
+    }
+    rooms.push(r);
+  }
+  // A 30x14 grid cannot always fit 6-9 large halls, so keep filling the left-over
+  // space with progressively smaller rooms until there are at least 6.
+  for (let pass = 0; pass < 5 && rooms.length < 6; pass++) {
+    const w = [6, 5, 4, 3][pass], h = [4, 3, 3, 3][pass];
+    // A deterministic scan fills the gaps better than random placement: the random
+    // loop above leaves odd-shaped holes that a lattice scan still finds.
+    for (let y = 1; y <= CFG.ROWS - h - 2 && rooms.length < 6; y++) {
+      for (let x = 1; x <= CFG.COLS - w - 2 && rooms.length < 6; x++) {
+        const r = { x, y, w, h };
+        if (rooms.some(o => overlaps(r, o))) continue;
+        carveRoom(r);
+        const prev = roomCentre(rooms[rooms.length - 1]), c = roomCentre(r);
+        carveCorridor(prev.x, prev.y, c.x, c.y);
+        rooms.push(r);
+      }
+    }
+  }
+  G.map.rooms = rooms;
+
+  /* ── Entrance room (up-stairs + braziers) and exit room (down-stairs) ── */
+  const entrance = rooms[0];
+  G.map.up = roomCentre(entrance);
+  G.map.tiles[idx(G.map.up.x, G.map.up.y)] = T_STAIRS_UP;
+  G.map.decor[idx(G.map.up.x - 1, G.map.up.y)] = D_BRAZIER;
+  G.map.decor[idx(G.map.up.x + 1, G.map.up.y)] = D_BRAZIER;
+
+  let exitRoom = rooms[rooms.length - 1], far = -1;
+  for (const r of rooms) {
+    const c = roomCentre(r), d = Math.abs(c.x - G.map.up.x) + Math.abs(c.y - G.map.up.y);
+    if (d > far) { far = d; exitRoom = r; }
+  }
+  G.map.down = roomCentre(exitRoom);
+  if (depth < CFG.MAX_DEPTH) G.map.tiles[idx(G.map.down.x, G.map.down.y)] = T_STAIRS_DOWN;
+  else { G.map.tiles[idx(G.map.down.x, G.map.down.y)] = T_FLOOR; G.summit = { x: G.map.down.x, y: G.map.down.y }; }
+
+  /* ── Room themes ── */
+  const merchantHere = depth < CFG.MAX_DEPTH && RNG.chance(0.55);
+  let merchantAssigned = false;
+  for (let i = 1; i < rooms.length; i++) {
+    if (merchantHere && !merchantAssigned && i > 1 && RNG.chance(0.5)) {
+      rooms[i].theme = 'merchant'; merchantAssigned = true; continue;
+    }
+    const pool = ROOM_THEMES.filter(t => t.weight > 0);
+    rooms[i].theme = RNG.weighted(pool).id;
+  }
+  if (merchantHere && !merchantAssigned) { rooms[rooms.length - 1].theme = 'merchant'; merchantAssigned = true; }
+
+  /* ── Furniture & zone dressing per room ── */
+  for (const r of rooms) {
+    const c = roomCentre(r);
+    if (r === entrance) { dressRoom(r, zone, depth); continue; }
+    if (r.theme === 'merchant') {
+      G.map.decor[idx(c.x, c.y)] = D_TENT;
+      G.map.decor[idx(c.x - 1, c.y + 1)] = D_BARREL;
+      G.map.decor[idx(c.x + 1, c.y + 1)] = D_BARREL;
+    } else if (r.theme === 'armory') {
+      for (let i = 0; i < 3; i++) G.map.decor[idx(r.x + 1 + i, r.y + 1)] = D_BONES;
+    } else if (r.theme === 'cellar') {
+      G.map.decor[idx(c.x, c.y)] = D_BARREL;
+      G.map.decor[idx(c.x + 1, c.y)] = D_BARREL;
+      G.map.decor[idx(c.x - 1, c.y + 1)] = D_CHURN;
+      if (zone.id === 0) G.map.tiles[idx(c.x, c.y + 1)] = T_VINE;
+    } else if (r.theme === 'shrine') {
+      G.map.hazard[idx(c.x, c.y)] = H_SHRINE;
+    } else if (r.theme === 'grotto') {
+      G.map.tiles[idx(c.x, c.y)] = T_WATER;
+      G.map.decor[idx(c.x, c.y)] = D_LILY;
+      G.map.decor[idx(c.x + 1, c.y)] = D_LILY;
+    } else if (r.theme === 'pantry') {
+      G.map.decor[idx(c.x, c.y)] = D_HAY;
+      G.map.decor[idx(c.x + 1, c.y + 1)] = D_BUCKET;
+    }
+    dressRoom(r, zone, depth);
+  }
+
+  /* ── Hazards: spikes, fire pits, ice, rope ladders ── */
+  const spikes = RNG.range(3, 6) + Math.floor(depth / 3);
+  scatter(spikes, (x, y) => { G.map.hazard[idx(x, y)] = H_SPIKE; });
+  if (zone.id === 1 || zone.id === 4) {
+    scatter(RNG.range(4, 8), (x, y) => { G.map.hazard[idx(x, y)] = H_FIRE; G.map.decor[idx(x, y)] = D_BRAZIER; });
+  }
+  if (zone.id === 4) {
+    scatter(RNG.range(6, 10), (x, y) => { G.map.tiles[idx(x, y)] = T_SNOW; G.map.hazard[idx(x, y)] = H_ICE; });
+  }
+  if (zone.id === 2) {
+    scatter(RNG.range(3, 6), (x, y) => { G.map.hazard[idx(x, y)] = H_LADDER; G.map.decor[idx(x, y)] = D_LADDERDRAW; });
+  }
+  if (zone.id === 3) scatter(RNG.range(3, 6), (x, y) => { G.map.tiles[idx(x, y)] = T_WALL_ICE; });
+
+  /* ── Chests & plaques ── */
+  const chests = RNG.range(1, 3);
+  scatter(chests, (x, y) => { G.map.decor[idx(x, y)] = D_CHEST; });
+  scatter(RNG.range(0, 2), (x, y) => { G.map.decor[idx(x, y)] = D_PLAQUE; });
+
+  /* ── Secret rooms hidden behind thin walls ── */
+  const secrets = RNG.range(1, 2);
+  for (let s = 0; s < secrets; s++) carveSecretRoom(depth, rooms);
+
+  ensureConnectivity(G.map.up.x, G.map.up.y);
+
+  /* The dressing above can plant vines, water, snow or a fire pit on the stairs.
+   * Re-assert them last so a level can never lose its exits. */
+  G.map.tiles[idx(G.map.up.x, G.map.up.y)] = T_STAIRS_UP;
+  G.map.hazard[idx(G.map.up.x, G.map.up.y)] = H_NONE;
+  G.map.decor[idx(G.map.up.x, G.map.up.y)] = D_NONE;
+  G.map.tiles[idx(G.map.down.x, G.map.down.y)] = depth < CFG.MAX_DEPTH ? T_STAIRS_DOWN : T_FLOOR;
+  G.map.hazard[idx(G.map.down.x, G.map.down.y)] = H_NONE;
+  G.map.decor[idx(G.map.down.x, G.map.down.y)] = D_NONE;
+
+  /* ── Entities ── */
+  G.items = []; G.enemies = []; G.npcs = [];
+  populateEnemies(depth, zone, rooms);
+  populateLoot(depth, zone, rooms);
+  populateNpcs(depth, zone, rooms, merchantAssigned);
+
+  /* Deepest floor: Morena herself waits in a stone circle. */
+  if (depth === CFG.MAX_DEPTH) {
+    const c = G.summit;
+    for (const [dx, dy] of [[0,-2],[2,-2],[3,0],[2,2],[0,2],[-2,2],[-3,0],[-2,-2]]) {
+      if (inMap(c.x + dx, c.y + dy) && walkable(c.x + dx, c.y + dy)) G.map.decor[idx(c.x + dx, c.y + dy)] = D_GRAVE;
+    }
+    const boss = makeEnemy('morena', depth);
+    boss.x = c.x; boss.y = c.y - 4;
+    if (!walkable(boss.x, boss.y)) { boss.x = c.x; boss.y = Math.max(1, c.y - 2); }
+    G.enemies.push(boss);
+    G.boss = boss;
+  } else {
+    G.boss = null; G.summit = null;
+  }
+}
+
+/** Random floor tile that is free of entities, hazards and features. */
+function randomFloorTile(avoidPlayerBy) {
+  for (let i = 0; i < 600; i++) {
+    const x = RNG.range(1, CFG.COLS - 2), y = RNG.range(1, CFG.ROWS - 2);
+    if (G.map.tiles[idx(x, y)] !== T_FLOOR && G.map.tiles[idx(x, y)] !== T_SNOW) continue;
+    if (G.map.decor[idx(x, y)] === D_CHEST) continue;
+    if (entityAt(x, y)) continue;
+    if (avoidPlayerBy && G.player && Math.abs(x - G.player.x) + Math.abs(y - G.player.y) < avoidPlayerBy) continue;
+    return { x, y };
+  }
+  return null;
+}
+function scatter(n, fn) {
+  for (let i = 0; i < n; i++) {
+    const p = randomFloorTile(3);
+    if (p) fn(p.x, p.y);
+  }
+}
+
+/** Zone-specific dressing so each region reads differently. */
+function dressRoom(r, zone, depth) {
+  const spots = RNG.range(1, 4);
+  for (let i = 0; i < spots; i++) {
+    const x = RNG.range(r.x, r.x + r.w - 1), y = RNG.range(r.y, r.y + r.h - 1);
+    if (!walkable(x, y)) continue;
+    const roll = RNG.next();
+    if (zone.id === 0) {
+      if (roll < 0.35) G.map.tiles[idx(x, y)] = T_VINE;
+      else if (roll < 0.6) G.map.decor[idx(x, y)] = D_HAY;
+      else if (roll < 0.8) G.map.decor[idx(x, y)] = D_BUCKET;
+      else G.map.decor[idx(x, y)] = D_FLOWERS;
+    } else if (zone.id === 1) {
+      if (roll < 0.4) G.map.decor[idx(x, y)] = D_TAPESTRY;
+      else if (roll < 0.7) G.map.decor[idx(x, y)] = D_BARREL;
+      else G.map.decor[idx(x, y)] = D_BRAZIER;
+    } else if (zone.id === 2) {
+      if (roll < 0.45) G.map.tiles[idx(x, y)] = T_WATER;
+      else if (roll < 0.75) G.map.decor[idx(x, y)] = D_BONES;
+      else G.map.decor[idx(x, y)] = D_PILLOW;
+    } else if (zone.id === 3) {
+      if (roll < 0.4) G.map.decor[idx(x, y)] = D_GRAVE;
+      else if (roll < 0.7) G.map.decor[idx(x, y)] = D_BONES;
+      else G.map.decor[idx(x, y)] = D_TAPESTRY;
+    } else {
+      if (roll < 0.5) G.map.tiles[idx(x, y)] = T_SNOW;
+      else if (roll < 0.8) G.map.decor[idx(x, y)] = D_BONES;
+      else G.map.decor[idx(x, y)] = D_BRAZIER;
+    }
+  }
+}
+
+/** A small treasure room sealed by thin walls — reveal it by bumping them. */
+function carveSecretRoom(depth, rooms) {
+  const host = RNG.pick(rooms);
+  const side = RNG.int(4);
+  let sx = host.x, sy = host.y, w = RNG.range(3, 4), h = RNG.range(3, 4);
+  if (side === 0) { sx = host.x + host.w; sy = host.y + RNG.range(0, Math.max(0, host.h - h)); }
+  if (side === 1) { sx = host.x - w; sy = host.y + RNG.range(0, Math.max(0, host.h - h)); }
+  if (side === 2) { sx = host.x + RNG.range(0, Math.max(0, host.w - w)); sy = host.y + host.h; }
+  if (side === 3) { sx = host.x + RNG.range(0, Math.max(0, host.w - w)); sy = host.y - h; }
+  if (sx < 1 || sy < 1 || sx + w > CFG.COLS - 1 || sy + h > CFG.ROWS - 1) return;
+  for (let y = sy; y < sy + h; y++)
+    for (let x = sx; x < sx + w; x++)
+      if (inMap(x, y)) G.map.tiles[idx(x, y)] = T_FLOOR;
+  const secret = { x: sx, y: sy, w, h, theme: 'secret' };
+  G.map.rooms.push(secret);
+  // Seal it, except for one or two thin-wall tiles touching the host room.
+  for (let y = sy - 1; y <= sy + h; y++)
+    for (let x = sx - 1; x <= sx + w; x++) {
+      if (x >= sx && x < sx + w && y >= sy && y < sy + h) continue;
+      if (inMap(x, y) && G.map.tiles[idx(x, y)] === T_FLOOR) G.map.tiles[idx(x, y)] = T_THIN;
+    }
+  // Force the host-facing side open with a thin wall the player can break.
+  const doorCandidates = [];
+  for (let x = sx; x < sx + w; x++) {
+    if (inMap(x, sy + h) && (G.map.tiles[idx(x, sy + h)] === T_THIN || G.map.tiles[idx(x, sy + h)] === T_WALL)) doorCandidates.push({ x, y: sy + h });
+    if (inMap(x, sy - 1) && G.map.tiles[idx(x, sy - 1)] !== T_FLOOR) doorCandidates.push({ x, y: sy - 1 });
+  }
+  if (doorCandidates.length) {
+    const d = RNG.pick(doorCandidates);
+    G.map.tiles[idx(d.x, d.y)] = T_THIN;
+    // Keep a corridor path so the secret room is not an isolated island in the wall.
+    G.map.tiles[idx(RNG.range(sx, sx + w - 1), RNG.range(Math.max(1, sy - 1), Math.min(CFG.ROWS - 2, sy + h)))] = T_THIN;
+  }
+  // Reward inside.
+  const lootCount = RNG.range(2, 4);
+  for (let i = 0; i < lootCount; i++) {
+    const x = RNG.range(sx, sx + w - 1), y = RNG.range(sy, sy + h - 1);
+    const it = makeRandomItem(depth + 2, x, y);
+    if (it) G.items.push(it);
+  }
+  if (RNG.chance(0.5)) {
+    const x = RNG.range(sx, sx + w - 1), y = RNG.range(sy, sy + h - 1);
+    G.map.hazard[idx(x, y)] = H_SHRINE;
+  }
+}
+
+/* ── Spawning: enemies, loot, NPCs ─────────────────────────────────────── */
+function populateEnemies(depth, zone, rooms) {
+  const count = 6 + Math.floor(depth * 1.6) + RNG.int(3);
+  const pool = Object.keys(ENEMIES).filter(k => k !== 'morena' &&
+    ENEMIES[k].minZ <= zone.id && ENEMIES[k].maxZ >= zone.id);
+  for (let i = 0; i < count; i++) {
+    const type = weightedEnemyType(pool);
+    for (let tries = 0; tries < 30; tries++) {
+      const r = RNG.pick(rooms);
+      if (r.theme === 'merchant' || r.theme === 'secret') continue;
+      const x = RNG.range(r.x, r.x + r.w - 1), y = RNG.range(r.y, r.y + r.h - 1);
+      if (!walkable(x, y) || entityAt(x, y) || hazardAt(x, y)) continue;
+      if (!G.player || (Math.abs(x - G.player.x) + Math.abs(y - G.player.y)) < 7) continue;
+      G.enemies.push(makeEnemy(type, depth, x, y));
+      break;
+    }
+  }
+  // One wandering dragon guardian somewhere in the run (zones 2-4).
+  if (zone.id >= 1 && zone.id <= 3 && !G.dragonSpawned && RNG.chance(0.30)) {
+    const spot = randomFloorTile(9);
+    if (spot) { G.enemies.push(makeEnemy('drak', depth, spot.x, spot.y)); G.dragonSpawned = true; }
+  }
+}
+/** Weight the roster so late-zone monsters dominate, keeping a few weak ones. */
+function weightedEnemyType(pool) {
+  const table = pool.map(k => {
+    const e = ENEMIES[k];
+    const mid = (e.minZ + e.maxZ) / 2;
+    return { k, weight: Math.max(1, 4 - Math.abs(mid - zoneForDepth(G.depth).id) * 1.5) };
+  });
+  return RNG.weighted(table).k;
+}
+
+function makeEnemy(type, depth, x, y) {
+  const t = ENEMIES[type];
+  const scale = 1 + (depth - 1) * 0.06;
+  const hp = Math.round(t.hp * scale);
+  return {
+    type, x, y, zx: x, zy: y,             // z* = animation source tile
+    hp, maxHp: hp,
+    atk: Math.round(t.atk * (1 + (depth - 1) * 0.05)),
+    def: t.def, xp: Math.round(t.xp * (1 + (depth - 1) * 0.08)),
+    speed: t.speed, energy: RNG.int(100),
+    awake: false, lastSeen: null, cd: 0, phases: false, boss: type === 'morena',
+    statuses: {}, name: t.sk, en: t.en, spr: t.spr, special: t.sp,
+    blinkUsed: false, died: false
+  };
+}
+
+function makeRandomItem(depth, x, y) {
+  const pool = Object.keys(ITEMS).filter(id => {
+    const it = ITEMS[id];
+    return !it.legendary && depth >= it.minD;
+  });
+  const table = pool.map(id => {
+    const it = ITEMS[id];
+    let weight = it.kind === 'food' ? 5 : it.kind === 'drink' ? 2 : 2;
+    if (it.kind === 'key' || it.kind === 'torch' || it.kind === 'holy') weight = 2;
+    if (it.rare) weight = 1;
+    return { id, weight };
+  });
+  const id = RNG.weighted(table).id;
+  return { id, x, y, count: 1, charges: id === 'svetlo' ? 1 : undefined };
+}
+
+function populateLoot(depth, zone, rooms) {
+  const count = 5 + RNG.range(0, 3) + Math.floor(depth / 2);
+  let placed = 0;
+  for (let i = 0; i < count; i++) {
+    for (let tries = 0; tries < 30; tries++) {
+      const r = RNG.pick(rooms);
+      if (r.theme === 'merchant' || r.theme === 'secret') continue;
+      const x = RNG.range(r.x, r.x + r.w - 1), y = RNG.range(r.y, r.y + r.h - 1);
+      if (!walkable(x, y) || entityAt(x, y) || itemAt(x, y) || hazardAt(x, y)) continue;
+      // Gold piles are their own thing (dukáty).
+      if (RNG.chance(0.45)) G.items.push({ id: 'dukat', x, y, count: RNG.range(5, 14) * depth + RNG.int(10) });
+      else {
+        const it = makeRandomItem(depth, x, y);
+        if (!it) continue;
+        G.items.push(it);
+      }
+      placed++;
+      break;
+    }
+  }
+  G.lootPlaced = placed;
+  // A legendary weapon shows up late, once per run.
+  if (!G.legendaryDropped && depth >= 7) {
+    const id = RNG.pick(['jvalaska', 'jfujara', 'plaszt']);
+    const spot = randomFloorTile(4);
+    if (spot) { G.items.push({ id, x: spot.x, y: spot.y, count: 1 }); G.legendaryDropped = true; log(`V diaľke sa zalesklo — ${ITEMS[id].sk}.`, 'y'); }
+  }
+}
+
+function populateNpcs(depth, zone, rooms, merchantAssigned) {
+  for (const r of rooms) {
+    if (r.theme === 'merchant') {
+      const spot = freeRoomTile(r) || roomCentre(r);
+      G.npcs.push({ kind: 'merchant', name: 'Cvril', sk: 'Cvril, svišť s klepetom', en: 'Cvril the marmot merchant',
+                    x: spot.x, y: spot.y, stock: rollStock(depth) });
+    }
+    if (r.theme === 'plain' && RNG.chance(0.25)) {
+      const spot = freeRoomTile(r);
+      if (spot) G.npcs.push({ kind: 'baba', sk: 'Starenka s lokšami', en: 'Old woman with lokše',
+                              x: spot.x, y: spot.y, used: false });
+    }
+  }
+  if (depth === 1 && rooms[1]) {
+    const spot = freeRoomTile(rooms[1]) || roomCentre(rooms[1]);
+    G.npcs.push({ kind: 'ghost', sk: 'Jánošíkov duch', en: "Jánošík's ghost", x: spot.x, y: spot.y, giftGiven: false });
+  }
+  clearNpcChokepoints();
+}
+
+/** A plain room tile: walkable, off the corridors, clear of hazards and entities. */
+function freeRoomTile(r) {
+  for (let tries = 0; tries < 40; tries++) {
+    const x = RNG.range(r.x, Math.max(r.x, r.x + r.w - 1));
+    const y = RNG.range(r.y, Math.max(r.y, r.y + r.h - 1));
+    if (!walkable(x, y)) continue;
+    if (G.map.corr[idx(x, y)]) continue;                 // never in a corridor
+    if (hazardAt(x, y) !== H_NONE || decorAt(x, y) !== D_NONE) continue;
+    if (entityAt(x, y)) continue;
+    return { x, y };
+  }
+  return null;
+}
+
+/** Last line of defence: if an NPC seals the route to the stairs, move it aside. */
+function clearNpcChokepoints() {
+  for (let pass = 0; pass < 12; pass++) {
+    const blocked = (x, y) => G.npcs.some(n => n.x === x && n.y === y);
+    const seen = reachableFrom(G.map.up.x, G.map.up.y, (x, y) => walkable(x, y) && !blocked(x, y));
+    if (seen[idx(G.map.down.x, G.map.down.y)]) return true;
+    const r = G.map.rooms[RNG.int(G.map.rooms.length)];
+    const spot = freeRoomTile(r);
+    if (!spot) break;
+    G.npcs[pass % Math.max(1, G.npcs.length)].x = spot.x;
+    G.npcs[pass % Math.max(1, G.npcs.length)].y = spot.y;
+  }
+  return false;
+}
+function rollStock(depth) {
+  const stock = [];
+  const n = RNG.range(4, 6);
+  for (let i = 0; i < n; i++) {
+    const it = makeRandomItem(depth + 1, 0, 0);
+    if (it && !stock.some(s => s.id === it.id)) stock.push({ id: it.id, price: Math.round(ITEMS[it.id].price * (1 + RNG.next() * 0.3)) });
+  }
+  if (!stock.some(s => s.id === 'kluc')) stock.push({ id: 'kluc', price: 14 });
+  if (!stock.some(s => s.id === 'svetlo')) stock.push({ id: 'svetlo', price: 20 });
+  stock.push({ id: depth >= 3 ? 'kapustnica' : 'halusky', price: depth >= 3 ? 30 : 18 });
+  return stock;
+}
+
+/* ============================================================================
+ * 4. ENTITIES — player, lookups, inventory rules
+ * ==========================================================================*/
+function makePlayer(x, y) {
+  return {
+    x, y, zx: x, zy: y,
+    hp: 30, maxHp: 30, atk: 5, def: 1, crit: CFG.CRIT_CHANCE,
+    lvl: 1, xp: 0, xpNext: 10,
+    gold: 0, inv: [], weapon: 'valaska', head: null, armour: null,
+    invSlots: CFG.INV_SLOTS, throwRange: CFG.VALASKA_RANGE, charges: CFG.VALASKA_CHARGES,
+    fujaraCd: 0, steps: 0, moves: 0, speedCharge: 0, statuses: {},
+    burnOnHit: 0, thorns: 0, regen: false, noPull: false, goldBonus: 0,
+    fovBonus: 0, extraAction: false, speed: 1, energy: 0, drunk: 0,
+    maxHpCurse: 0, atkDebuff: 0
+  };
+}
+const entityAt = (x, y) =>
+  G.enemies.find(e => !e.died && e.x === x && e.y === y) ||
+  (G.player && G.player.x === x && G.player.y === y ? G.player : null) ||
+  G.npcs.find(n => n.x === x && n.y === y);
+const enemyAt = (x, y) => G.enemies.find(e => !e.died && e.x === x && e.y === y) || null;
+const itemAt = (x, y) => G.items.find(i => i.x === x && i.y === y) || null;
+const npcAt = (x, y) => G.npcs.find(n => n.x === x && n.y === y) || null;
+
+const XP_TABLE = [0, 10, 25, 50, 90, 150, 230, 340, 500, 700, 950, 1250];
+function xpForLevel(l) { return XP_TABLE[Math.min(l, XP_TABLE.length - 1)]; }
+
+/** Effective attack / defence including equipment, buffs and debuffs. */
+function playerAtk() {
+  let a = G.player.atk + (G.player.statuses.atk ? G.player.statuses.atk.value : 0);
+  if (G.player.weapon && ITEMS[G.player.weapon]) a += ITEMS[G.player.weapon].atk || 0;
+  else if (G.player.head === 'kamzik') a += 0;                 // kamzík horn is a tool bonus, tracked below
+  if (hasTool('kamzik')) a += 1;
+  a -= G.player.atkDebuff;
+  return a;
+}
+function playerDef() {
+  let d = G.player.def;
+  if (G.player.armour && ITEMS[G.player.armour]) d += ITEMS[G.player.armour].def || 0;
+  if (G.player.head && ITEMS[G.player.head]) d += ITEMS[G.player.head].def || 0;
+  return d;
+}
+function playerCrit() {
+  let c = G.player.crit;
+  if (G.player.head === 'siraky') c += 0.05;
+  return Math.min(0.75, c);
+}
+const hasTool = id => G.player.inv.some(i => i.id === id) || G.player.weapon === id || G.player.head === id;
+const hasItem = id => G.player.inv.some(i => i.id === id) || G.player.weapon === id || G.player.head === id || G.player.armour === id;
+const immuneAll = () => G.player.armour === 'plaszt';
+
+/* ============================================================================
+ * 5. FOV & FOG — Bresenham line of sight, radius 8, corners blocked
+ * ==========================================================================*/
+function lightRadius() {
+  let r = CFG.FOV_RADIUS + G.player.fovBonus;
+  if (isCaveRegion(G.depth)) r = Math.max(4, r - 3);           // dark cave stretch in the Tatras
+  if (G.player.statuses.svetlo) r += 3;
+  if (G.map.zone.id === 4 && !hasItem('kozuch')) r -= 1;       // cold makes the edge of vision hazy
+  return r;
+}
+
+function computeFov() {
+  const p = G.player;
+  G.map.visible = new Uint8Array(CFG.COLS * CFG.ROWS);
+  const R = lightRadius();
+  G.map.visible[idx(p.x, p.y)] = 1; G.map.seen[idx(p.x, p.y)] = 1;
+  for (let y = p.y - R; y <= p.y + R; y++) {
+    for (let x = p.x - R; x <= p.x + R; x++) {
+      if (!inMap(x, y)) continue;
+      if ((x - p.x) * (x - p.x) + (y - p.y) * (y - p.y) > R * R) continue;
+      if (lineOfSight(p.x, p.y, x, y)) { G.map.visible[idx(x, y)] = 1; G.map.seen[idx(x, y)] = 1; }
+    }
+  }
+}
+/** Bresenham line; a diagonal step requires BOTH orthogonal neighbours open (no corner peeking). */
+function lineOfSight(x0, y0, x1, y1) {
+  let dx = Math.abs(x1 - x0), dy = Math.abs(y1 - y0);
+  let sx = x0 < x1 ? 1 : -1, sy = y0 < y1 ? 1 : -1;
+  let err = dx - dy, x = x0, y = y0, guard = 0;
+  while (guard++ < 400) {
+    if (x === x1 && y === y1) return true;
+    const e2 = 2 * err;
+    let steppedX = false, steppedY = false;
+    if (e2 > -dy) { err -= dy; x += sx; steppedX = true; }
+    if (e2 < dx) { err += dx; y += sy; steppedY = true; }
+    if (steppedX && steppedY) {
+      if (blocksSight(x0, y0, x, y) && blocksSight(x, y, x0, y0)) return false;
+    }
+    if (x === x1 && y === y1) return true;
+    if (!inMap(x, y)) return false;
+    if (opaque(x, y)) return false;
+  }
+  return false;
+}
+const opaque = (x, y) => { const t = tileAt(x, y); return t === T_WALL || t === T_THIN; };
+const blocksSight = (x0, y0, x, y) => { const t = tileAt(x, y); return t === T_WALL || t === T_THIN; };
+const visibleAt = (x, y) => inMap(x, y) && G.map.visible[idx(x, y)] === 1;
+const seenAt = (x, y) => inMap(x, y) && G.map.seen[idx(x, y)] === 1;
+
+/* ============================================================================
+ * 6. AI — greedy chase on a BFS distance field, ranged retreat, sanctuaries
+ * ==========================================================================*/
+/** Distance field from the player over walkable tiles (BFS = cheap and correct). */
+function distanceField() {
+  const d = new Int16Array(CFG.COLS * CFG.ROWS).fill(-1);
+  const q = [G.player.x + G.player.y * CFG.COLS];
+  d[q[0]] = 0;
+  let head = 0;
+  while (head < q.length) {
+    const cur = q[head++];
+    const cx = cur % CFG.COLS, cy = (cur / CFG.COLS) | 0;
+    for (const [dx, dy] of DIRS4) {
+      const nx = cx + dx, ny = cy + dy;
+      if (!inMap(nx, ny) || d[idx(nx, ny)] !== -1) continue;
+      if (!walkable(nx, ny)) continue;
+      const blockedByEnemy = enemyAt(nx, ny) && !(nx === G.player.x && ny === G.player.y);
+      if (blockedByEnemy) continue;
+      d[idx(nx, ny)] = d[cur] + 1;
+      q.push(idx(nx, ny));
+    }
+  }
+  return d;
+}
+
+function senseEnemy(e) {
+  if (visibleAt(e.x, e.y)) { e.awake = true; e.lastSeen = { x: G.player.x, y: G.player.y }; }
+  else if (e.lastSeen && e.lastSeen.x === G.player.x && e.lastSeen.y === G.player.y) e.lastSeen = null;
+  return e.awake;
+}
+
+/** One enemy turn: statuses, then behaviour by special. */
+function enemyTurn(e, dfield) {
+  if (e.died) return;
+  tickEnemyStatuses(e);
+  if (e.statuses.stun || e.statuses.sleep) return;
+  if (!senseEnemy(e)) { wander(e); return; }
+
+  const d = dist(e, G.player);
+  const sees = visibleAt(e.x, e.y);
+
+  switch (e.special) {
+    case 'pull':     return vodnikTurn(e, d);
+    case 'double':   return polednicaTurn(e, d);
+    case 'charge':   return bearTurn(e, d);
+    case 'cone':     return dragonTurn(e, d, sees);
+    case 'charm':    return divozenkaTurn(e, d, sees);
+    case 'boss1':
+    case 'boss2':    return morenaTurn(e, d, sees);
+    default:         return chase(e, dfield, d);
+  }
+}
+
+/** Idle wandering when the player is out of sight (or lost). */
+function wander(e) {
+  if (!RNG.chance(0.3)) return;
+  const [dx, dy] = RNG.pick(DIRS8);
+  tryStepEnemy(e, dx, dy);
+}
+
+function chase(e, dfield, d) {
+  const target = e.lastSeen || { x: G.player.x, y: G.player.y };
+  if (inMerchantRoom(target.x, target.y)) { e.lastSeen = null; e.awake = false; return; }
+  let best = null, bestD = 1e9;
+  for (const [dx, dy] of DIRS8) {
+    const nx = e.x + dx, ny = e.y + dy;
+    if (!inMap(nx, ny)) continue;
+    if (nx === G.player.x && ny === G.player.y) { enemyAttack(e); return; }
+    if (!walkable(nx, ny) || enemyAt(nx, ny) || inMerchantRoom(nx, ny)) continue;
+    if (hazardAt(nx, ny) === H_LADDER && e.speed > 0.5) continue;   // monsters dislike rope ladders
+    const dd = dfield[idx(nx, ny)];
+    const score = dd === -1 ? 9999 : dd;
+    if (score < bestD) { bestD = score; best = { x: nx, y: ny }; }
+  }
+  if (best) { e.zx = e.x; e.zy = e.y; e.x = best.x; e.y = best.y; }
+  else if (d <= 1) enemyAttack(e);
+}
+
+function tryStepEnemy(e, dx, dy) {
+  const nx = e.x + dx, ny = e.y + dy;
+  if (!inMap(nx, ny) || !walkable(nx, ny) || enemyAt(nx, ny) || inMerchantRoom(nx, ny)) return false;
+  if (nx === G.player.x && ny === G.player.y) { enemyAttack(e); return true; }
+  e.zx = e.x; e.zy = e.y; e.x = nx; e.y = ny;
+  return true;
+}
+
+/* ── Special behaviours ─────────────────────────────────────────────────── */
+function vodnikTurn(e, d) {
+  if (d <= 1) {
+    enemyAttack(e);
+    if (d === 1 && !G.player.noPull) {
+      const px = G.player.x + Math.sign(e.x - G.player.x), py = G.player.y + Math.sign(e.y - G.player.y);
+      if (walkable(px, py) && !enemyAt(px, py)) {
+        G.player.zx = G.player.x; G.player.zy = G.player.y;
+        G.player.x = px; G.player.y = py;
+        log('Vodník ťa stiahol k sebe! / The vodník pulls you in!', 'b');
+        computeFov();
+      }
+    }
+    return;
+  }
+  chase(e, distanceField(), d);
+}
+
+function polednicaTurn(e, d) {
+  e.cd = (e.cd + 1) % 2;
+  if (d <= 1) { enemyAttack(e); if (e.cd === 1) enemyAttack(e); return; }
+  chase(e, distanceField(), d);
+}
+
+function bearTurn(e, d) {
+  const aligned = (e.x === G.player.x || e.y === G.player.y);
+  if (aligned && d <= 6) {                              // charge in a straight line
+    const dx = Math.sign(G.player.x - e.x), dy = Math.sign(G.player.y - e.y);
+    if (tryStepEnemy(e, dx, dy) || tryStepEnemy(e, dx, dy)) return;
+  }
+  chase(e, distanceField(), d);
+}
+
+function dragonTurn(e, d, sees) {
+  e.cd++;
+  if (sees && e.cd % 3 === 0 && d <= 3) {
+    const dx = Math.sign(G.player.x - e.x), dy = Math.sign(G.player.y - e.y);
+    log('Drak dýcha oheň! / The dragon breathes fire!', 'r');
+    spawnParticles(e.x, e.y, 18, '#ff8a3d');
+    for (let step = 1; step <= 3; step++) {
+      const fx = e.x + dx * step, fy = e.y + dy * step;
+      if (!inMap(fx, fy)) break;
+      if (fx === G.player.x && fy === G.player.y) { damagePlayer(7, 'oheň draka', 'fire'); break; }
+      if (Math.abs(fx - G.player.x) + Math.abs(fy - G.player.y) === 1) damagePlayer(4, 'oheň draka', 'fire');
+    }
+    return;
+  }
+  chase(e, distanceField(), d);
+}
+
+function divozenkaTurn(e, d, sees) {
+  if (sees && d <= 5 && !G.player.statuses.charm && RNG.chance(0.5)) {
+    if (!immuneAll()) {
+      G.player.statuses.charm = { turns: 3 };
+      log('Divoženka ťa očarovala — ovládanie sa obracia! / You are charmed, controls reverse!', 'b');
+    } else log('Plášť Moreny očarovanie pohltil. / The cloak absorbs the charm.', 'g');
+    return;
+  }
+  chase(e, distanceField(), d);
+}
+
+/* ============================================================================
+ * 7. COMBAT & STATUS EFFECTS
+ * ==========================================================================*/
+function damagePlayer(amount, source, type) {
+  if (G.over) return;
+  let dmg = Math.max(1, Math.round(amount));
+  if (G.easy) dmg = Math.max(1, Math.round(dmg * CFG.EASY_MULT));
+  G.player.hp -= dmg;
+  G.shake = 6;
+  G.flash = 1;
+  spawnFloater(G.player.x, G.player.y, '-' + dmg, '#ff7a7a');
+  spawnParticles(G.player.x, G.player.y, 8, '#ff5a5a');
+  log(`${source} ti ublížil ${dmg} (${source} hits you for ${dmg}).`, 'r');
+  sfx.hit();
+  if (G.player.hp <= 0) { G.player.hp = 0; die(); }
+}
+
+function enemyAttack(e) {
+  const raw = e.atk + RNG.int(3) - playerDef();
+  damagePlayer(Math.max(1, raw), e.name, 'melee');
+  if (G.player.thorns > 0 && !e.died) {
+    hurtEnemy(e, G.player.thorns, { silent: true });
+    log(`Ostne na kožuchu pichli ${e.name} za ${G.player.thorns}.`, 'g');
+  }
+  // Striga's curse: hits reduce your max HP until you eat kapustnica.
+  if (e.type === 'striga' && !immuneAll()) {
+    G.player.maxHpCurse += 2;
+    G.player.maxHp = Math.max(5, G.player.maxHp - 2);
+    G.player.hp = Math.min(G.player.hp, G.player.maxHp);
+    log('Striga ti vzala 2 max. životy! Kapustnica to vylieči. / Striga drains 2 max HP — kapustnica cures it.', 'r');
+  }
+}
+
+/** Bump attack: the player walks into an enemy. */
+function attackEnemy(e) {
+  const crit = RNG.next() < playerCrit();
+  const legend = G.player.weapon === 'jvalaska' && e.type === 'zbojnik';
+  let dmg = Math.max(1, playerAtk() + RNG.int(3) - e.def);
+  if (crit || legend) { dmg = Math.round(dmg * CFG.CRIT_MULT); }
+  if (G.player.weapon === 'valaska' || G.player.weapon === 'jvalaska') {
+    if (e.special === 'boss2') dmg *= 2;                       // burning wicker body: valaška hurts double
+  }
+  hurtEnemy(e, dmg, { crit: crit || legend });
+  if (G.player.burnOnHit > 0 && !e.died && RNG.next() < G.player.burnOnHit) {
+    e.statuses.burn = { turns: 3, dmg: 2 };
+    log(`${e.name} horí! / ${e.name} catches fire!`, 'y');
+  }
+  // Vlkolak teleports away the first time you hurt it.
+  if (e.type === 'vlkolak' && !e.blinkUsed && !e.died) {
+    e.blinkUsed = true;
+    const spots = [];
+    for (let i = 0; i < 60; i++) {
+      const nx = e.x + RNG.range(-4, 4), ny = e.y + RNG.range(-4, 4);
+      if (inMap(nx, ny) && walkable(nx, ny) && !enemyAt(nx, ny) && !(nx === G.player.x && ny === G.player.y)) spots.push({ x: nx, y: ny });
+    }
+    if (spots.length) {
+      const s = RNG.pick(spots);
+      e.zx = e.x; e.zy = e.y; e.x = s.x; e.y = s.y;
+      log('Vlkolak sa zatrepol a zmizol! / The werewolf blinks away!', 'b');
+      spawnParticles(e.x, e.y, 10, '#b6a0ff');
+    }
+  }
+}
+
+function hurtEnemy(e, dmg, opts) {
+  opts = opts || {};
+  e.hp -= dmg;
+  if (e.boss && !e.phases && e.hp > 0 && e.hp <= 50) enterMorenaPhase2(e);
+  if (!opts.silent) {
+    spawnFloater(e.x, e.y, '-' + dmg, opts.crit ? '#ffe08a' : '#ffd9a0');
+    spawnParticles(e.x, e.y, opts.crit ? 14 : 7, opts.crit ? '#ffe08a' : '#e06a6a');
+    if (opts.crit) { log(`Kritický zásah do ${e.name} za ${dmg}! / Critical hit for ${dmg}!`, 'y'); sfx.crit(); }
+    else { log(`Zasiahol si ${e.name} za ${dmg}. / You hit ${e.name} for ${dmg}.`, 'g'); sfx.hit(); }
+  }
+  if (e.hp <= 0) killEnemy(e);
+}
+
+function killEnemy(e) {
+  e.died = true;
+  e.hp = 0;
+  G.kills++;
+  G.player.xp += e.xp;
+  spawnParticles(e.x, e.y, 16, '#c9a227');
+  log(`${e.name} padá. (+${e.xp} skúseností) / ${e.name} falls. (+${e.xp} XP)`, 'g');
+  // Loot: dukáty, sometimes an item.
+  if (e.boss) { triggerVictory(); return; }
+  let coins = 3 + RNG.int(6 + G.depth);
+  if (RNG.chance(0.35)) coins *= 2;
+  coins = Math.round(coins * (1 + G.player.goldBonus));
+  G.items.push({ id: 'dukat', x: e.x, y: e.y, count: coins });
+  if (RNG.chance(0.18)) { const it = makeRandomItem(G.depth, e.x, e.y); if (it) G.items.push(it); }
+  checkLevelUp();
+}
+
+function tickEnemyStatuses(e) {
+  const st = e.statuses;
+  for (const key of Object.keys(st)) {
+    const s = st[key];
+    if (key === 'burn') {
+      e.hp -= s.dmg;
+      spawnFloater(e.x, e.y, '-' + s.dmg, '#ff8a3d');
+      if (!e.died && e.hp <= 0) { killEnemy(e); return; }
+    }
+    if (key === 'poison') { e.hp -= 1; if (e.hp <= 0 && !e.died) { killEnemy(e); return; } }
+    s.turns--;
+    if (s.turns <= 0) delete st[key];
+  }
+}
+
+/** Advance every status on the player at the end of a turn. */
+function tickPlayerStatuses() {
+  const st = G.player.statuses;
+  for (const key of Object.keys(st)) {
+    const s = st[key];
+    if (key === 'burn') damagePlayer(2, 'oheň', 'fire');
+    if (key === 'poison') damagePlayer(1, 'jed', 'poison');
+    s.turns--;
+    if (s.turns <= 0) {
+      delete st[key];
+      if (key === 'atk') log('Tatranský čaj vyprchal. / The Tatra tea wears off.', 'sys');
+      if (key === 'speed') log('Šúľance dobehli. / The sugar rush ends.', 'sys');
+      if (key === 'svetlo') log('Fakľa dohorela. / The torch burns out.', 'sys');
+    }
+  }
+  if (G.player.drunk > 0) {
+    G.player.drunk--;
+  }
+}
+
+function checkLevelUp() {
+  let levelled = false;
+  while (G.player.lvl < 12 && G.player.xp >= xpForLevel(G.player.lvl + 1)) {
+    G.player.xp -= xpForLevel(G.player.lvl + 1);
+    G.player.lvl++;
+    levelled = true;
+  }
+  if (levelled) {
+    G.player.xpNext = xpForLevel(G.player.lvl + 1);
+    G.player.hp = G.player.maxHp;                 // level-up = full heal
+    sfx.levelUp();
+    spawnParticles(G.player.x, G.player.y, 26, '#ffe08a');
+    log(`Nová úroveň ${G.player.lvl}! Jánošík sa zjavuje. / Level ${G.player.lvl}! Jánošík appears.`, 'y');
+    openLevelUp();
+  }
+}
+
+/* ============================================================================
+ * 8. ITEMS, INVENTORY, LOOT — Slovak cuisine, crafts and legendary gear
+ * ==========================================================================*/
+function addToInv(id, count) {
+  const def = ITEMS[id];
+  const p = G.player;
+  if (count === undefined) count = 1;
+  if (def.stack) {
+    const found = p.inv.find(i => i.id === id);
+    if (found) { found.count = (found.count || 1) + count; return true; }
+  }
+  if (p.inv.length >= p.invSlots) { log('Batoh je plný! / Your pack is full!', 'sys'); return false; }
+  p.inv.push({ id, count });
+  return true;
+}
+
+function removeFromInv(slot) { G.player.inv.splice(slot, 1); }
+
+/** Use / equip / read whatever sits in inventory slot n (1-based). */
+function useItem(n) {
+  const p = G.player;
+  const slot = n - 1;
+  const entry = p.inv[slot];
+  if (!entry) return false;
+  const def = ITEMS[entry.id];
+  let consumed = true;
+
+  switch (def.kind) {
+    case 'food':
+      if (p.hp >= p.maxHp && !def.cures) { log('Si plný — jedlo si nechaj na horšie časy. / You are full.', 'sys'); return false; }
+      healPlayer(def.heal, def.sk);
+      if (def.cures === 'curse' && p.maxHpCurse > 0) {
+        p.maxHp += p.maxHpCurse; p.hp += p.maxHpCurse;
+        log(`Kapustnica zlomila striginu kliatbu (+${p.maxHpCurse} max. životov). / The soup lifts the curse.`, 'g');
+        p.maxHpCurse = 0;
+      }
+      if (def.speedTurns) { p.statuses.speed = { turns: def.speedTurns, value: 1 }; log('Šúľance s makom: si rýchlejší. / Sugar rush: faster.', 'g'); }
+      break;
+    case 'drink':
+      if (def.extraAction) { p.extraAction = true; log('Kofola! Tento ťah máš o krok navyše. / Kofola grants an extra action.', 'g'); }
+      if (def.atk) { p.statuses.atk = { turns: def.atkTurns, value: def.atk }; log(`Tatranský čaj: +${def.atk} útok na ${def.atkTurns} ťahov.`, 'y'); }
+      if (def.drunkTurns) { p.drunk = def.drunkTurns; log('Hlavu máš ťažkú — tento ťah len sedíš. / You are too drunk to move this turn.', 'b'); }
+      break;
+    case 'weapon':
+      if (p.weapon) log(`Odkladáš ${ITEMS[p.weapon] ? ITEMS[p.weapon].sk : 'zbraň'}.`, 'sys');
+      p.weapon = entry.id;
+      if (entry.id === 'valaska' || entry.id === 'jvalaska') p.charges = CFG.VALASKA_CHARGES;
+      log(`Berieš ${def.sk} (+${def.atk} útok). / You wield ${def.en}.`, 'g');
+      break;
+    case 'armour':
+      if (p.armour) addToInv(p.armour, 1);
+      p.armour = entry.id; consumed = false; removeFromInv(slot);
+      log(`Obliekaš si ${def.sk} (+${def.def} obrana). / You wear ${def.en}.`, 'g');
+      break;
+    case 'head':
+      if (p.head) addToInv(p.head, 1);
+      p.head = entry.id; consumed = false; removeFromInv(slot);
+      log(`Nasádzaš si ${def.sk}. / You put on ${def.en}.`, 'g');
+      break;
+    case 'tool':
+      if (entry.id === 'fujara' || entry.id === 'jfujara') {
+        if (p.fujaraCd > 0) { log(`Fujara odpočíva ešte ${p.fujaraCd} ťahov. / The fujara needs ${p.fujaraCd} more turns.`, 'sys'); return false; }
+        const turns = def.sleepTurns;
+        let slept = 0;
+        for (const e of G.enemies) if (!e.died && cheb(e, p) <= 6) { e.statuses.sleep = { turns }; slept++; }
+        p.fujaraCd = 10;
+        sfx.pluck(440 + RNG.int(200));
+        log(`Zahral si na fujaru — ${slept} nepriateľov zaspalo na ${turns} ťahy. / ${slept} enemies fall asleep.`, 'b');
+      }
+      break;
+    case 'key':
+      log('Kľúč máš pripravený — truhly ho minú namiesto dartov. / The key is ready to disarm chests.', 'sys');
+      return false;
+    case 'torch':
+      p.statuses.svetlo = { turns: def.turns };
+      log(`Fakľa svieti — dohľad +${def.fov} na ${def.turns} ťahov. / Torch lit.`, 'y');
+      break;
+    case 'holy':
+      let hit = 0;
+      for (const e of G.enemies) if (!e.died && cheb(e, p) <= 1) { hurtEnemy(e, def.aoe, {}); hit++; }
+      spawnParticles(p.x, p.y, 30, '#dff7ff');
+      log(`Svätená voda ošľahla ${hit} nepriateľov za ${def.aoe}. / Holy water hits ${hit} enemies.`, 'g');
+      break;
+  }
+  if (consumed) {
+    entry.count = (entry.count || 1) - 1;
+    if (entry.count <= 0) removeFromInv(slot);
+  }
+  return true;
+}
+
+function healPlayer(amount, source) {
+  const before = G.player.hp;
+  G.player.hp = Math.min(G.player.maxHp, G.player.hp + amount);
+  const gained = G.player.hp - before;
+  spawnFloater(G.player.x, G.player.y, '+' + gained, '#a8e6a0');
+  sfx.loot();
+  log(`${source || 'Jedlo'}: +${gained} životov (${gained} HP).`, 'g');
+}
+
+/** Throw the valaška in a straight line — it lands and can be picked back up. */
+function throwValaska() {
+  const p = G.player;
+  if (!(p.weapon === 'valaska' || p.weapon === 'jvalaska')) { log('Na hádzanie potrebuješ valašku v ruke. / You need a valaška to throw.', 'sys'); return false; }
+  if (p.charges <= 0) { log('Valaška je už hodená — zdvihni ju, kde leží. / No valaška to throw — go pick it up.', 'sys'); return false; }
+  let dir = null, bestD = 1e9;
+  for (const e of G.enemies) {
+    if (e.died || !visibleAt(e.x, e.y)) continue;
+    const dx = e.x - p.x, dy = e.y - p.y;
+    const aligned = (dx === 0 || dy === 0 || Math.abs(dx) === Math.abs(dy));
+    const d = cheb(e, p);
+    if (aligned && d <= p.throwRange && d < bestD) { bestD = d; dir = { x: Math.sign(dx), y: Math.sign(dy), target: e }; }
+  }
+  if (!dir) { log('Nikto v priamke a v dosahu. / No target in a straight line.', 'sys'); return false; }
+  p.charges--;
+  // Fly along the line, hitting the first enemy and landing on the tile beyond.
+  let lx = p.x, ly = p.y;
+  for (let step = 1; step <= p.throwRange; step++) {
+    const fx = p.x + dir.x * step, fy = p.y + dir.y * step;
+    if (!inMap(fx, fy) || opaque(fx, fy)) break;
+    lx = fx; ly = fy;
+    const e = enemyAt(fx, fy);
+    if (e) {
+      const crit = RNG.next() < playerCrit();
+      let dmg = Math.max(1, playerAtk() + 2 + RNG.int(4) - e.def);
+      if (crit) dmg = Math.round(dmg * CFG.CRIT_MULT);
+      if (e.special === 'boss2') dmg *= 2;
+      hurtEnemy(e, dmg, { crit });
+      sfx.pluck(660);
+      log('Valaška zasvišťala vzduchom. / The valaška whistles through the air.', 'y');
+      break;
+    }
+  }
+  G.items.push({ id: 'valaska', x: lx, y: ly, count: 1, thrown: true, charges: 1 });
+  return true;
+}
+/** Walking over a thrown valaška returns it to your hand with its charges. */
+function recoverThrownValaska() {
+  const p = G.player;
+  const dropped = G.items.find(i => i.thrown && i.x === p.x && i.y === p.y);
+  if (!dropped) return;
+  G.items.splice(G.items.indexOf(dropped), 1);
+  p.charges = Math.min(CFG.VALASKA_CHARGES, p.charges + 1);
+  log(`Zdvihol si valašku (${p.charges}/${CFG.VALASKA_CHARGES} hodov). / You recover the valaška.`, 'g');
+}
+
+/** Chests: 25 % dart trap unless you carry a kľúč, which disarms it. */
+function openChest(x, y) {
+  G.map.decor[idx(x, y)] = D_NONE;
+  const trapped = RNG.chance(0.25);
+  const hasKey = hasItem('kluc');
+  if (trapped && hasKey) {
+    const slot = G.player.inv.findIndex(i => i.id === 'kluc');
+    if (slot >= 0) { G.player.inv[slot].count--; if (G.player.inv[slot].count <= 0) removeFromInv(slot); }
+    log('Kľúč zneškodnil darty v truhle. / The key disarms the dart trap.', 'g');
+  } else if (trapped) {
+    damagePlayer(6, 'dartová pasca', 'trap');
+    log('Z truhly vystrelili darty! / Darts shoot out of the chest!', 'r');
+  }
+  const rolls = 2 + RNG.int(2);
+  for (let i = 0; i < rolls; i++) {
+    if (RNG.chance(0.5)) {
+      const amount = RNG.range(15, 40) + G.depth * 8;
+      G.items.push({ id: 'dukat', x, y, count: Math.round(amount * (1 + G.player.goldBonus)) });
+      log(`V truhle boli dukáty (+${Math.round(amount)}). / Gold ducats inside.`, 'y');
+    } else {
+      const it = makeRandomItem(G.depth + 1, x, y);
+      if (it) { addToInv(it.id, 1); log(`V truhle: ${ITEMS[it.id].sk}. / Inside: ${ITEMS[it.id].en}.`, 'y'); }
+    }
+  }
+  sfx.loot();
+}
+
+function pickupHere() {
+  const p = G.player;
+  const it = itemAt(p.x, p.y);
+  const npc = npcAt(p.x, p.y);
+  if (npc) { interactNpc(npc); return true; }
+  if (!it) { log('Tu nič nie je. / Nothing here to pick up.', 'sys'); return false; }
+  if (it.id === 'dukat') {
+    p.gold += it.count;
+    G.gold += it.count;
+    G.items.splice(G.items.indexOf(it), 1);
+    spawnFloater(p.x, p.y, '+' + it.count, '#ffe08a');
+    sfx.loot();
+    log(`${it.count} dukátov do mešca (${it.count} ducats).`, 'y');
+    return true;
+  }
+  if (addToInv(it.id, it.count || 1)) {
+    G.items.splice(G.items.indexOf(it), 1);
+    sfx.loot();
+    log(`Zdvihol si ${ITEMS[it.id].sk}. / You pick up ${ITEMS[it.id].en}.`, 'y');
+    return true;
+  }
+  return false;
+}
+
+/* ============================================================================
+ * 9. NPCs & MERCHANT — Cvril the svišť, the ghost, an old woman, plaques
+ * ==========================================================================*/
+function interactNpc(n) {
+  const p = G.player;
+  if (n.kind === 'merchant') { openShop(n); return; }
+  if (n.kind === 'baba') {
+    if (!n.used) {
+      n.used = true;
+      healPlayer(10, 'Starenka s lokšami');
+      log('„Vezmi si, synak, koláčik.“ Starenka rozdala lokše. / The old woman shares her lokše.', 'g');
+    } else {
+      log('„Už som ti dala, chlapče. Aj ja mám deti.“', 'b');
+    }
+    return;
+  }
+  if (n.kind === 'ghost') {
+    if (!n.giftGiven) {
+      n.giftGiven = true;
+      addToInv('fujara', 1);
+      log('Jánošíkov duch: „Vezmi si fujaru. Zahraj, keď bude zle.“ (+Fujara)', 'b');
+    } else {
+      log('Jánošíkov duch: „' + RNG.pick(GHOST_LINES) + '“', 'b');
+    }
+  }
+}
+
+function openShop(n) {
+  G.shopNpc = n;
+  G.state = 'shop';
+  renderShop();
+  show('shopScreen');
+}
+
+function renderShop() {
+  const p = G.player, n = G.shopNpc;
+  $('shopGold').textContent = `Tvoje dukáty / Your ducats: ${p.gold}`;
+  const buy = $('shopBuy'); buy.innerHTML = '';
+  n.stock.forEach((s, i) => {
+    const d = ITEMS[s.id];
+    const div = document.createElement('div');
+    div.className = 'slot';
+    div.innerHTML = `<span class="n">${s.price} dk</span><span class="sk">${d.sk}</span>` +
+      `<span class="en dim">${d.en}</span><span class="st">${itemStats(id => id, s.id)}</span>`;
+    div.title = d.flavor || '';
+    div.onclick = () => buyFromShop(i);
+    buy.appendChild(div);
+  });
+  const sell = $('shopSell'); sell.innerHTML = '';
+  const sellable = p.inv.map((it, idx2) => ({ it, idx2 })).filter(o => ITEMS[o.it.id].price > 0);
+  if (!sellable.length) sell.innerHTML = '<div class="slot dim">Niet čo predať. / Nothing to sell.</div>';
+  sellable.forEach(o => {
+    const d = ITEMS[o.it.id];
+    const div = document.createElement('div');
+    div.className = 'slot';
+    div.innerHTML = `<span class="n">+${Math.max(1, Math.round(d.price * 0.5))} dk</span><span class="sk">${d.sk}</span><span class="st">predať / sell</span>`;
+    div.onclick = () => {
+      p.gold += Math.max(1, Math.round(d.price * 0.5));
+      removeFromInv(o.idx2);
+      log(`Predal si ${d.sk}. / You sell ${d.en}.`, 'y');
+      renderShop();
+    };
+    sell.appendChild(div);
+  });
+}
+
+function buyFromShop(i) {
+  const s = G.shopNpc.stock[i], p = G.player, d = ITEMS[s.id];
+  if (p.gold < s.price) { log('Málo dukátov! / Not enough ducats!', 'sys'); return; }
+  if (!d.stack && p.inv.length >= p.invSlots) { log('Batoh je plný! / Your pack is full!', 'sys'); return; }
+  p.gold -= s.price;
+  addToInv(s.id, 1);
+  sfx.loot();
+  log(`Kúpil si ${d.sk} za ${s.price} dukátov. / You buy ${d.en}.`, 'y');
+  renderShop();
+}
+
+/** „Deviatka“ — roll three dice, beat nine to double your bet. */
+function rollDice() {
+  const p = G.player;
+  const bet = clamp(parseInt($('betInput').value, 10) || 0, 1, Math.max(1, p.gold));
+  if (p.gold < bet) { $('diceResult').textContent = 'Málo dukátov! / Not enough ducats.'; return; }
+  const dice = [RNG.range(1, 6), RNG.range(1, 6), RNG.range(1, 6)];
+  const sum = dice[0] + dice[1] + dice[2];
+  if (sum >= 9) {
+    p.gold += bet;
+    sfx.crit();
+    $('diceResult').innerHTML = `<span class="hi">${dice.join(' + ')} = ${sum} — vyhrávaš ${bet} dk!</span>`;
+    log(`Deviatka: ${dice.join('+')}=${sum}, vyhral si ${bet} dukátov. / You win ${bet}.`, 'y');
+  } else {
+    p.gold -= bet;
+    sfx.hit();
+    $('diceResult').innerHTML = `<span class="dim">${dice.join(' + ')} = ${sum} — prehrávaš ${bet} dk.</span>`;
+    log(`Deviatka: ${dice.join('+')}=${sum}, prehral si ${bet} dukátov. / You lose ${bet}.`, 'r');
+  }
+  $('shopGold').textContent = `Tvoje dukáty / Your ducats: ${p.gold}`;
+  updateHud();
+}
+
+/** Small helper that renders an item's stat line (shared by shop and inventory). */
+function itemStats(_fn, id) {
+  const d = ITEMS[id];
+  const bits = [];
+  if (d.heal) bits.push(`+${d.heal === 99 ? 'FULL' : d.heal} HP`);
+  if (d.atk) bits.push(`+${d.atk} ATK`);
+  if (d.def) bits.push(`+${d.def} DEF`);
+  if (d.crit) bits.push(`+${Math.round(d.crit * 100)}% crit`);
+  if (d.reach) bits.push(`dosah ${d.reach} / reach`);
+  if (d.fov) bits.push(`+${d.fov} dohľad`);
+  if (d.aoe) bits.push(`${d.aoe} dmg v okolí`);
+  if (d.sleepTurns) bits.push(`spánok ${d.sleepTurns}`);
+  if (d.speedTurns) bits.push(`+rýchlosť ${d.speedTurns}t`);
+  if (d.cures) bits.push('lieči kliatbu');
+  if (d.coldImmune) bits.push('imúnny voči zime');
+  if (d.immuneAll) bits.push('imúnny voči kliatbam');
+  if (d.extraAction) bits.push('+1 akcia');
+  return bits.join(' · ');
+}
+
+/* ============================================================================
+ * 10. BOSS FIGHT — Morena, two phases (ice, then burning wicker)
+ * ==========================================================================*/
+/** Below 50 HP the wicker effigy catches fire: weaker ice, but she burns you up close. */
+function enterMorenaPhase2(e) {
+  if (e.phases) return;
+  e.phases = true;
+  e.special = 'boss2';
+  e.def = 1;
+  sfx.victory();
+  spawnParticles(e.x, e.y, 60, '#ff8a3d');
+  G.shake = 14;
+  log('Morena hrozivo vzplanie! Telo má z vŕby — valaška ho páli dvojnásobne! ' +
+      '/ The effigy BURNS — your valaška now hurts her twice as much!', 'r');
+  log('Jánošík: „Teraz, synak! Zima sa končí!“', 'b');
+}
+
+function morenaTurn(e, d, sees) {
+  const p = G.player;
+  if (!e.phases && e.hp <= 50) { enterMorenaPhase2(e); return; }
+  e.cd++;
+  if (!sees) { chase(e, distanceField(), d); return; }
+
+  if (!e.phases) {
+    // Phase 1: ice shards at range, blizzard to slow you down.
+    if (d <= 8 && e.cd % 2 === 0) {
+      log('Morena vrhá ľadové črepy! / Morena hurls ice shards!', 'b');
+      spawnParticles(e.x, e.y, 16, '#8fd6ff');
+      damagePlayer(5 + RNG.int(2), 'ľadové črepy (ice shards)', 'ice');
+      if (!immuneAll() && !p.statuses.slow && RNG.chance(0.5)) {
+        p.statuses.slow = { turns: 3 };
+        log('Fujavica ťa spomalila! / The blizzard slows you!', 'b');
+      }
+      return;
+    }
+    if (d <= 1) { enemyAttack(e); return; }
+    chase(e, distanceField(), d);
+    return;
+  }
+
+  // Phase 2: burning body hurts you up close, but her ice is weak now.
+  const adjacent = d <= 1;
+  if (adjacent) {
+    enemyAttack(e);
+    damagePlayer(3, 'horiace vŕby (burning wicker)', 'fire');
+    if (RNG.chance(0.35)) { p.statuses.burn = { turns: 2, value: 2 }; log('Chytil si sa od Moreny! / You catch fire!', 'r'); }
+    return;
+  }
+  if (d <= 8 && e.cd % 3 === 0) {
+    log('Morena skúša slabý ľad — už jej to nejde. / Her ice is weak now.', 'b');
+    damagePlayer(2, 'slabý ľad (weak ice)', 'ice');
+    return;
+  }
+  chase(e, distanceField(), d);
+}
+
+function triggerVictory() {
+  if (G.won) return;
+  G.won = true;
+  G.over = true;
+  G.state = 'victory';
+  sfx.victory();
+  spawnParticles(G.player.x, G.player.y, 120, '#ffd76a');
+  log('Morena padá, zima sa láme! / Morena falls and the winter breaks!', 'y');
+  recordRun(true);
+  clearRun();                       // permadeath: a finished run is not resumable
+  renderVictory();
+  show('victoryScreen');
+}
+
+/* ============================================================================
+ * CORE TURN FLOW (used by sections 11–16)
+ *   player acts → statuses & hazards → every visible enemy acts → fog redraw
+ * ==========================================================================*/
+function log(text, cls) {
+  if (!Array.isArray(G.logs)) G.logs = [];
+  G.logs.push({ t: text, c: cls || 'sys', turn: G.turn });
+  if (G.logs.length > 120) G.logs.shift();
+  renderLog();
+}
+
+function spawnParticles(x, y, n, color) {
+  for (let i = 0; i < n; i++) {
+    G.particles.push({
+      x: x * CFG.TILE + CFG.TILE / 2 + RNG.range(-10, 10),
+      y: y * CFG.TILE + CFG.TILE / 2 + RNG.range(-10, 10),
+      vx: RNG.range(-60, 60) / 100, vy: RNG.range(-90, -10) / 100,
+      life: 1, color, size: RNG.range(2, 5)
+    });
+  }
+  if (G.particles.length > 400) G.particles.splice(0, G.particles.length - 400);
+}
+function spawnFloater(x, y, text, color) {
+  G.floats.push({ x: x * CFG.TILE + CFG.TILE / 2, y: y * CFG.TILE + 10, text, color, life: 1 });
+  if (G.floats.length > 60) G.floats.shift();
+}
+
+/** Break a thin wall: secret rooms and their loot are revealed by bumping in. */
+function breakThinWall(x, y) {
+  G.map.tiles[idx(x, y)] = T_FLOOR;
+  G.map.seen[idx(x, y)] = 1;
+  spawnParticles(x, y, 18, '#c9b48f');
+  sfx.hit();
+  log('Tenká stena sa preborila! / The thin wall crumbles — something is behind it.', 'b');
+  // Reveal a little of what is behind it.
+  for (let yy = y - 2; yy <= y + 2; yy++)
+    for (let xx = x - 2; xx <= x + 2; xx++)
+      if (inMap(xx, yy) && !opaque(xx, yy)) G.map.seen[idx(xx, yy)] = 1;
+}
+
+/** Step hazard checks that happen the moment you enter a tile. */
+function onEnterTile(x, y) {
+  const p = G.player;
+  const h = hazardAt(x, y);
+  if (h === H_SPIKE) {
+    damagePlayer(5, 'šindle (spikes)', 'trap');
+    log('Šindle! / You step on spikes!', 'r');
+  }
+  const d = decorAt(x, y);
+  if (d === D_CHEST) { openChest(x, y); }
+  if (d === D_PLAQUE) { log('Pomník: „' + RNG.pick(PROVERBS) + '“', 'b'); }
+  if (d === D_PILLOW || d === D_BUCKET || d === D_CHURN || d === D_HAY || d === D_BONES || d === D_FLOWERS || d === D_GRAVE) {
+    if (RNG.chance(0.12)) log(RNG.pick(AMBIENT), 'b');
+  }
+  // Walking onto loot picks it up: no key-hunting, and the player can never get
+  // stuck on a tile that has an item on it (G still works as an explicit "take").
+  if (itemAt(p.x, p.y)) pickupHere();
+  if (h === H_SHRINE) {
+    G.map.hazard[idx(x, y)] = H_NONE;
+    if (RNG.chance(0.5)) { p.maxHp += 3; p.hp += 3; log('Kaplnka ťa požehnala: +3 max. životy! / The shrine blesses you.', 'g'); }
+    else { p.atkDebuff += 1; log('Kliatba kaplnky: −1 útok do konca kraja. / A cursed shrine: −1 ATK this zone.', 'r'); }
+  }
+  recoverThrownValaska();
+}
+
+/** Slide on ice: two extra tiles in the direction of travel. */
+function applyIceSlide(dx, dy) {
+  if (hazardAt(G.player.x, G.player.y) !== H_ICE) return;
+  const p = G.player;
+  for (let i = 0; i < 2; i++) {
+    const nx = p.x + dx, ny = p.y + dy;
+    if (!walkable(nx, ny) || enemyAt(nx, ny) || npcAt(nx, ny)) break;
+    p.x = nx; p.y = ny;
+    if (hazardAt(nx, ny) === H_SPIKE) damagePlayer(5, 'šindle (spikes)', 'trap');
+  }
+  log('Na ľade sa šmýkaš! / You slide on the ice!', 'b');
+}
+
+/** Move one step toward a target tile (used by mouse clicks). */
+function stepToward(tx, ty) {
+  const p = G.player;
+  const dx = Math.sign(tx - p.x), dy = Math.sign(ty - p.y);
+  if (dx === 0 && dy === 0) { pickupHere(); return; }
+  const ddx = Math.abs(tx - p.x), ddy = Math.abs(ty - p.y);
+  if (ddx === 0 || ddy === 0 || RNG.chance(0.5)) tryMove(dx, dy);
+  else tryMove(dx, 0);
+}
+
+/** The player's move + attack. Charmed controls are reversed here, in one place. */
+function tryMove(dx, dy) {
+  if (G.state !== 'play' || G.over) return;
+  const p = G.player;
+  if (G.player.statuses.charm) { dx = -dx; dy = -dy; }
+  if (p.drunk > 0) { log('Hlava sa ti točí — tento ťah len stojíš. / Too drunk to move this turn.', 'b'); endTurn(1); return; }
+  if (p.statuses.slow && G.turn % 2 === 1) {
+    log('Fujavica ťa drží. / The blizzard holds you back.', 'b');
+    endTurn(1);
+    return;
+  }
+  const nx = p.x + dx, ny = p.y + dy;
+  if (!inMap(nx, ny)) return;
+
+  const t = tileAt(nx, ny);
+  if (t === T_THIN) { breakThinWall(nx, ny); computeFov(); endTurn(1); return; }
+
+  const e = enemyAt(nx, ny);
+  if (e) {
+    attackEnemy(e);
+    if (!e.died && G.player.weapon === 'ostep' && false) { /* spear reach handled below */ }
+    computeFov(); endTurn(1); return;
+  }
+  const npc = npcAt(nx, ny);
+  if (npc) { interactNpc(npc); return; }              // talking is free, no turn spent
+
+  if (!walkable(nx, ny)) {                            // walking into stone: no turn
+    if (decorAt(nx, ny) === D_CHEST) { openChest(nx, ny); endTurn(1); return; }
+    return;
+  }
+  p.zx = p.x; p.zy = p.y;
+  p.x = nx; p.y = ny;
+  p.moves++; p.steps++;
+  onEnterTile(p.x, p.y);
+  applyIceSlide(dx, dy);
+  const cost = hazardAt(p.x, p.y) === H_LADDER ? 2 : 1;   // rope ladders: climbing costs 2 turns
+  if (cost === 2) log('Po rebríku sa šplháš — dva ťahy. / Climbing the rope ladder takes two turns.', 'b');
+  computeFov();
+  endTurn(cost);
+}
+
+/** Spear reach: attack from two tiles away (bound to the oštep weapon). */
+function spearAttack(tx, ty) {
+  const e = enemyAt(tx, ty);
+  if (!e) return false;
+  attackEnemy(e);
+  return true;
+}
+
+function waitTurn() {
+  if (G.state !== 'play' || G.over) return;
+  endTurn(1);
+}
+
+/** Everything that happens between the player's action and the next input. */
+function endTurn(cost) {
+  const p = G.player;
+  cost = cost || 1;
+  if (p.extraAction) { p.extraAction = false; log('Kofola ti dáva krok navyše. / Kofola: one extra action.', 'g'); return finishTurn(false); }
+  if (p.statuses.speed) {
+    // Every third action is free — charged on the ACTION, not the turn counter.
+    // (Charging on G.turn % 3 hung the game: a free step never advanced the turn,
+    //  so the modulo stayed true and every step was free forever.)
+    p.speedCharge = (p.speedCharge || 0) + 1;
+    if (p.speedCharge % 3 === 0) { log('Šúľance ťa nesú — krok navyše. / Sugar rush: a free step.', 'g'); return finishTurn(true); }
+  }
+  for (let i = 0; i < cost; i++) {
+    G.turn++;
+    if (p.fujaraCd > 0) p.fujaraCd--;
+    // Regen gift: +5 HP every 10 steps.
+    if (p.regen && p.moves % 10 === 0 && p.moves > 0) healPlayer(5, 'Jánošíkova milosť');
+    // Fire pits hurt at the end of the turn.
+    if (hazardAt(p.x, p.y) === H_FIRE) {
+      damagePlayer(8, 'oheň (fire pit)', 'fire');
+      spawnParticles(p.x, p.y, 12, '#ff8a3d');
+    }
+    tickPlayerStatuses();
+    if (G.over) return;
+    if (p.statuses.charm) { /* charm ticks with other statuses */ }
+    enemyPhase();
+    if (G.over) return;
+  }
+  finishTurn(true);
+}
+function finishTurn(refresh) {
+  if (G.over) { render(); return; }
+  computeFov();
+  checkTransitions();
+  updateHud();
+  render();
+  if (G.turn % 25 === 0) saveRun();
+}
+/** Depth transitions, boss arena messages and other per-turn checks. */
+function checkTransitions() {
+  if (G.depth === CFG.MAX_DEPTH && !G.arenaAnnounced && cheb(G.player, G.boss || G.player) <= 7) {
+    G.arenaAnnounced = true;
+    log('Kriváň. Kameň, vietor a Morena. / Kriváň. Stone, wind and Morena.', 'b');
+    log('Morena: „Zima je moja. Kto si, že sa mi protivíš?“', 'r');
+  }
+}
+
+/** Every enemy that can see the player (or is hunting) takes its turn. */
+function enemyPhase() {
+  const dfield = distanceField();               // recomputed each turn: monsters never chase stale ghosts
+  for (const e of G.enemies) {
+    if (e.died) continue;
+    const relevant = e.awake || visibleAt(e.x, e.y);
+    if (!relevant) continue;
+    e.energy += e.speed * 100;
+    while (e.energy >= 100 && !e.died && !G.over) {
+      e.energy -= 100;
+      enemyTurn(e, dfield);
+      if (G.state === 'levelup') return;        // Jánošík interrupted the fight
+    }
+  }
+  // Clean up dead.
+  G.enemies = G.enemies.filter(e => !e.died);
+}
+
+function descend() {
+  const p = G.player;
+  if (G.state !== 'play' || G.over) return;
+  if (tileAt(p.x, p.y) !== T_STAIRS_DOWN) { log('Tu schody dolu nie sú. / No stairs down here.', 'sys'); return; }
+  if (G.depth >= CFG.MAX_DEPTH) { log('Nič nižšie nie je — Morena je na tejto ploche.', 'sys'); return; }
+  G.depth++;
+  G.turn++;
+  buildLevel();
+  log(`Zostupuješ na plochu ${G.depth} — ${G.map.zone.sk}. / Depth ${G.depth}: ${G.map.zone.en}.`, 'b');
+  saveRun();
+}
+function ascend() {
+  const p = G.player;
+  if (G.state !== 'play' || G.over) return;
+  if (tileAt(p.x, p.y) !== T_STAIRS_UP) { log('Nahor sa odtiaľto nedostaneš. / No way up here.', 'sys'); return; }
+  if (G.depth <= 1) { log('Vyššie ako nížiny nič nie je. / There is nothing above the lowlands.', 'sys'); return; }
+  G.depth--;
+  G.turn++;
+  buildLevel();
+  log(`Vraciaš sa na plochu ${G.depth}. / You climb back to depth ${G.depth}.`, 'b');
+  saveRun();
+}
+
+/** Enter a depth: generate, place the player, reset per-zone debuffs. */
+function buildLevel() {
+  const p = G.player;
+  generateLevel(G.depth);
+  p.x = G.map.up.x; p.y = G.map.up.y; p.zx = p.x; p.zy = p.y;
+  p.atkDebuff = 0;                     // shrine curses only last a zone
+  G.arenaAnnounced = false;
+  G.roomsExplored = countExplored();
+  computeFov();
+  updateHud();
+  render();
+}
+function countExplored() {
+  let n = 0;
+  for (const r of G.map.rooms) {
+    const c = roomCentre(r);
+    if (seenAt(c.x, c.y)) n++;
+  }
+  return n;
+}
+
+function die() {
+  if (G.over) return;
+  G.over = true;
+  G.state = 'death';
+  G.deathCause = 'zomrel si v krajine ' + G.map.zone.sk;
+  sfx.death();
+  spawnParticles(G.player.x, G.player.y, 40, '#ff5a5a');
+  recordRun(false);
+  renderDeath();
+  show('deathScreen');
+  clearRun();
+}
+
+/* ── Run bookkeeping ────────────────────────────────────────────────────── */
+function runStats() {
+  return {
+    lvl: G.player.lvl, kills: G.kills, gold: G.gold, turns: G.turn,
+    depth: G.depth, zone: G.map && G.map.zone ? G.map.zone.sk : '—',
+    explored: G.map ? countExplored() : 0, seed: G.seed, won: !!G.won
+  };
+}
+function loadProfile() {
+  try { return JSON.parse(localStorage.getItem('zbojnik.profile.v1')) || {}; }
+  catch (e) { return {}; }
+}
+function recordRun(won) {
+  const prof = loadProfile();
+  const s = runStats();
+  if (!prof.best || s.depth > prof.best.depth || (s.depth === prof.best.depth && s.gold > prof.best.gold)) prof.best = s;
+  prof.runs = (prof.runs || 0) + 1;
+  if (won) prof.wins = (prof.wins || 0) + 1;
+  prof.mute = !!G.mute;
+  try { localStorage.setItem('zbojnik.profile.v1', JSON.stringify(prof)); } catch (e) {}
+  renderBest();
+}
+function renderBest() {
+  const prof = loadProfile();
+  if (!prof.best) { $('titleBest').textContent = 'Zatiaľ žiadny zápis v kronike. / No run recorded yet.'; return; }
+  const b = prof.best;
+  $('titleBest').textContent = `Kronika: najhlbšie plocha ${b.depth} · ${b.kills} vrážd · ${b.gold} dukátov · ` +
+    `${prof.runs} behov${prof.wins ? ' · ' + prof.wins + ' víťazstiev' : ''} (seed ${b.seed})`;
+}
+
+/* ============================================================================
+ * 12. RENDERER — everything is drawn with rectangles: no images, no assets
+ * ==========================================================================*/
+const canvas = $('board');
+const ctx = canvas.getContext('2d');
+
+/* ── Pixel-art sprites: 8x8 (or 10x10) grids of characters + a palette ──── */
+const SPR = {
+  player: { pal:{ '.':null,'h':'#3a2a16','s':'#e8c39e','c':'#8c1f1f','w':'#f0e6d2','b':'#2f4f2f','g':'#c9a227','x':'#1a1410' },
+    rows:['..hhhh..','.hhhhhh.','..ssss..','.cccccc.','ccwwwwcc','.cccccc.','..x..x..','..b..b..'] },
+  siraky: { pal:{ '.':null,'h':'#c9b48f','x':'#7a5c33' },
+    rows:['.hhhhhh.','hxxxxxxh','..hhhh..','........','........','........','........','........'] },
+  kroj:   { pal:{ '.':null,'c':'#8c1f1f','w':'#e8e0c0' },
+    rows:['........','........','........','.w..w..w','cwcwcwcw','.w..w..w','........','........'] },
+  zbojnik: { pal:{ '.':null,'h':'#6b2b2b','s':'#d8ab80','c':'#3f5f2f','b':'#4a3a24','g':'#c9a227' },
+    rows:['..hhhh..','.hhhhhh.','..ssss..','.cccccc.','ccggggcc','.cccccc.','..b..b..','..b..b..'] },
+  wolf: { pal:{ '.':null,'g':'#7a7f8a','d':'#4a4f58','e':'#ffd76a' },
+    rows:['........','.gg..gg.','gggggggg','gdgeegdg','gggggggg','.g.gg.g.','.g.gg.g.','..d..d..'] },
+  vodnik: { pal:{ '.':null,'g':'#3f7f5f','d':'#28563f','l':'#a8d86a','e':'#d8ff8a' },
+    rows:['..ll.l..','.llllll.','..gggg..','.ggeegg.','.gggggg.','.dggggd.','..g..g..','..d..d..'] },
+  polednica: { pal:{ '.':null,'p':'#e8e0e8','w':'#c9c0cc','s':'#f0e0e0','y':'#c9c9c9' },
+    rows:['..wwww..','.wwwwww.','..ssss..','.pppppp.','ppppppyy','.pppppp.','..p..p..','..y..y..'] },
+  striga: { pal:{ '.':null,'g':'#5f4a5f','s':'#c9b0a0','b':'#8a6a3a','e':'#ff6a6a' },
+    rows:['..gggg..','.gggggg.','..ssss..','.geggeg.','.gggggg.','.bbbbbb.','..b..b..','..x..x..'] },
+  divozenka: { pal:{ '.':null,'g':'#3f6a3f','s':'#e0c8a8','l':'#6fa86f','e':'#ffe08a' },
+    rows:['.lggggl.','lggggggl','..ssss..','.gggggg.','.ggeegg.','.gggggg.','..g..g..','..g..g..'] },
+  medved: { pal:{ '.':null,'b':'#5a3a22','d':'#3a2414','e':'#ffd76a' },
+    rows:['.bb..bb.','bbbbbbbb','bdeeedeb','bbbbddbb','bbbbbbbb','.bbbbbb.','.b.bb.b.','.dd..dd.'] },
+  vlkolak: { pal:{ '.':null,'g':'#6a5a7a','d':'#3f3350','e':'#ff5a5a','t':'#ffffff' },
+    rows:['..gggg..','.gggggg.','.geggeg.','.gtttgg.','gggggggg','.g.gg.g.','.d.gg.d.','...dd...'] },
+  kostlivec: { pal:{ '.':null,'w':'#e8e8e8','d':'#9a9a9a','e':'#5fd0ff' },
+    rows:['..wwww..','.wwwwww.','.weedew.','..wwww..','.dwwwwd.','..wwww..','..w..w..','..d..d..'] },
+  drak: { pal:{ '.':null,'r':'#8c2f2f','d':'#5f1f1f','y':'#ffd76a','e':'#ff8a3d' },
+    rows:['r.......','rr..rr..','.rrrrrr.','rryeeyrr','.rrrrrr.','.rrrrrr.','.d.rr.d.','...dd...'] },
+  morena: { pal:{ '.':null,'w':'#c9b48f','d':'#7a5c33','i':'#8fd6ff','e':'#ff8a3d','y':'#ffe08a' },
+    rows:['..wwww..','.wwwwww.','wweewwew','wwwwwwww','dwwiiwwd','dwwwwwwd','.dd..dd.','.d....d.'] },
+  item_food: { pal:{ '.':null,'y':'#e0b64a','w':'#f0e6d2','b':'#8a5a2a' },
+    rows:['........','..yyyy..','.ywwwwy.','.ywwwwy.','..yyyy..','.bbbbbb.','..bbbb..','........'] },
+  item_drink: { pal:{ '.':null,'g':'#4a8f3f','w':'#dff0d8','l':'#8fd66a' },
+    rows:['..l.....','..g.....','.gggg...','.gwwg...','.gwwg...','.gwwg...','.gggg...','........'] },
+  item_weapon: { pal:{ '.':null,'s':'#dfe6ee','b':'#7a5c33','y':'#c9a227' },
+    rows:['......ss','.....ss.','....ss..','...ss...','..ss....','.bss....','bb.y....','.b......'] },
+  item_armour: { pal:{ '.':null,'r':'#8c1f1f','w':'#e8e0c0','d':'#3a2414' },
+    rows:['..rrrr..','.rrrrrr.','rrwrrwrr','rrrrrrrr','.rrrrrr.','.rrrrrr.','..r..r..','........'] },
+  item_head: { pal:{ '.':null,'c':'#c9b48f','d':'#7a5c33' },
+    rows:['..cccc..','.cccccc.','dddddddd','........','........','........','........','........'] },
+  item_tool: { pal:{ '.':null,'b':'#7a5c33','y':'#c9a227','d':'#3a2414' },
+    rows:['...b....','..b.....','.b......','b.......','b.......','dd......','d.......','........'] },
+  item_key: { pal:{ '.':null,'y':'#e0b64a','d':'#8a6a1a' },
+    rows:['..yyy...','.y...y..','.y...y..','..yyy...','...y....','...yy...','...y....','...yy...'] },
+  item_torch: { pal:{ '.':null,'b':'#7a5c33','o':'#ff8a3d','y':'#ffe08a' },
+    rows:['...y....','..oyo...','..oyo...','...o....','...b....','...b....','...b....','...bb...'] },
+  item_holy: { pal:{ '.':null,'w':'#cfe9ff','b':'#7a8fa8','y':'#ffe08a' },
+    rows:['..bbb...','..bbb...','.wbbbw..','.wwwww..','..www...','..www...','...w....','........'] },
+  item_dukat: { pal:{ '.':null,'y':'#ffe08a','d':'#c69a1e' },
+    rows:['..ddd...','.dyyyd..','dyyyyyd.','dyyyyyd.','dyyyyyd.','.dyyyd..','..ddd...','........'] },
+  doc_brazier: { pal:{ '.':null,'d':'#3a2414','o':'#ff8a3d','y':'#ffe08a' },
+    rows:['........','...y....','..oyo...','.ooyoo..','..ooo...','..ddd...','.ddddd..','........'] },
+  doc_barrel: { pal:{ '.':null,'b':'#7a5c33','d':'#3a2414','g':'#a8865a' },
+    rows:['..bbbb..','.bbbbbb.','dggggggd','.bbbbbb.','dggggggd','.bbbbbb.','..dddd..','........'] },
+  doc_chest: { pal:{ '.':null,'b':'#8a5a2a','d':'#4a2f14','y':'#e0b64a' },
+    rows:['........','..bbbb..','.bbbbbb.','.dyyyyd.','.bbbbbb.','.bbbbbb.','..dddd..','........'] },
+  doc_tent: { pal:{ '.':null,'w':'#e8e0c0','r':'#8c1f1f','d':'#7a5c33' },
+    rows:['...rr...','..rwrr..','.rwwwwr.','rwwwwww.','rwwwwwwr','dwwwwwwd','dwwwwwwd','..dddd..'] },
+  doc_pillow: { pal:{ '.':null,'w':'#e8e0c0','r':'#8c1f1f' },
+    rows:['........','..wwww..','.wwwwww.','wrrwwrrw','wwwwwwww','.wwwwww.','........','........'] },
+  doc_bucket: { pal:{ '.':null,'b':'#7a5c33','w':'#5f8fa8' },
+    rows:['........','.b....b.','.bwwwwb.','.bwwwwb.','.bwwwwb.','.bwwwwb.','..bbbb..','........'] },
+  doc_churn: { pal:{ '.':null,'b':'#8a6a3a','d':'#3a2414','w':'#e8e0c0' },
+    rows:['...w....','...w....','..ddd...','.bbbbbb.','.bbbbbb.','.bbbbbb.','.bbbbbb.','..dddd..'] },
+  doc_plaque: { pal:{ '.':null,'s':'#c9c9c9','d':'#5a5a5a','y':'#e0b64a' },
+    rows:['........','..ssss..','.sdddds.','.sdyyds.','.sdddds.','..ssss..','...dd...','........'] },
+  doc_hay: { pal:{ '.':null,'y':'#c9a227','d':'#8a6a1a' },
+    rows:['........','..y.y.y.','.yyy.yy.','yy.yyyy.','.yyyy.y.','..y.y.y.','........','........'] },
+  doc_tapestry: { pal:{ '.':null,'r':'#8c1f1f','w':'#e8e0c0','b':'#3f5f8f' },
+    rows:['.bbbbbb.','brwwwwrb','brwrrwrb','brwwwwrb','brwrrwrb','brwwwwrb','.bbbbbb.','........'] },
+  doc_ladder: { pal:{ '.':null,'b':'#a8865a' },
+    rows:['.b....b.','.b....b.','.bbbbbb.','.b....b.','.b....b.','.bbbbbb.','.b....b.','.b....b.'] },
+  doc_lily: { pal:{ '.':null,'g':'#5f9f4f','w':'#f0e6d2' },
+    rows:['........','...ww...','..wwww..','.wwggww.','..wwww..','...gg...','...gg...','........'] },
+  doc_bones: { pal:{ '.':null,'w':'#e0e0e0','d':'#9a9a9a' },
+    rows:['........','.w....w.','..wwww..','...ww...','..wwww..','.w....w.','........','........'] },
+  doc_flowers: { pal:{ '.':null,'g':'#4f8f3f','y':'#ffe08a','r':'#e06a8a' },
+    rows:['........','..y..r..','.gyg.rgr','..g..g..','.gggggg.','..gggg..','........','........'] },
+  doc_grave: { pal:{ '.':null,'s':'#b0b0b0','d':'#6a6a6a','y':'#e0b64a' },
+    rows:['..ssss..','.ssssss.','.ssyyss.','.ssyyss.','.ssssss.','.ssssss.','..dddd..','........'] },
+  fog: { pal:{ '.':null,'f':'#000000' }, rows:['........','........','........','........','........','........','........','........'] }
+};
+
+/** Draw an 8x8 sprite grid scaled to the tile, optionally tinted white (hit flash). */
+function drawSprite(name, tx, ty, tint) {
+  const s = SPR[name] || SPR.zbojnik;
+  const px = CFG.TILE / 8;
+  const ox = tx * CFG.TILE, oy = ty * CFG.TILE;
+  for (let r = 0; r < 8; r++) {
+    const row = s.rows[r] || '........';
+    for (let c = 0; c < 8; c++) {
+      const ch = row[c] || '.';
+      const col = s.pal[ch];
+      if (!col) continue;
+      ctx.fillStyle = tint ? tint : col;
+      ctx.fillRect(ox + c * px, oy + r * px, Math.ceil(px), Math.ceil(px));
+    }
+  }
+}
+
+/* ── Animation: entities lerp from their previous tile to the current one ── */
+function animPos(e, now) {
+  const t = clamp((now - (e.animStart || 0)) / CFG.ANIM_MS, 0, 1);
+  const ease = t * t * (3 - 2 * t);
+  return { x: (e.zx + (e.x - e.zx) * ease), y: (e.zy + (e.y - e.zy) * ease) };
+}
+
+/** Main draw: cached-ish tiles, then items, NPCs, enemies, player, particles. */
+function render(now) {
+  now = now || performance.now();
+  const zone = G.map && G.map.zone ? G.map.zone : ZONES[0];
+  ctx.save();
+  if (G.shake > 0) {
+    ctx.translate(RNG.range(-G.shake, G.shake), RNG.range(-G.shake, G.shake));
+    G.shake = Math.max(0, G.shake - 1.6);
+  }
+  ctx.fillStyle = zone.pal.bg;
+  ctx.fillRect(-20, -20, canvas.width + 40, canvas.height + 40);
+
+  for (let y = 0; y < CFG.ROWS; y++) {
+    for (let x = 0; x < CFG.COLS; x++) {
+      if (!seenAt(x, y)) continue;
+      const vis = visibleAt(x, y);
+      drawTile(x, y, vis, zone, now);
+    }
+  }
+  // Explored-but-not-visible features keep a faint dotted outline (fog memory).
+  for (let y = 0; y < CFG.ROWS; y++) {
+    for (let x = 0; x < CFG.COLS; x++) {
+      if (!seenAt(x, y) || visibleAt(x, y)) continue;
+      const d = decorAt(x, y);
+      if (d !== D_NONE) {
+        ctx.fillStyle = '#3a3a3a';
+        ctx.fillRect(x * CFG.TILE + 4, y * CFG.TILE + 4, 4, 4);
+      }
+    }
+  }
+  // Items.
+  for (const it of G.items) {
+    if (!seenAt(it.x, it.y)) continue;
+    const vis = visibleAt(it.x, it.y);
+    ctx.globalAlpha = vis ? 1 : 0.45;
+    drawSprite(it.id === 'dukat' ? 'item_dukat' : (ITEMS[it.id] ? 'item_' + ITEMS[it.id].spr : 'item_food'), it.x, it.y);
+    ctx.globalAlpha = 1;
+    if (vis && it.id === 'dukat') {
+      ctx.fillStyle = '#ffe08a';
+      ctx.font = '10px monospace';
+      ctx.fillText(String(it.count), it.x * CFG.TILE + 4, it.y * CFG.TILE + 38);
+    }
+  }
+  // NPCs.
+  for (const n of G.npcs) {
+    if (!seenAt(n.x, n.y)) continue;
+    ctx.globalAlpha = visibleAt(n.x, n.y) ? 1 : 0.5;
+    if (n.kind === 'merchant') drawSprite('doc_tent', n.x, n.y);
+    else if (n.kind === 'ghost') { ctx.globalAlpha *= 0.7; drawSprite('player', n.x, n.y, '#cfe9ff'); }
+    else drawSprite('polednica', n.x, n.y);
+    ctx.globalAlpha = 1;
+  }
+  // Enemies (with a hit tint and their status glow).
+  for (const e of G.enemies) {
+    if (!seenAt(e.x, e.y) && !e.awake) continue;
+    const vis = visibleAt(e.x, e.y);
+    const p = animPos(e, now);
+    ctx.globalAlpha = vis ? 1 : 0.35;
+    if (e.statuses && (e.statuses.sleep || e.statuses.stun)) ctx.globalAlpha *= 0.75;
+    drawSprite(e.spr, p.x, p.y, e.hitTint ? '#ffffff' : null);
+    ctx.globalAlpha = 1;
+    if (vis) {
+      // HP bar for wounded enemies.
+      if (e.hp < e.maxHp) {
+        const w = CFG.TILE - 10;
+        ctx.fillStyle = '#2a1010';
+        ctx.fillRect(e.x * CFG.TILE + 5, e.y * CFG.TILE + 2, w, 4);
+        ctx.fillStyle = e.boss ? '#ff8a3d' : '#e06a6a';
+        ctx.fillRect(e.x * CFG.TILE + 5, e.y * CFG.TILE + 2, Math.max(1, w * (e.hp / e.maxHp)), 4);
+      }
+      if (e.statuses && e.statuses.burn) drawSprite('doc_brazier', p.x, p.y, null);
+    }
+    if (e.hitTint) e.hitTint = Math.max(0, e.hitTint - 1);
+  }
+  // Player.
+  const pp = animPos(G.player, now);
+  ctx.save();
+  if (G.flash > 0) { ctx.globalAlpha = 1; G.flash = Math.max(0, G.flash - 0.08); }
+  drawSprite('player', pp.x, pp.y, G.flash > 0.5 ? '#ffd0d0' : null);
+  if (G.player.head === 'siraky') drawSprite('siraky', pp.x, pp.y);
+  if (G.player.armour === 'kroj') drawSprite('kroj', pp.x, pp.y);
+  ctx.restore();
+
+  // Particles & floating damage numbers.
+  for (const q of G.particles) {
+    ctx.globalAlpha = clamp(q.life, 0, 1);
+    ctx.fillStyle = q.color;
+    ctx.fillRect(q.x, q.y, q.size, q.size);
+  }
+  ctx.globalAlpha = 1;
+  ctx.font = 'bold 13px monospace';
+  ctx.textAlign = 'center';
+  for (const f of G.floats) {
+    ctx.globalAlpha = clamp(f.life, 0, 1);
+    ctx.fillStyle = '#000';
+    ctx.fillText(f.text, f.x + 1, f.y + 1);
+    ctx.fillStyle = f.color;
+    ctx.fillText(f.text, f.x, f.y);
+  }
+  ctx.globalAlpha = 1;
+  ctx.textAlign = 'left';
+  ctx.restore();
+
+  if (G.player.hp <= G.player.maxHp * 0.3 && !G.over) {
+    ctx.fillStyle = `rgba(120,0,0,${0.10 + 0.06 * Math.sin(now / 300)})`;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+  }
+}
+
+/** One tile: floor patterns per zone, walls with a lit lip, hazard hints. */
+function drawTile(x, y, vis, zone, now) {
+  const t = tileAt(x, y), h = hazardAt(x, y), d = decorAt(x, y);
+  const T = CFG.TILE;
+  const flicker = h === H_FIRE || d === D_BRAZIER ? 0.85 + 0.15 * Math.sin(now / 140 + x) : 1;
+  const dim = vis ? 1 : 0.42;
+
+  if (t === T_WALL || t === T_THIN || t === T_WALL_ICE) {
+    let base = zone.pal.wall;
+    let lip = zone.pal.lip;
+    if (t === T_THIN) { base = '#4a4238'; lip = '#6f6553'; }
+    if (t === T_WALL_ICE) { base = '#5f7fa8'; lip = '#cfe9ff'; }
+    ctx.globalAlpha = dim;
+    ctx.fillStyle = base;
+    ctx.fillRect(x * T, y * T, T, T);
+    ctx.fillStyle = lip;
+    ctx.fillRect(x * T, y * T, T, 5);
+    ctx.globalAlpha = 1;
+    return;
+  }
+
+  ctx.globalAlpha = dim;
+  if (t === T_WATER) { ctx.fillStyle = zone.pal.water; ctx.fillRect(x * T, y * T, T, T); }
+  else if (t === T_SNOW) { ctx.fillStyle = '#e6eef8'; ctx.fillRect(x * T, y * T, T, T); }
+  else if (t === T_VINE) { ctx.fillStyle = zone.pal.floor; ctx.fillRect(x * T, y * T, T, T); ctx.fillStyle = '#2f5f2f'; ctx.fillRect(x * T + 4, y * T + 6, T - 8, 5); }
+  else {
+    ctx.fillStyle = ((x + y) % 2 === 0) ? zone.pal.floor : zone.pal.floor2;
+    ctx.fillRect(x * T, y * T, T, T);
+  }
+  // Hazard hints.
+  if (h === H_SPIKE) {
+    ctx.fillStyle = '#b9b9b9';
+    for (let i = 0; i < 3; i++) {
+      const bx = x * T + 6 + i * 10;
+      ctx.beginPath();
+      ctx.moveTo(bx, y * T + T - 8);
+      ctx.lineTo(bx + 5, y * T + 12);
+      ctx.lineTo(bx + 10, y * T + T - 8);
+      ctx.closePath();
+      ctx.fill();
+    }
+  } else if (h === H_FIRE) {
+    ctx.globalAlpha = dim * flicker;
+    drawSprite('doc_brazier', x, y);
+  } else if (h === H_ICE) {
+    ctx.globalAlpha = dim * 0.85;
+    ctx.fillStyle = '#bfe4ff';
+    ctx.fillRect(x * T + 2, y * T + 2, T - 4, T - 4);
+  } else if (h === H_LADDER) {
+    ctx.globalAlpha = dim;
+    drawSprite('doc_ladder', x, y);
+  } else if (h === H_SHRINE) {
+    ctx.globalAlpha = dim;
+    ctx.fillStyle = '#3a2414';
+    ctx.fillRect(x * T + 6, y * T + T - 14, T - 12, T - 12);
+    ctx.fillStyle = '#e0b64a';
+    ctx.fillRect(x * T + 12, y * T + 8, 3, 14);
+    ctx.fillRect(x * T + 9, y * T + 11, 9, 3);
+  }
+  if (t === T_STAIRS_DOWN) {
+    ctx.fillStyle = '#ffe08a';
+    for (let i = 0; i < 3; i++) ctx.fillRect(x * T + 8 + i * 8, y * T + 8 + i * 8, 24 - i * 8, 6);
+  } else if (t === T_STAIRS_UP) {
+    ctx.fillStyle = '#cfe9ff';
+    for (let i = 0; i < 3; i++) ctx.fillRect(x * T + 8 + i * 8, y * T + T - 14 - i * 8, 24 - i * 8, 6);
+  }
+  ctx.globalAlpha = 1;
+  // Decor on top (never on walls).
+  if (d !== D_NONE && tileAt(x, y) !== T_WALL && tileAt(x, y) !== T_THIN) {
+    ctx.globalAlpha = dim * (d === D_BRAZIER ? flicker : 1);
+    const name = { 1:'doc_brazier',2:'doc_barrel',3:'doc_chest',4:'doc_tent',5:'doc_pillow',6:'doc_bucket',
+                   7:'doc_churn',8:'doc_plaque',9:'doc_hay',10:'doc_tapestry',11:'doc_ladder',
+                   12:'doc_lily',13:'doc_bones',14:'doc_flowers',15:'doc_grave' }[d];
+    if (name) drawSprite(name, x, y);
+    ctx.globalAlpha = 1;
+  }
+}
+
+/* ── Title art: Tatra peaks with snowfall ──────────────────────────────── */
+function drawTitleArt(now) {
+  const c = $('titleArt'), g = c.getContext('2d');
+  g.fillStyle = '#0b1020';
+  g.fillRect(0, 0, c.width, c.height);
+  // Sky gradient + moon.
+  const grad = g.createLinearGradient(0, 0, 0, c.height);
+  grad.addColorStop(0, '#142040'); grad.addColorStop(1, '#2a2140');
+  g.fillStyle = grad; g.fillRect(0, 0, c.width, c.height);
+  g.fillStyle = '#f0e6d2';
+  g.beginPath(); g.arc(465, 38, 15, 0, Math.PI * 2); g.fill();
+  // Peaks.
+  const peaks = [[40,110],[150,58],[250,96],[340,40],[440,104],[530,72]];
+  g.fillStyle = '#2b3a5a';
+  g.beginPath(); g.moveTo(0, c.height);
+  peaks.forEach(p => { g.lineTo(p[0], p[1]); g.lineTo(p[0] + 42, c.height); });
+  g.lineTo(c.width, c.height); g.closePath(); g.fill();
+  g.fillStyle = '#e9f1fb';
+  peaks.forEach(p => {
+    g.beginPath();
+    g.moveTo(p[0] - 16, p[1] + 22); g.lineTo(p[0], p[1]); g.lineTo(p[0] + 16, p[1] + 22);
+    g.lineTo(p[0] + 6, p[1] + 16); g.lineTo(p[0], p[1] + 22); g.lineTo(p[0] - 6, p[1] + 16);
+    g.closePath(); g.fill();
+  });
+  // Snow.
+  for (let i = 0; i < 70; i++) {
+    const x = (i * 97 + now / 40) % c.width;
+    const y = (i * 53 + now / 14) % c.height;
+    g.fillStyle = 'rgba(255,255,255,' + (0.25 + 0.5 * ((i % 5) / 5)) + ')';
+    g.fillRect(x, y, 2, 2);
+  }
+  // A little zbojník silhouette.
+  g.fillStyle = '#0d0a06';
+  g.fillRect(96, c.height - 46, 12, 22);
+  g.fillRect(92, c.height - 54, 20, 8);
+  g.fillRect(120, c.height - 40, 3, 16);
+}
+/** Victory art: spring flowers across the lowlands. */
+function drawSpringArt() {
+  const c = $('springArt'), g = c.getContext('2d');
+  g.fillStyle = '#7fb3e0'; g.fillRect(0, 0, c.width, c.height);
+  g.fillStyle = '#4d8f3a'; g.fillRect(0, c.height * 0.55, c.width, c.height * 0.45);
+  g.fillStyle = '#3f7a30'; g.fillRect(0, c.height * 0.62, c.width, c.height * 0.38);
+  for (let i = 0; i < 160; i++) {
+    const x = (i * 71) % c.width, y = c.height * 0.58 + ((i * 37) % (c.height * 0.4));
+    const colors = ['#ffe08a', '#e06a8a', '#f0f0f0', '#c9a0ff'];
+    g.fillStyle = colors[i % colors.length];
+    g.fillRect(x, y, 3, 3);
+  }
+  g.fillStyle = '#fff6c2';
+  g.beginPath(); g.arc(c.width - 60, 40, 22, 0, Math.PI * 2); g.fill();
+}
+
+/* ============================================================================
+ * 13. UI SCREENS & HUD
+ * ==========================================================================*/
+const SCREENS = ['titleScreen','howtoScreen','pauseScreen','levelupScreen','invScreen','shopScreen','deathScreen','victoryScreen'];
+function show(id) {
+  SCREENS.forEach(s => { const el = $(s); if (el) el.classList.toggle('on', s === id); });
+  if (!id) SCREENS.forEach(s => $(s).classList.remove('on'));
+  // The title/death/victory screens own the whole frame: hide the HUD and log
+  // behind them so they do not ghost through the translucent overlay.
+  const fullScreen = id === 'titleScreen' || id === 'howtoScreen' || id === 'deathScreen' || id === 'victoryScreen';
+  ['hud', 'logWrap'].forEach(k => { const el = $(k); if (el) el.style.display = fullScreen ? 'none' : ''; });
+  const board = $('board');
+  if (board) board.style.display = id === 'titleScreen' || id === 'howtoScreen' ? 'none' : '';
+}
+function hideAll() { show(null); }
+
+function updateHud() {
+  const p = G.player;
+  if (!p) return;
+  // Hearts: one heart per 15 max HP.
+  const heartCount = Math.max(1, Math.ceil(p.maxHp / 15));
+  const hearts = $('hearts');
+  let html = '';
+  for (let i = 0; i < heartCount; i++) {
+    const hpInHeart = p.hp - i * 15;
+    const cls = hpInHeart >= 15 ? 'heart' : hpInHeart > 0 ? 'heart' : 'heart empty';
+    html += `<span class="${cls}" style="opacity:${hpInHeart >= 15 ? 1 : hpInHeart > 0 ? 0.5 : 1}"></span>`;
+  }
+  hearts.innerHTML = html;
+  $('hudLevel').textContent = p.lvl;
+  const need = xpForLevel(p.lvl + 1) - xpForLevel(p.lvl);
+  const have = p.xp - xpForLevel(p.lvl);
+  $('xpFill').style.width = clamp((have / Math.max(1, need)) * 100, 0, 100) + '%';
+  $('hudGold').textContent = p.gold;
+  $('hudDepth').textContent = G.depth;
+  $('hudZone').textContent = G.map && G.map.zone ? G.map.zone.sk : '—';
+  $('hudSeed').textContent = G.seed;
+  $('hudTurn').textContent = 't' + G.turn;
+  $('hpFlash').textContent = G.flash > 0.4 ? 'zásah! / hit!' : '';
+
+  const gear = [];
+  if (p.weapon) gear.push(`<span class="badge" title="Zbraň / weapon — ${ITEMS[p.weapon].sk}: ${ITEMS[p.weapon].en} (${itemStats(null, p.weapon)})">[Z] ${ITEMS[p.weapon].sk}</span>`);
+  if (p.armour) gear.push(`<span class="badge" title="Oblečenie / armour — ${ITEMS[p.armour].sk}: ${ITEMS[p.armour].en} (${itemStats(null, p.armour)})">[O] ${ITEMS[p.armour].sk}</span>`);
+  if (p.head) gear.push(`<span class="badge" title="Klobúk / head — ${ITEMS[p.head].sk}: ${ITEMS[p.head].en} (${itemStats(null, p.head)})">[K] ${ITEMS[p.head].sk}</span>`);
+  if (!gear.length) gear.push('<span class="badge dim">nič / nothing</span>');
+  $('gear').innerHTML = gear.join('');
+
+  const buffs = [];
+  for (const key of Object.keys(p.statuses)) {
+    const s = p.statuses[key];
+    const label = { atk:'+útok / +ATK', speed:'rýchlosť / speed', svetlo:'svetlo / light', charm:'očarenie / charmed',
+                    slow:'spomalenie / slowed', burn:'horenie / burning', poison:'jed / poison', sleep:'spánok / asleep',
+                    stun:'omráčenie / stunned' }[key] || key;
+    const bad = ['charm','slow','burn','poison','sleep','stun'].indexOf(key) >= 0;
+    buffs.push(`<span class="badge ${bad ? 'debuff' : 'buff'}" title="${label}">${label.split(' / ')[0]} ${s.turns}t</span>`);
+  }
+  if (p.fujaraCd > 0) buffs.push(`<span class="badge" title="Fujara odpočíva / fujara cooldown">fujara ${p.fujaraCd}t</span>`);
+  if (p.charges < CFG.VALASKA_CHARGES && (p.weapon === 'valaska' || p.weapon === 'jvalaska'))
+    buffs.push(`<span class="badge" title="Hody valaškou / valaška throws left">valaška ${p.charges}/${CFG.VALASKA_CHARGES}</span>`);
+  $('buffs').innerHTML = buffs.join('') || '<span class="badge dim">—</span>';
+}
+
+function renderLog() {
+  const ul = $('log');
+  const last = (G.logs || []).slice(-8);
+  ul.innerHTML = last.map(l => `<li class="${l.c}">${l.t}</li>`).join('');
+}
+
+/* ── Level-up: Jánošík's ghost offers three gifts ──────────────────────── */
+function openLevelUp() {
+  G.state = 'levelup';
+  const pool = UPGRADES.slice();
+  const picks = [];
+  while (picks.length < 3 && pool.length) picks.push(pool.splice(RNG.int(pool.length), 1)[0]);
+  G.pendingUpgrades = picks;
+  $('ghostUpgrade').innerHTML = `<b class="hi">Jánošíkov duch:</b> „${RNG.pick(GHOST_LINES)}“<br>` +
+    `<span class="dim">Vyber si jeden dar, synak. / Choose one gift.</span>`;
+  const wrap = $('upgradeCards');
+  wrap.innerHTML = '';
+  picks.forEach(u => {
+    const d = document.createElement('div');
+    d.className = 'card';
+    d.innerHTML = `<h4>${u.sk}</h4><div class="en">${u.en}</div>`;
+    d.onclick = () => applyUpgrade(u.id);
+    wrap.appendChild(d);
+  });
+  show('levelupScreen');
+}
+function applyUpgrade(id) {
+  const u = UPGRADES.find(x => x.id === id);
+  if (u) {
+    u.apply(G.player);
+    log(`Dar: ${u.sk}. / Gift: ${u.en}.`, 'g');
+  }
+  hideAll();
+  G.state = 'play';
+  updateHud();
+  render();
+  saveRun();
+}
+
+/* ── Inventory screen ─────────────────────────────────────────────────── */
+function renderInventory() {
+  const p = G.player;
+  $('invStats').innerHTML =
+    statLine('Útok / ATK', playerAtk()) + statLine('Obrana / DEF', playerDef()) +
+    statLine('Krit / Crit', Math.round(playerCrit() * 100) + ' %') +
+    statLine('Životy / HP', `${p.hp} / ${p.maxHp}` + (p.maxHpCurse ? ` <span class="dim">(kliatba −${p.maxHpCurse})</span>` : '')) +
+    statLine('Dukáty / Ducats', p.gold) + statLine('Hody valaškou', `${p.charges}/${CFG.VALASKA_CHARGES}`) +
+    statLine('Zbraň / Weapon', p.weapon ? ITEMS[p.weapon].sk : '—') +
+    statLine('Oblečenie / Armour', p.armour ? ITEMS[p.armour].sk : '—') +
+    statLine('Klobúk / Head', p.head ? ITEMS[p.head].sk : '—') +
+    statLine('Miesta / Slots', `${p.inv.length} / ${p.invSlots}`);
+  const grid = $('invGrid');
+  grid.innerHTML = '';
+  for (let i = 0; i < p.invSlots; i++) {
+    const it = p.inv[i];
+    const div = document.createElement('div');
+    div.className = 'slot';
+    if (it) {
+      const d = ITEMS[it.id];
+      div.innerHTML = `<span class="n">${i + 1}</span><span class="sk">${d.sk}${it.count > 1 ? ' ×' + it.count : ''}</span>` +
+        `<span class="st">${itemStats(null, it.id)}</span>`;
+      div.title = (d.flavor || '') + '\n' + d.sk + ' / ' + d.en + '\n' + itemStats(null, it.id);
+      div.onclick = () => { if (useItem(i + 1)) { renderInventory(); updateHud(); render(); } };
+    } else {
+      div.innerHTML = `<span class="n">${i + 1}</span><span class="dim">—</span>`;
+    }
+    grid.appendChild(div);
+  }
+}
+function statLine(k, v) { return `<div class="stat"><span class="dim">${k}</span><span class="hi">${v}</span></div>`; }
+
+/* ── Run summary screens ──────────────────────────────────────────────── */
+function summaryHtml(s) {
+  return `<div class="stat"><span class="dim">Plôch dosiahnutých / Depth</span><span class="hi">${s.depth}</span></div>` +
+    `<div class="stat"><span class="dim">Kraj / Zone</span><span class="hi">${s.zone}</span></div>` +
+    `<div class="stat"><span class="dim">Úroveň / Level</span><span class="hi">${s.lvl}</span></div>` +
+    `<div class="stat"><span class="dim">Vrážd / Kills</span><span class="hi">${s.kills}</span></div>` +
+    `<div class="stat"><span class="dim">Dukáty / Ducats</span><span class="hi">${s.gold}</span></div>` +
+    `<div class="stat"><span class="dim">Ťahy / Turns</span><span class="hi">${s.turns}</span></div>` +
+    `<div class="stat"><span class="dim">Objavené siene / Rooms found</span><span class="hi">${s.explored}</span></div>` +
+    `<div class="stat"><span class="dim">Seed</span><span class="hi">${s.seed}</span></div>`;
+}
+function renderDeath() {
+  const s = runStats();
+  $('deathStats').innerHTML = `<h3>Kronika behu / Run record</h3>` + summaryHtml(s) +
+    `<p class="dim">Zomrel si na ploche ${s.depth} v kraji ${s.zone}. Zima má ešte navrch.<br>
+     You died on depth ${s.depth}. Winter still rules.</p>`;
+}
+function renderVictory() {
+  const s = runStats();
+  $('victoryStats').innerHTML = `<h3>Spálená zima / The winter is burned</h3>` + summaryHtml(s) +
+    `<p class="hi">Jánošík: „Konečne jar, synak. Sadni, dám ti pohárik.“</p>`;
+  drawSpringArt();
+}
+function renderPause() {
+  const s = runStats();
+  $('pauseStats').innerHTML = `<h3>Rozpísaný beh / Current run</h3>` + summaryHtml(s) +
+    `<p class="dim">Ľahký režim / Easy mode: <b>${G.easy ? 'ZAP' : 'VYP'}</b> — prepni tlačidlom nižšie.<br>
+     Easy mode gives enemies 70 % damage.</p>`;
+}
+
+/* ============================================================================
+ * 14. AUDIO — pentatonic folk plucks, all synthesized (no files)
+ * ==========================================================================*/
+const sfx = (function () {
+  let ac = null, muted = false, stepTick = 0;
+  function ctxMaybe() {
+    if (muted) return null;
+    try {
+      if (!ac) {
+        const AC = window.AudioContext || window.webkitAudioContext;
+        if (!AC) return null;
+        ac = new AC();
+      }
+      if (ac.state === 'suspended' && ac.resume) ac.resume();
+      return ac;
+    } catch (e) { return null; }
+  }
+  /** Triangle+decay pluck — the workhorse of every sound in the game. */
+  function pluck(freq, dur, gain, type) {
+    const a = ctxMaybe();
+    if (!a) return;
+    try {
+      const o = a.createOscillator(), g = a.createGain();
+      o.type = type || 'triangle';
+      o.frequency.value = freq;
+      g.gain.setValueAtTime(0, a.currentTime);
+      g.gain.linearRampToValueAtTime(gain || 0.12, a.currentTime + 0.012);
+      g.gain.exponentialRampToValueAtTime(0.0008, a.currentTime + (dur || 0.22));
+      o.connect(g); g.connect(a.destination);
+      o.start(); o.stop(a.currentTime + (dur || 0.22) + 0.02);
+    } catch (e) { /* audio is a nicety, never a blocker */ }
+  }
+  return {
+    setMuted(v) { muted = !!v; },
+    isMuted() { return muted; },
+    pluck,
+    move() { if (++stepTick % 4 === 0) pluck(300 + RNG.int(80), 0.06, 0.05); },
+    hit() { pluck(120, 0.16, 0.16, 'sawtooth'); },
+    crit() { pluck(880, 0.2, 0.14); setTimeout(() => pluck(1320, 0.18, 0.1), 60); },
+    loot() { pluck(1046, 0.14, 0.1); setTimeout(() => pluck(1568, 0.16, 0.08), 70); },
+    levelUp() { [523, 659, 784, 1046].forEach((f, i) => setTimeout(() => pluck(f, 0.24, 0.12), i * 90)); },
+    death() { [440, 349, 262, 196].forEach((f, i) => setTimeout(() => pluck(f, 0.5, 0.14, 'sawtooth'), i * 160)); },
+    victory() {
+      // A little fujara-ish melody: pentatonic, rising.
+      [392, 440, 523, 587, 659, 784, 880, 1046].forEach((f, i) => setTimeout(() => pluck(f, 0.5, 0.13), i * 150));
+    }
+  };
+})();
+
+/* ============================================================================
+ * 11. INPUT — keyboard, mouse and the on-screen controls
+ * ==========================================================================*/
+const KEY_DIRS = {
+  ArrowUp: [0,-1], ArrowDown: [0,1], ArrowLeft: [-1,0], ArrowRight: [1,0],
+  w: [0,-1], s: [0,1], a: [-1,0], d: [1,0],
+  q: [-1,-1], e: [1,-1], z: [-1,1], c: [1,1],
+  W: [0,-1], S: [0,1], A: [-1,0], D: [1,0], Q: [-1,-1], E: [1,-1], Z: [-1,1], C: [1,1]
+};
+
+function onKey(e) {
+  const tag = e.target && e.target.tagName;
+  if (tag === 'INPUT' || tag === 'TEXTAREA') {
+    if (e.key === 'Enter') {
+      if (G.state === 'title') startNewGame($('seedInput').value);
+      else if (G.state === 'shop') rollDice();
+    }
+    return;
+  }
+  const k = e.key;
+
+  // Global keys, valid in every state.
+  if (k === 'm' || k === 'M') { toggleMute(); return; }
+  if (k === 'Escape') { togglePause(); return; }
+
+  if (G.state === 'title') {
+    if (k === 'Enter' || k === ' ') { e.preventDefault(); startNewGame($('seedInput').value); }
+    return;
+  }
+  if (G.state === 'death' || G.state === 'victory') {
+    if (k === 'Enter' || k === ' ') { e.preventDefault(); startNewGame($('seedInput').value); }
+    return;
+  }
+  if (G.state === 'levelup') return;              // must click a gift
+  if (G.state === 'shop' || G.state === 'inv') {
+    if (k === 'i' || k === 'I') { closeOverlays(); }
+    return;
+  }
+  if (G.state !== 'play') return;
+
+  if (KEY_DIRS[k]) { e.preventDefault(); const [dx, dy] = KEY_DIRS[k]; tryMove(dx, dy); sfx.move(); return; }
+  switch (k) {
+    case ' ': e.preventDefault(); waitTurn(); break;
+    case 'f': case 'F': if (throwValaska()) endTurn(1); break;
+    case 'i': case 'I': G.state = 'inv'; renderInventory(); show('invScreen'); break;
+    case 'g': case 'G': if (pickupHere()) endTurn(1); break;
+    case '>': descend(); break;
+    case '<': ascend(); break;
+    case 'r': case 'R': startNewGame($('seedInput').value); break;
+    default:
+      if (/^[1-9]$/.test(k)) {
+        // Using an item costs a turn, exactly like every other action.
+        if (useItem(Number(k))) { updateHud(); endTurn(1); }
+      }
+  }
+}
+
+function toggleMute() {
+  const prof = loadProfile();
+  const next = !sfx.isMuted();
+  sfx.setMuted(next);
+  prof.mute = next;
+  try { localStorage.setItem('zbojnik.profile.v1', JSON.stringify(prof)); } catch (e) {}
+  log(next ? 'Zvuk vypnutý. / Sound off.' : 'Zvuk zapnutý. / Sound on.', 'sys');
+}
+function togglePause() {
+  if (G.state === 'play') { G.state = 'pause'; renderPause(); show('pauseScreen'); }
+  else if (G.state === 'pause') { G.state = 'play'; hideAll(); render(); }
+}
+function closeOverlays() {
+  hideAll();
+  G.state = 'play';
+  updateHud();
+  render();
+}
+
+/* Mouse: click a tile to step toward it (two clicks = two steps). */
+canvas.addEventListener('click', (ev) => {
+  if (G.state !== 'play' || G.over) return;
+  const r = canvas.getBoundingClientRect();
+  const sx = canvas.width / r.width, sy = canvas.height / r.height;
+  const tx = Math.floor(((ev.clientX - r.left) * sx) / CFG.TILE);
+  const ty = Math.floor(((ev.clientY - r.top) * sy) / CFG.TILE);
+  if (!inMap(tx, ty)) return;
+  const e = enemyAt(tx, ty);
+  if (e) {
+    const p = G.player;
+    if (p.weapon === 'ostep' && cheb(e, p) === 2) { spearAttack(tx, ty); computeFov(); endTurn(1); }
+    else stepToward(tx, ty);
+    return;
+  }
+  stepToward(tx, ty);
+});
+
+/* ============================================================================
+ * 15. GAME LOOP & STATE MACHINE
+ * ==========================================================================*/
+function newRunState(seedStr) {
+  G = {
+    seed: seedStr, depth: 1, turn: 0, kills: 0, gold: 0, roomsExplored: 0,
+    player: null, enemies: [], items: [], npcs: [], particles: [], floats: [], logs: [],
+    map: null, over: false, won: false, boss: null, summit: null,
+    state: 'title', shake: 0, flash: 0, easy: false, mute: sfx.isMuted(),
+    dragonSpawned: false, legendaryDropped: false, arenaAnnounced: false,
+    shopNpc: null, pendingUpgrades: []
+  };
+}
+
+function startNewGame(seedStr) {
+  const seed = (seedStr || '').trim() || randomSeed();
+  seedRng(seed);
+  const easy = G ? !!G.easy : false;
+  newRunState(seed);
+  G.easy = easy;
+  G.player = makePlayer(1, 1);
+  // Starting kit: a valaška in hand, one meal, one key, one torch.
+  addToInv('halusky', 2);
+  addToInv('kluc', 1);
+  addToInv('svetlo', 1);
+  G.state = 'play';
+  hideAll();
+  buildLevel();
+  $('seedInput').value = seed;
+  if (typeof location !== 'undefined' && location.hash && !G.hashLocked) {
+    try { history.replaceState(null, '', '#seed=' + encodeURIComponent(seed)); } catch (e) {}
+  }
+  log(`Nová hra. Seed: ${seed} — ${G.map.zone.sk}. / New game, seed ${seed}.`, 'b');
+  log('Jánošík: „Dobre si začal, synak!“', 'b');
+  updateHud();
+  render();
+}
+
+function loadRun() {
+  let data = null;
+  try { data = JSON.parse(localStorage.getItem('zbojnik.run.v1')); } catch (e) { data = null; }
+  if (!data) { startNewGame($('seedInput').value); return false; }
+  seedRng(data.seed);
+  newRunState(data.seed);
+  G.depth = data.depth; G.turn = data.turn; G.kills = data.kills; G.gold = data.gold;
+  G.easy = !!data.easy; G.roomsExplored = data.roomsExplored || 0;
+  G.dragonSpawned = !!data.dragonSpawned; G.legendaryDropped = !!data.legendaryDropped;
+  G.player = data.player;
+  G.map = data.map;
+  G.map.tiles = new Uint8Array(data.map.tiles);
+  G.map.hazard = new Uint8Array(data.map.hazard);
+  G.map.decor = new Uint8Array(data.map.decor);
+  G.map.seen = new Uint8Array(data.map.seen);
+  G.map.visible = new Uint8Array(data.map.visible);
+  G.map.zone = ZONES[data.map.zoneId] || ZONES[0];
+  G.map.rooms = data.map.rooms || [];
+  G.enemies = data.enemies || [];
+  G.enemies.forEach(e => { e.energy = 0; });
+  G.items = data.items || [];
+  G.npcs = data.npcs || [];
+  G.particles = []; G.floats = []; G.logs = data.logs || [];
+  G.boss = G.enemies.find(e => e.boss) || null;
+  G.state = 'play';
+  hideAll();
+  computeFov();
+  updateHud();
+  render();
+  log('Pokračuješ v rozpísanom behu. / You continue your saved run.', 'b');
+  return true;
+}
+
+/* ============================================================================
+ * 16. SAVE / LOAD — run state (resumable), profile (permanent)
+ * ==========================================================================*/
+function saveRun() {
+  if (!G || !G.player || G.over || G.state === 'title') return;
+  try {
+    const data = {
+      seed: G.seed, depth: G.depth, turn: G.turn, kills: G.kills, gold: G.gold,
+      roomsExplored: countExplored(), easy: G.easy, dragonSpawned: G.dragonSpawned,
+      legendaryDropped: G.legendaryDropped, player: G.player,
+      map: {
+        tiles: Array.from(G.map.tiles), hazard: Array.from(G.map.hazard), decor: Array.from(G.map.decor),
+        seen: Array.from(G.map.seen), visible: Array.from(G.map.visible),
+        zoneId: G.map.zone ? G.map.zone.id : 0, rooms: G.map.rooms, up: G.map.up, down: G.map.down
+      },
+      enemies: G.enemies.filter(e => !e.died), items: G.items, npcs: G.npcs, logs: (G.logs || []).slice(-20)
+    };
+    localStorage.setItem('zbojnik.run.v1', JSON.stringify(data));
+  } catch (e) { /* private mode / quota: playing on is more important than saving */ }
+}
+function clearRun() {
+  try { localStorage.removeItem('zbojnik.run.v1'); } catch (e) {}
+}
+function hasSavedRun() {
+  try { return !!localStorage.getItem('zbojnik.run.v1'); } catch (e) { return false; }
+}
+
+/* ── Boot & animation loop ─────────────────────────────────────────────── */
+function wireUi() {
+  $('btnNew').onclick = () => startNewGame('');
+  $('btnSeed').onclick = () => startNewGame($('seedInput').value);
+  $('btnContinue').onclick = () => loadRun();
+  $('btnHowTo').onclick = () => { G.state = 'howto'; show('howtoScreen'); };
+  $('btnHowToBack').onclick = () => { if (G.player && !G.over) { G.state = 'pause'; renderPause(); show('pauseScreen'); } else { G.state = 'title'; show('titleScreen'); } };
+  $('btnResume').onclick = () => togglePause();
+  $('btnPauseInv').onclick = () => { G.state = 'inv'; renderInventory(); show('invScreen'); };
+  $('btnPauseHow').onclick = () => show('howtoScreen');
+  $('btnEasy').onclick = () => { G.easy = !G.easy; renderPause(); updateHud(); log(`Ľahký režim ${G.easy ? 'ZAP' : 'VYP'} / Easy mode ${G.easy ? 'ON' : 'OFF'}.`, 'sys'); };
+  $('btnMute').onclick = () => toggleMute();
+  $('btnQuit').onclick = () => startNewGame('');
+  $('btnInvClose').onclick = () => closeOverlays();
+  $('btnShopClose').onclick = () => closeOverlays();
+  $('btnRoll').onclick = () => rollDice();
+  $('btnRetry').onclick = () => startNewGame('');
+  $('btnReplaySeed').onclick = () => startNewGame(G.seed);
+  $('btnDeathTitle').onclick = () => { G.state = 'title'; show('titleScreen'); };
+  $('btnPlayAgain').onclick = () => startNewGame('');
+  $('btnVictoryTitle').onclick = () => { G.state = 'title'; show('titleScreen'); };
+  document.addEventListener('keydown', onKey);
+  window.addEventListener('resize', () => { fitGame(); render(); });
+  fitGame();
+}
+
+/** Scale the 1200x750 frame to the window (readable on laptops smaller than 1200px). */
+function fitGame() {
+  if (typeof window.innerWidth !== 'number' || typeof window.innerHeight !== 'number') return;
+  const s = Math.min(window.innerWidth / 1200, window.innerHeight / 750, 1);
+  const el = $('game');
+  if (el && el.style) {
+    el.style.transformOrigin = 'center center';
+    el.style.transform = s < 1 ? 'scale(' + s.toFixed(3) + ')' : '';
+  }
+}
+
+function frame(now) {
+  if (G) {
+    // Particles & floating numbers decay in real time so the game stays snappy.
+    for (const q of G.particles) { q.x += q.vx * (now / 1000 % 1 + 0.4); q.y += q.vy; q.life -= 0.035; }
+    G.particles = G.particles.filter(q => q.life > 0);
+    for (const f of G.floats) { f.y -= 0.6; f.life -= 0.022; }
+    G.floats = G.floats.filter(f => f.life > 0);
+    if (G.state === 'title' || G.state === 'howto') drawTitleArt(now);
+    else if (G.map) render(now);
+  }
+  requestAnimationFrame(frame);
+}
+
+function boot() {
+  newRunState('—');
+  G.state = 'title';
+  // Deep link: zbojnik.html#seed=morena-1234 replays an exact world (and
+  // #seed=…&depth=7 drops you straight into a later zone for a look around).
+  let params = {};
+  if (typeof location !== 'undefined' && location.hash.length > 1) {
+    location.hash.slice(1).split('&').forEach(kv => {
+      const parts = kv.split('=');
+      if (parts[0]) params[parts[0]] = decodeURIComponent(parts[1] || '');
+    });
+  }
+  const prof = loadProfile();
+  sfx.setMuted(!!prof.mute);
+  renderBest();
+  const hasRun = hasSavedRun();
+  $('btnContinue').style.display = hasRun ? '' : 'none';
+  wireUi();
+  show('titleScreen');
+  drawTitleArt(performance.now());
+  updateHud();
+  requestAnimationFrame(frame);
+  if (params.seed) {
+    startNewGame(params.seed);
+    if (params.depth) { G.hashLocked = true; Z_GOTO(clamp(parseInt(params.depth, 10) || 1, 1, CFG.MAX_DEPTH)); }
+    log('Seed z adresy: ' + params.seed + ' / seed loaded from the URL.', 'b');
+  }
+}
+/** Tiny indirection so boot() can jump to a depth without referencing the debug hook. */
+function Z_GOTO(d) { G.depth = clamp(d, 1, CFG.MAX_DEPTH); buildLevel(); }
+
+/* Debug hook: used by the automated test harness and handy in the console.
+ * (Set window.__zbojnik.dev = true is not needed — everything is reachable here.) */
+window.__zbojnik = {
+  get G() { return G; },
+  startNewGame, loadRun, saveRun, tryMove, waitTurn, endTurn, descend, ascend,
+  useItem, pickupHere, throwValaska, stepToward, computeFov, distanceField,
+  generateLevel, buildLevel, attackEnemy, hurtEnemy, rollDice, openChest,
+  runStats, loadProfile, render, SPR, ITEMS, ENEMIES, ZONES, UPGRADES,
+  /** Jump straight to a depth (test harness / manual poking). */
+  gotoDepth(d) { G.depth = clamp(d, 1, CFG.MAX_DEPTH); buildLevel(); return G.depth; },
+  /** Force a level-up choice without grinding for XP. */
+  forceLevelUp() { checkLevelUp(); }
+};
+
+boot();
+</script>
+</body>
+</html>
