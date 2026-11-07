@@ -217,6 +217,7 @@ var REGION_MIN_ZOOM = 6;
 var _bordersData   = null, _bordersLayer = null;
 var _bordersLoading = false, _bordersVisible = false;
 var _allCountryLayers = [];
+var _borderClickTimer = null;   /* single click selects, double click must not fire it */
 
 var _selCountryLayer = null, _selCountryName = null, _selCountryOrig = null;
 
@@ -411,7 +412,7 @@ function toggleBorders() {
             _bordersLayer = L.geoJSON(data, {
                 style: function () {
                     return {
-                        color: 'rgba(120, 180, 255, 0.7)', weight: 1.5,
+                        color: 'rgba(120, 180, 255, 0.7)', weight: 2.5,
                         fillColor: 'rgba(120, 180, 255, 0.08)', fillOpacity: 0.18,
                         dashArray: '', renderer: canvasRenderer
                     };
@@ -422,16 +423,23 @@ function toggleBorders() {
                     if (cn) layer.bindTooltip(cn, { sticky: true, className: 'import-tooltip' });
                     layer.on('mouseover', function (e) {
                         if (_selCountryLayer === this) return;
-                        this.setStyle({ weight: 4, color: '#78b4ff', fillOpacity: 0.22, opacity: 1 });
+                        if (this._hiddenBySel) return;
+                        this.setStyle({ weight: 5, color: '#78b4ff', fillOpacity: 0.22, opacity: 1 });
                         this.bringToFront();
-                        $('#status-text').textContent = '🗺️ ' + cn + ' — double-click to select';
+                        $('#status-text').textContent = '🗺️ ' + cn + ' — click to select';
                     });
                     layer.on('mouseout', function (e) {
                         if (_selCountryLayer === this) return;
                         if (this._hiddenBySel) return;
                         _bordersLayer.resetStyle(this);
                     });
+                    layer.on('click', function (e) {
+                        /* wait 300 ms so a double click does not select twice */
+                        if (_borderClickTimer) { clearTimeout(_borderClickTimer); _borderClickTimer = null; }
+                        _borderClickTimer = setTimeout(function () { _selectCountry(layer, cn); }, 300);
+                    });
                     layer.on('dblclick', function (e) {
+                        if (_borderClickTimer) { clearTimeout(_borderClickTimer); _borderClickTimer = null; }
                         if (e && e.originalEvent) L.DomEvent.stop(e.originalEvent);
                         _selectCountry(this, cn);
                     });
@@ -455,6 +463,33 @@ function toggleBorders() {
 }
 
 $('#btn-borders').addEventListener('click', toggleBorders);
+
+/* --- polygon centroid helper (largest ring) -----------------
+   onEachFeature hands over the polygon layer itself, which has no eachLayer()
+   (the old version threw for every country and the label try/catch ate it, so
+   NATO/EU labels never appeared). Accept a group *or* a single path. */
+function _polygonCentroid(layer) {
+    var rings = [];
+    function pushRings(ll) {
+        if (!ll || !ll.length) return;
+        if (typeof ll[0].lat === 'number') { rings.push(ll); return; }
+        for (var i = 0; i < ll.length; i++) pushRings(ll[i]);
+    }
+    if (layer && typeof layer.eachLayer === 'function') {
+        layer.eachLayer(function (l) { if (l.getLatLngs) pushRings(l.getLatLngs()); });
+    } else if (layer && typeof layer.getLatLngs === 'function') {
+        pushRings(layer.getLatLngs());
+    }
+    if (!rings.length) {
+        try { return layer.getBounds().getCenter(); } catch (_) { return null; }
+    }
+    rings.sort(function (a, b) { return b.length - a.length; });
+    var ring = rings[0], lat = 0, lng = 0;
+    for (var i = 0; i < ring.length; i++) {
+        lat += ring[i].lat; lng += ring[i].lng;
+    }
+    return L.latLng(lat / ring.length, lng / ring.length);
+}
 
 /* =====================================================
    Political Map overlay — colored fills + centroid labels
@@ -665,6 +700,233 @@ function toggleRivers() {
 }
 
 $('#btn-rivers').addEventListener('click', toggleRivers);
+
+/* =====================================================
+   NATO Member Countries Overlay
+   ===================================================== */
+var _natoMembers = [
+    'Albania', 'Belgium', 'Bulgaria', 'Canada', 'Croatia',
+    'Czech Republic', 'Denmark', 'Estonia', 'Finland', 'France',
+    'Germany', 'Greece', 'Hungary', 'Iceland', 'Italy',
+    'Latvia', 'Lithuania', 'Luxembourg', 'Montenegro', 'Netherlands',
+    'Macedonia', 'Norway', 'Poland', 'Portugal', 'Romania',
+    'Slovakia', 'Slovenia', 'Spain', 'Sweden', 'Turkey',
+    'England', 'USA'
+];
+var _natoLayer = null, _natoLabelsLayer = null, _natoVisible = false, _natoLoading = false;
+
+function _natoColor() { return '#3b82f6'; }
+
+function _isNatoMember(name) {
+    if (!name) return false;
+    var n = name.toLowerCase();
+    return _natoMembers.some(function (m) { return m.toLowerCase() === n; });
+}
+
+function _loadNatoOverlay() {
+    if (_natoLoading) return;
+    _natoLoading = true;
+    var btn = $('#btn-nato');
+    btn.textContent = '⏳ NATO'; btn.disabled = true;
+
+    var src = _bordersData ? Promise.resolve(_bordersData) :
+        fetch(BORDERS_GEOJSON_URL).then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); });
+
+    src.then(function (data) {
+        _natoLabelsLayer = L.layerGroup();
+        var filtered = {
+            type: 'FeatureCollection',
+            features: data.features.filter(function (f) {
+                return _isNatoMember(_countryNameOf(f));
+            })
+        };
+        _natoLayer = L.geoJSON(filtered, {
+            style: function () {
+                return {
+                    color: '#60a5fa', weight: 6, opacity: 0.85,
+                    fillColor: 'rgba(59,130,246,0.30)', fillOpacity: 0.30,
+                    dashArray: '', renderer: canvasRenderer
+                };
+            },
+            onEachFeature: function (feature, layer) {
+                var cn = _countryNameOf(feature);
+                if (cn) layer.bindTooltip(cn, { sticky: true, className: 'import-tooltip' });
+                layer.on('mouseover', function (e) {
+                    this.setStyle({ weight: 3.5, color: '#93c5fd', fillOpacity: 0.45, opacity: 1 });
+                    this.bringToFront();
+                    $('#status-text').textContent = '🛡️ NATO — ' + cn;
+                });
+                layer.on('mouseout', function (e) {
+                    _natoLayer.resetStyle(this);
+                });
+                try {
+                    var centroid = _polygonCentroid(layer);
+                    var fs = _labelFontSize(map.getZoom());
+                    var label = L.marker(centroid, {
+                        icon: L.divIcon({
+                            className: 'political-label',
+                            html: '<span style="font-size:' + fs + ';color:#93c5fd">🛡️ ' + cn + '</span>',
+                            iconSize: [0, 0], iconAnchor: [0, 0]
+                        }),
+                        interactive: false
+                    });
+                    _natoLabelsLayer.addLayer(label);
+                } catch (_) {}
+            }
+        });
+        _natoLoading = false;
+        _natoLayer.addTo(map);
+        _natoLabelsLayer.addTo(map);
+        _natoVisible = true;
+        btn.classList.add('active');
+        btn.textContent = '🛡️ NATO'; btn.disabled = false;
+        $('#status-text').textContent = '🛡️ NATO member countries (' + filtered.features.length + ' members)';
+    })
+    .catch(function (err) {
+        console.error('Failed to load NATO overlay:', err);
+        alert('Failed to load NATO overlay.\n' + err.message);
+        _natoLoading = false;
+        btn.textContent = '🛡️ NATO'; btn.disabled = false;
+    });
+}
+
+function toggleNato() {
+    var btn = $('#btn-nato');
+    if (!btn) return;
+    if (_natoVisible && _natoLayer) {
+        map.removeLayer(_natoLayer);
+        if (_natoLabelsLayer) map.removeLayer(_natoLabelsLayer);
+        _natoLayer = null; _natoVisible = false;
+        _natoLabelsLayer = null;
+        btn.classList.remove('active');
+        $('#status-text').textContent = 'NATO overlay hidden';
+        return;
+    }
+    if (_natoLayer) {
+        _natoLayer.addTo(map);
+        if (_natoLabelsLayer) _natoLabelsLayer.addTo(map);
+        _natoVisible = true;
+        btn.classList.add('active');
+        $('#status-text').textContent = '🛡️ NATO member countries';
+        return;
+    }
+    _loadNatoOverlay();
+}
+
+var _natoBtn = $('#btn-nato'); if (_natoBtn) _natoBtn.addEventListener('click', toggleNato);
+
+/* =====================================================
+   EU Member Countries Overlay
+   ===================================================== */
+var _euMembers = [
+    'Austria', 'Belgium', 'Bulgaria', 'Croatia', 'Cyprus',
+    'Czech Republic', 'Denmark', 'Estonia', 'Finland', 'France',
+    'Germany', 'Greece', 'Hungary', 'Ireland', 'Italy',
+    'Latvia', 'Lithuania', 'Luxembourg', 'Malta', 'Netherlands',
+    'Poland', 'Portugal', 'Romania', 'Slovakia', 'Slovenia',
+    'Spain', 'Sweden'
+];
+var _euLayer = null, _euLabelsLayer = null, _euVisible = false, _euLoading = false;
+
+function _euColor() { return '#fbbf24'; }
+
+function _isEuMember(name) {
+    if (!name) return false;
+    var n = name.toLowerCase();
+    return _euMembers.some(function (m) { return m.toLowerCase() === n; });
+}
+
+function _loadEuOverlay() {
+    if (_euLoading) return;
+    _euLoading = true;
+    var btn = $('#btn-eu');
+    btn.textContent = '⏳ EU'; btn.disabled = true;
+
+    var src = _bordersData ? Promise.resolve(_bordersData) :
+        fetch(BORDERS_GEOJSON_URL).then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); });
+
+    src.then(function (data) {
+        _euLabelsLayer = L.layerGroup();
+        var filtered = {
+            type: 'FeatureCollection',
+            features: data.features.filter(function (f) {
+                return _isEuMember(_countryNameOf(f));
+            })
+        };
+        _euLayer = L.geoJSON(filtered, {
+            style: function () {
+                return {
+                    color: '#f59e0b', weight: 6, opacity: 0.85,
+                    fillColor: 'rgba(251,191,36,0.25)', fillOpacity: 0.25,
+                    dashArray: '', renderer: canvasRenderer
+                };
+            },
+            onEachFeature: function (feature, layer) {
+                var cn = _countryNameOf(feature);
+                if (cn) layer.bindTooltip(cn, { sticky: true, className: 'import-tooltip' });
+                layer.on('mouseover', function (e) {
+                    this.setStyle({ weight: 3.5, color: '#fcd34d', fillOpacity: 0.40, opacity: 1 });
+                    this.bringToFront();
+                    $('#status-text').textContent = '🇪🇺 EU — ' + cn;
+                });
+                layer.on('mouseout', function (e) {
+                    _euLayer.resetStyle(this);
+                });
+                try {
+                    var centroid = _polygonCentroid(layer);
+                    var fs = _labelFontSize(map.getZoom());
+                    var label = L.marker(centroid, {
+                        icon: L.divIcon({
+                            className: 'political-label',
+                            html: '<span style="font-size:' + fs + ';color:#fcd34d">🇪🇺 ' + cn + '</span>',
+                            iconSize: [0, 0], iconAnchor: [0, 0]
+                        }),
+                        interactive: false
+                    });
+                    _euLabelsLayer.addLayer(label);
+                } catch (_) {}
+            }
+        });
+        _euLoading = false;
+        _euLayer.addTo(map);
+        _euLabelsLayer.addTo(map);
+        _euVisible = true;
+        btn.classList.add('active');
+        btn.textContent = '🇪🇺 EU'; btn.disabled = false;
+        $('#status-text').textContent = '🇪🇺 EU member countries (' + filtered.features.length + ' members)';
+    })
+    .catch(function (err) {
+        console.error('Failed to load EU overlay:', err);
+        alert('Failed to load EU overlay.\n' + err.message);
+        _euLoading = false;
+        btn.textContent = '🇪🇺 EU'; btn.disabled = false;
+    });
+}
+
+function toggleEu() {
+    var btn = $('#btn-eu');
+    if (!btn) return;
+    if (_euVisible && _euLayer) {
+        map.removeLayer(_euLayer);
+        if (_euLabelsLayer) map.removeLayer(_euLabelsLayer);
+        _euLayer = null; _euVisible = false;
+        _euLabelsLayer = null;
+        btn.classList.remove('active');
+        $('#status-text').textContent = 'EU overlay hidden';
+        return;
+    }
+    if (_euLayer) {
+        _euLayer.addTo(map);
+        if (_euLabelsLayer) _euLabelsLayer.addTo(map);
+        _euVisible = true;
+        btn.classList.add('active');
+        $('#status-text').textContent = '🇪🇺 EU member countries';
+        return;
+    }
+    _loadEuOverlay();
+}
+
+var _euBtn = $('#btn-eu'); if (_euBtn) _euBtn.addEventListener('click', toggleEu);
 
 /* =====================================================
    Tool Management
@@ -1778,6 +2040,130 @@ function deleteSavedMap(name) {
     localStorage.setItem(LS_KEY, JSON.stringify(saved));
 }
 
+/* ── Imported Maps registry & panel ────────────── */
+window._importedMaps = [];       /* Array of { name, layerGroup, features, visible } */
+
+function updateImportedMapsPanel() {
+    let panel = $('#imported-maps-panel');
+    if (!panel) {
+        panel = document.createElement('div');
+        panel.id = 'imported-maps-panel';
+        panel.classList.add('hidden');
+        document.body.appendChild(panel);
+    }
+    if (window._importedMaps.length === 0) {
+        panel.classList.add('hidden');
+        return;
+    }
+    panel.classList.remove('hidden');
+
+    /* Track which groups are expanded (persist across rebuilds) */
+    if (!window._importedMapsExpanded) window._importedMapsExpanded = {};
+    const expanded = window._importedMapsExpanded;
+
+    /* Header */
+    let html = '<div class="panel-header">'
+        + '<span class="panel-title">📂 Imported Maps</span>'
+        + '<button class="panel-collapse-all" id="imported-maps-collapse-all">Collapse</button>'
+        + '</div><div class="panel-body">';
+
+    window._importedMaps.forEach((entry, idx) => {
+        const featureCount = entry.features ? entry.features.length : 0;
+        const isOpen = !!expanded[idx];
+        html += '<div class="imported-map-group">'
+            + '<div class="imported-map-row" data-idx="' + idx + '">'
+            + '<input type="checkbox" ' + (entry.visible ? 'checked' : '') + ' class="imported-map-toggle" data-idx="' + idx + '">'
+            + '<span class="imported-map-name">' + escapeHtml(entry.name) + '</span>'
+            + '<span class="imported-map-count">' + featureCount + '</span>'
+            + '<span class="imported-map-chevron' + (isOpen ? ' expanded' : '') + '" data-idx="' + idx + '">▸</span>'
+            + '</div>'
+            + '<div class="imported-map-features' + (isOpen ? ' expanded' : '') + '" data-idx="' + idx + '">';
+
+        if (entry.features && entry.features.length > 0) {
+            entry.features.forEach(f => {
+                html += '<div class="imported-map-feature">'
+                    + '<span class="imported-map-feature-color" style="background:' + (f.color || '#888') + '"></span>'
+                    + '<span class="imported-map-feature-name">' + escapeHtml(f.name || 'Unnamed') + '</span>'
+                    + '<span class="imported-map-feature-type">' + (f.geometryType || '') + '</span>'
+                    + '</div>';
+            });
+        }
+        html += '</div></div>';
+    });
+
+    html += '</div>';
+    panel.innerHTML = html;
+
+    /* ── Event handlers ── */
+    /* Toggle layer visibility */
+    panel.querySelectorAll('.imported-map-toggle').forEach(cb => {
+        cb.addEventListener('change', e => {
+            const idx = parseInt(e.target.dataset.idx);
+            const entry = window._importedMaps[idx];
+            if (!entry) return;
+            entry.visible = e.target.checked;
+            if (entry.visible) {
+                entry.layerGroup.addTo(map);
+            } else {
+                map.removeLayer(entry.layerGroup);
+            }
+        });
+    });
+
+    /* Chevron toggle — clicking the entire row toggles checkbox AND chevron */
+    panel.querySelectorAll('.imported-map-row').forEach(row => {
+        row.addEventListener('click', e => {
+            /* Don't double-fire if the checkbox itself was clicked */
+            if (e.target.classList.contains('imported-map-toggle')) return;
+            const idx = parseInt(row.dataset.idx);
+            const cb = row.querySelector('.imported-map-toggle');
+            if (cb) { cb.checked = !cb.checked; cb.dispatchEvent(new Event('change')); }
+        });
+    });
+
+    /* Chevron toggle for feature list */
+    panel.querySelectorAll('.imported-map-chevron').forEach(chev => {
+        chev.addEventListener('click', e => {
+            e.stopPropagation();
+            const idx = parseInt(chev.dataset.idx);
+            const featuresEl = panel.querySelector('.imported-map-features[data-idx="' + idx + '"]');
+            if (!featuresEl) return;
+            const isOpen = featuresEl.classList.contains('expanded');
+            if (isOpen) {
+                featuresEl.classList.remove('expanded');
+                chev.classList.remove('expanded');
+                expanded[idx] = false;
+            } else {
+                featuresEl.classList.add('expanded');
+                chev.classList.add('expanded');
+                expanded[idx] = true;
+            }
+        });
+    });
+
+    /* Collapse/Expand all */
+    const collapseAllBtn = panel.querySelector('#imported-maps-collapse-all');
+    if (collapseAllBtn) {
+        collapseAllBtn.addEventListener('click', () => {
+            const anyOpen = Object.values(expanded).some(v => v);
+            const featureEls = panel.querySelectorAll('.imported-map-features');
+            const chevEls = panel.querySelectorAll('.imported-map-chevron');
+            if (anyOpen) {
+                /* Collapse all */
+                featureEls.forEach(el => el.classList.remove('expanded'));
+                chevEls.forEach(el => el.classList.remove('expanded'));
+                Object.keys(expanded).forEach(k => expanded[k] = false);
+                collapseAllBtn.textContent = 'Expand';
+            } else {
+                /* Expand all */
+                featureEls.forEach(el => el.classList.add('expanded'));
+                chevEls.forEach(el => el.classList.add('expanded'));
+                window._importedMaps.forEach((_, i) => expanded[i] = true);
+                collapseAllBtn.textContent = 'Collapse';
+            }
+        });
+    }
+}
 /* ── Import Modal Open / Close ─────────────────── */
 function openImportModal() {
     $('#import-modal').classList.remove('hidden');
@@ -1785,6 +2171,9 @@ function openImportModal() {
     $('#import-preview').classList.add('hidden');
     $('#import-actions').classList.add('hidden');
     $('#import-url-input').value = '';
+    window._pendingImportName = null;
+    const nameField = $('#import-name-input');
+    if (nameField) nameField.value = '';
     refreshPresetsTab();
 }
 function closeImportModal() {
@@ -1896,6 +2285,23 @@ function renderPreview(features) {
     $('#import-preview').classList.remove('hidden');
     $('#import-actions').classList.remove('hidden');
     $('#import-select-all').checked = features.every(f => f.checked);
+
+    /* Pre-fill import name from the source or a pending override */
+    const nameInput = $('#import-name-input');
+    if (nameInput) {
+        if (window._pendingImportName) {
+            nameInput.value = window._pendingImportName;
+            window._pendingImportName = null;
+        } else if (features.some(f => f.mapName)) {
+            const mapName = features.find(f => f.mapName).mapName;
+            nameInput.value = (mapName === 'Google Maps') ? 'Google Maps KML' : mapName;
+        } else {
+            const folders = new Set(features.map(f => f.folder || '').filter(Boolean));
+            if ([...folders].some(f => /yandex/i.test(f))) nameInput.value = 'Yandex Map';
+            else if ([...folders].some(f => /waypoint|route|track/i.test(f))) nameInput.value = 'GPX Import';
+            else nameInput.value = 'GeoJSON Import';
+        }
+    }
 }
 
 /* ── Select All Checkbox Sync ──────────────────── */
@@ -1988,15 +2394,20 @@ function confirmImport() {
         importedFolders[name] = folderGroups[name];
     });
 
-    /* Add to layer control */
-    if (Object.keys(importedFolders).length > 0) {
-        const base = { '🗺️ Standard': osm, '🏔 Topographic': topo, '🛰 Satellite': sat };
-        /* Preserve existing overlay layers from the control */
-        map._layers_control_overlays = map._layers_control_overlays || {};
-        Object.assign(map._layers_control_overlays, importedFolders);
-        if (window._importCtrl) map.removeControl(window._importCtrl);
-        window._importCtrl = L.control.layers(base, map._layers_control_overlays, { collapsed: false, position: 'topright' }).addTo(map);
-    }
+    /* Store in the imported maps registry and build the panel */
+    const nameEl = $('#import-name-input');
+    const importName = ((nameEl && nameEl.value) || '').trim() || 'Imported Map';
+    Object.keys(folderGroups).forEach(folderName => {
+        const displayName = Object.keys(folderGroups).length === 1 ? importName : importName + ' — ' + folderName;
+        const featuresInFolder = toImport.filter(f => (f.folder || 'Imported') === folderName);
+        window._importedMaps.push({
+            name: displayName,
+            layerGroup: folderGroups[folderName],
+            features: featuresInFolder,
+            visible: true
+        });
+    });
+    updateImportedMapsPanel();
 
     closeImportModal();
     if (count > 0) {
@@ -2043,12 +2454,12 @@ function refreshPresetsTab() {
 
     builtInList.querySelectorAll('.load-preset').forEach(btn => btn.addEventListener('click', () => {
         const idx = parseInt(btn.dataset.idx);
-        if (BUILT_IN_PRESETS[idx]) loadPresetIntoPreview(BUILT_IN_PRESETS[idx].geojson);
+        if (BUILT_IN_PRESETS[idx]) { window._pendingImportName = BUILT_IN_PRESETS[idx].name; loadPresetIntoPreview(BUILT_IN_PRESETS[idx].geojson); }
     }));
     savedList.querySelectorAll('.load-preset').forEach(btn => btn.addEventListener('click', () => {
         const name = btn.dataset.name;
         const mapData = getSavedMaps().find(s => s.name === name);
-        if (mapData && mapData.geojson) loadPresetIntoPreview(mapData.geojson);
+        if (mapData && mapData.geojson) { window._pendingImportName = name; loadPresetIntoPreview(mapData.geojson); }
     }));
     savedList.querySelectorAll('.delete-preset').forEach(btn => btn.addEventListener('click', () => {
         const name = btn.dataset.name;
@@ -2486,11 +2897,316 @@ function fetchGoogleKML(mid, btn) {
     return tryFetch();
 }
 
+/* =====================================================
+   Yandex Maps URL Import
+   ===================================================== */
+function parseYandexMapsUrl(url) {
+    const isYandex = /yandex\.(ru|com|uz|by|kz)\/maps/.test(url);
+    if (!isYandex) return null;
+    try {
+        const parsed = new URL(url);
+        const params = parsed.searchParams;
+        const result = {
+            lat: null, lng: null, zoom: 15,
+            points: [], route: [], searchText: null, spn: null, constructorHash: null
+        };
+
+        // Extract center from ll=lng,lat
+        const ll = params.get('ll');
+        if (ll) {
+            const parts = ll.split(',');
+            if (parts.length === 2) {
+                result.lng = parseFloat(parts[0]);
+                result.lat = parseFloat(parts[1]);
+            }
+        }
+
+        // Extract zoom
+        const z = params.get('z');
+        if (z) result.zoom = parseInt(z, 10) || 15;
+
+        // Extract span
+        const spn = params.get('spn');
+        if (spn) {
+            const spnParts = spn.split(',');
+            if (spnParts.length === 2) {
+                result.spn = { lng: parseFloat(spnParts[0]), lat: parseFloat(spnParts[1]) };
+            }
+        }
+
+        // Extract text search query
+        const text = params.get('text');
+        if (text) result.searchText = text;
+
+        // Parse ALL pt points: pt=lng,lat,scale,type,flags~lng,lat,scale,type,flags~...
+        const pt = params.get('pt');
+        if (pt) {
+            const ptSegments = pt.split('~');
+            ptSegments.forEach(function(seg) {
+                const p = seg.split(',');
+                if (p.length >= 2) {
+                    const lng = parseFloat(p[0]);
+                    const lat = parseFloat(p[1]);
+                    const scale = p.length >= 3 ? parseFloat(p[2]) : 949;
+                    const type = p.length >= 4 ? parseInt(p[3], 10) : 0;
+                    const flags = p.length >= 5 ? p[4] : '';
+                    if (!isNaN(lat) && !isNaN(lng)) {
+                        result.points.push({ lat: lat, lng: lng, scale: scale, type: type, flags: flags });
+                    }
+                }
+            });
+        }
+
+        // Extract route from rtext=lat1,lng1~lat2,lng2~...
+        const rtext = params.get('rtext');
+        if (rtext) {
+            const waypoints = rtext.split('~').map(function(wp) {
+                const wpParts = wp.split(',');
+                return { lat: parseFloat(wpParts[0]), lng: parseFloat(wpParts[1]) };
+            }).filter(function(wp) { return !isNaN(wp.lat) && !isNaN(wp.lng); });
+            if (waypoints.length >= 2) result.route = waypoints;
+        }
+
+        // Extract user map constructor hash from um=constructor:HASH
+        const um = params.get('um');
+        if (um) {
+            const umMatch = um.match(/constructor:([a-f0-9]+)/i);
+            if (umMatch) result.constructorHash = umMatch[1];
+        }
+
+        // If no coordinates found and no constructor hash, return null
+        if (result.lat === null && result.lng === null && result.points.length === 0 && result.route.length === 0 && !result.constructorHash) return null;
+        return result;
+    } catch (_) {
+        return null;
+    }
+}
+
+function fetchYandexMapData(yandexData) {
+    const features = [];
+    let i = 0;
+
+    // Create marker features for EACH parsed point
+    if (yandexData.points && yandexData.points.length > 0) {
+        yandexData.points.forEach(function(pt, idx) {
+            const isBusiness = pt.type === 1;
+            features.push({
+                id: 'yandex_pt_' + (i++),
+                name: 'Yandex Point ' + (idx + 1),
+                type: 'marker',
+                color: isBusiness ? '#ffaa00' : '#ff0000',
+                weight: 3,
+                dashStyle: 'solid',
+                geometryType: 'Point',
+                geometry: { type: 'Point', coordinates: [pt.lng, pt.lat] },
+                text: (isBusiness ? 'POI' : 'Point') + ' ' + (idx + 1),
+                checked: true,
+                folder: 'Yandex Points'
+            });
+        });
+    }
+
+    // Create route polyline and individual route point markers
+    if (yandexData.route && yandexData.route.length >= 2) {
+        // Route polyline (dashed)
+        features.push({
+            id: 'yandex_route_' + (i++),
+            name: 'Yandex Route',
+            type: 'polyline',
+            color: '#ff4444',
+            weight: 3,
+            dashStyle: 'dashed',
+            geometryType: 'LineString',
+            geometry: {
+                type: 'LineString',
+                coordinates: yandexData.route.map(function(wp) { return [wp.lng, wp.lat]; })
+            },
+            text: 'Route',
+            checked: true,
+            folder: 'Yandex Routes'
+        });
+
+        // Individual route point markers
+        yandexData.route.forEach(function(wp, idx) {
+            features.push({
+                id: 'yandex_rt_' + (i++),
+                name: 'Route Waypoint ' + (idx + 1),
+                type: 'marker',
+                color: '#ff4444',
+                weight: 3,
+                dashStyle: 'solid',
+                geometryType: 'Point',
+                geometry: { type: 'Point', coordinates: [wp.lng, wp.lat] },
+                text: 'Waypoint ' + (idx + 1),
+                checked: true,
+                folder: 'Yandex Routes'
+            });
+        });
+    }
+
+    // Only create a center pin if there are no points and no route
+    if (yandexData.points.length === 0 && yandexData.route.length === 0 && yandexData.lat !== null && yandexData.lng !== null) {
+        features.push({
+            id: 'yandex_center_' + (i++),
+            name: 'Yandex Center',
+            type: 'marker',
+            color: '#ff0000',
+            weight: 3,
+            dashStyle: 'solid',
+            geometryType: 'Point',
+            geometry: { type: 'Point', coordinates: [yandexData.lng, yandexData.lat] },
+            text: 'Center',
+            checked: true,
+            folder: 'Yandex Points'
+        });
+    }
+
+    return features;
+}
+
+function fetchYandexConstructorMap(hash, btn) {
+    const proxyBase = _p + '/?url=';
+    const pageUrl = 'https://yandex.com/maps/?um=constructor:' + hash;
+
+    return fetch(proxyBase + encodeURIComponent(pageUrl))
+        .then(function(r) {
+            if (!r.ok) throw new Error('Failed to fetch Yandex map page: HTTP ' + r.status);
+            return r.text();
+        })
+        .then(function(html) {
+            // Extract userMap.features JSON from the page
+            var marker = '"userMap":{"features":[';
+            var idx = html.indexOf(marker);
+            if (idx < 0) throw new Error('Could not find map features in Yandex page');
+            var arrStart = html.indexOf('[', idx);
+            // Find matching closing bracket
+            var depth = 0, end = -1;
+            for (var i = arrStart; i < Math.min(arrStart + 2000000, html.length); i++) {
+                if (html[i] === '[') depth++;
+                else if (html[i] === ']') {
+                    depth--;
+                    if (depth === 0) { end = i + 1; break; }
+                }
+            }
+            if (end < 0) throw new Error('Could not parse map features array');
+            var featuresJson = html.substring(arrStart, end);
+            var features = JSON.parse(featuresJson);
+            return parseYandexConstructorFeatures(features);
+        });
+}
+
+function parseYandexConstructorFeatures(features) {
+    var result = [];
+    var i = 0;
+
+    features.forEach(function(f) {
+        try {
+            var name = f.title || 'Feature ' + (i + 1);
+            var geom = f.geometry;
+            if (!geom || !geom.coordinates) return;
+
+            if (f.type === 'line' || geom.type === 'LineString') {
+                var coords = geom.coordinates;
+                if (coords.length < 2) return;
+                var strokeColor = (f.stroke && f.stroke.color) ? f.stroke.color : '#4488ff';
+                var strokeWidth = (f.stroke && f.stroke.width) ? f.stroke.width : 2;
+                result.push({
+                    id: 'ym_' + (i++),
+                    name: name,
+                    type: 'polyline',
+                    color: strokeColor,
+                    weight: strokeWidth,
+                    dashStyle: 'solid',
+                    geometryType: 'LineString',
+                    geometry: { type: 'LineString', coordinates: coords },
+                    text: name,
+                    checked: true,
+                    folder: 'Yandex Map'
+                });
+            } else if (f.type === 'polygon' || geom.type === 'Polygon') {
+                /* Yandex coords are GeoJSON Polygon: [[ring1],[hole1],...].
+                   The import system expects flat coords: [ring1 only]. */
+                var polyCoords = geom.coordinates;
+                if (Array.isArray(polyCoords[0]) && !Array.isArray(polyCoords[0][0])) {
+                    /* Already flat [[lng,lat],...] — unexpected but fine */
+                } else if (Array.isArray(polyCoords[0]) && Array.isArray(polyCoords[0][0])) {
+                    /* Nested [[[lng,lat],...]] — unwrap first ring */
+                    polyCoords = polyCoords[0];
+                }
+                if (!polyCoords || polyCoords.length < 3) return;
+                var strokeColor = (f.stroke && f.stroke.color) ? f.stroke.color : '#ff4444';
+                var strokeWidth = (f.stroke && f.stroke.width) ? f.stroke.width : 2;
+                var fillColor = (f.fill && f.fill.color) ? f.fill.color : strokeColor;
+                var fillOpacity = (f.fill && f.fill.opacity !== undefined) ? Math.max(f.fill.opacity, 0.35) : 0.35;
+                result.push({
+                    id: 'ym_' + (i++),
+                    name: name,
+                    type: 'polygon',
+                    color: strokeColor,
+                    fillColor: fillColor,
+                    fillOpacity: fillOpacity,
+                    weight: strokeWidth,
+                    dashStyle: 'solid',
+                    geometryType: 'Polygon',
+                    geometry: { type: 'Polygon', coordinates: polyCoords },
+                    text: name,
+                    checked: true,
+                    folder: 'Yandex Map'
+                });
+            }
+        } catch (e) {
+            console.warn('Skipping Yandex feature:', e);
+        }
+    });
+
+    return result;
+}
+
 function handleUrlImport() {
     const url = $('#import-url-input').value.trim();
     if (!url) { alert('Please enter a URL.'); return; }
     const btn = $('#import-url-btn');
     btn.disabled = true; btn.textContent = 'Fetching…';
+
+    /* ── Yandex Maps URL → local parse ────── */
+    const yandexData = parseYandexMapsUrl(url);
+    if (yandexData) {
+        // Constructor maps need to fetch data from Yandex servers
+        if (yandexData.constructorHash) {
+            fetchYandexConstructorMap(yandexData.constructorHash, btn)
+                .then(features => {
+                    if (features.length === 0) {
+                        // Fall back to URL params
+                        const fallback = fetchYandexMapData(yandexData);
+                        if (fallback.length === 0) { alert('No features found in this Yandex map.'); return; }
+                        importPendingFeatures = fallback;
+                    } else {
+                        importPendingFeatures = features;
+                    }
+                    renderPreview(importPendingFeatures);
+                })
+                .catch(err => {
+                    console.error('Yandex constructor map import failed:', err);
+                    // Fall back to URL params
+                    const fallback = fetchYandexMapData(yandexData);
+                    if (fallback.length > 0) {
+                        importPendingFeatures = fallback;
+                        renderPreview(importPendingFeatures);
+                    } else {
+                        alert('Failed to import Yandex map.\n' + err.message);
+                    }
+                })
+                .finally(() => { btn.disabled = false; btn.textContent = 'Fetch & Import'; });
+            return;
+        }
+        // Simple URL-based map
+        const yandexFeatures = fetchYandexMapData(yandexData);
+        if (yandexFeatures.length === 0) { alert('No coordinates found in this Yandex Maps URL.'); btn.disabled = false; btn.textContent = 'Fetch & Import'; return; }
+        importPendingFeatures = yandexFeatures;
+        renderPreview(importPendingFeatures);
+        btn.disabled = false; btn.textContent = 'Fetch & Import';
+        return;
+    }
 
     /* ── Google Maps URL → KML proxy flow ────── */
     const mid = parseGoogleMapsUrl(url);

@@ -138,6 +138,8 @@
             <button id="btn-borders" class="sidebar-btn" title="Toggle world country borders">🌍 Borders</button>
             <button id="btn-political" class="sidebar-btn" title="Toggle political map">🗺️ Political</button>
             <button id="btn-rivers" class="sidebar-btn" title="Toggle major world rivers">🌊 Rivers</button>
+            <button id="btn-nato" class="sidebar-btn" title="Toggle NATO member countries">🛡️ NATO</button>
+            <button id="btn-eu" class="sidebar-btn" title="Toggle EU member countries">🇪🇺 EU</button>
         </div>
         <div class="sidebar-section">
             <div class="sidebar-title">Find place</div>
@@ -379,7 +381,7 @@
                     <label>Paste a URL:</label>
                     <input type="text" id="import-url-input" placeholder="Google Maps URL or GeoJSON URL" autocomplete="off" spellcheck="false">
                     <button id="import-url-btn" class="import-action-btn">Fetch & Import</button>
-                    <p class="import-url-hint">Supports GeoJSON, KML/KMZ, and GPX URLs. Google Maps URLs are auto-detected.</p>
+                    <p class="import-url-hint">Supports GeoJSON, KML/KMZ, and GPX URLs. Google Maps and Yandex Maps URLs are auto-detected. Direct links to files from GPS apps (Komoot, Wikiloc, Strava, etc.) also work.</p>
                 </div>
             </div>
             <div class="import-tab-content" id="import-tab-preset">
@@ -396,6 +398,10 @@
                 <div class="import-preview-header">
                     <span id="import-preview-count">0 features found</span>
                     <label class="import-select-all"><input type="checkbox" id="import-select-all" checked> Select All</label>
+                </div>
+                <div class="import-name-row">
+                    <label for="import-name-input" class="import-name-label">Name:</label>
+                    <input type="text" id="import-name-input" class="import-name-input" placeholder="Import name…" autocomplete="off">
                 </div>
                 <div id="import-preview-list"></div>
             </div>

@@ -217,29 +217,29 @@ var _selRegionLayer = null, _selRegionOrig = null;
 
 /* --- polygon centroid helper (largest ring) --------- */
 function _polygonCentroid(layer) {
+    /* onEachFeature hands over the polygon layer itself, which has no eachLayer()
+       — the old code threw for every country and the label try/catch swallowed
+       it, so NATO/EU labels never rendered. Accept a group *or* a single path. */
     var rings = [];
-    layer.eachLayer(function (l) {
-        if (l.getLatLngs) {
-            var ll = l.getLatLngs();
-            /* MultiPolygon -> array of arrays of arrays */
-            if (ll.length && ll[0].length && ll[0][0] && ll[0][0].length) {
-                ll.forEach(function (poly) { poly.forEach(function (ring) { rings.push(ring); }); });
-            } else if (ll.length && ll[0].length && ll[0][0]) {
-                /* Polygon -> array of arrays */
-                ll.forEach(function (ring) { rings.push(ring); });
-            } else if (ll.length) {
-                rings.push(ll);
-            }
-        }
-    });
-    if (!rings.length) return layer.getBounds().getCenter();
+    function pushRings(ll) {
+        if (!ll || !ll.length) return;
+        if (typeof ll[0].lat === 'number') { rings.push(ll); return; }
+        for (var i = 0; i < ll.length; i++) pushRings(ll[i]);
+    }
+    if (layer && typeof layer.eachLayer === 'function') {
+        layer.eachLayer(function (l) { if (l.getLatLngs) pushRings(l.getLatLngs()); });
+    } else if (layer && typeof layer.getLatLngs === 'function') {
+        pushRings(layer.getLatLngs());
+    }
+    if (!rings.length) {
+        try { return layer.getBounds().getCenter(); } catch (_) { return null; }
+    }
     /* pick the ring with the most points (= mainland) */
     rings.sort(function (a, b) { return b.length - a.length; });
     var ring = rings[0];
     var lat = 0, lng = 0;
     for (var i = 0; i < ring.length; i++) {
-        lat += ring[i].lat || ring[i][0] || 0;
-        lng += ring[i].lng || ring[i][1] || 0;
+        lat += ring[i].lat; lng += ring[i].lng;
     }
     return L.latLng(lat / ring.length, lng / ring.length);
 }
@@ -2300,7 +2300,7 @@ function updateImportedMapsPanel() {
     /* Header */
     let html = '<div class="panel-header">'
         + '<span class="panel-title">📂 Imported Maps</span>'
-        + '<button class="panel-collapse-all" id="imported-maps-collapse-all">Collapse All</button>'
+        + '<button class="panel-collapse-all" id="imported-maps-collapse-all">Collapse</button>'
         + '</div><div class="panel-body">';
 
     window._importedMaps.forEach((entry, idx) => {
@@ -2389,13 +2389,13 @@ function updateImportedMapsPanel() {
                 featureEls.forEach(el => el.classList.remove('expanded'));
                 chevEls.forEach(el => el.classList.remove('expanded'));
                 Object.keys(expanded).forEach(k => expanded[k] = false);
-                collapseAllBtn.textContent = 'Expand All';
+                collapseAllBtn.textContent = 'Expand';
             } else {
                 /* Expand all */
                 featureEls.forEach(el => el.classList.add('expanded'));
                 chevEls.forEach(el => el.classList.add('expanded'));
                 window._importedMaps.forEach((_, i) => expanded[i] = true);
-                collapseAllBtn.textContent = 'Collapse All';
+                collapseAllBtn.textContent = 'Collapse';
             }
         });
     }

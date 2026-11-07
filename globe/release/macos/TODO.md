@@ -33,6 +33,26 @@ Legend: `[x]` = done on map.html · `[~]` = implemented and tested on **map-new.
 - [ ] **Drawing Replay** — Record drawing actions and replay them as a timelapse
 - [ ] **Dark/Light Theme Toggle** — Switch UI between the current dark theme and a light theme
 
+---
+
+## 🔁 Parity — what map.html had and map-new.html was missing (now ported)
+
+map-new.html is now a superset of map.html. Ported from `map.js`:
+
+- [x] **NATO member overlay** — `#btn-nato`, 32 members, blue outline + fill, hover name, centroid labels
+- [x] **EU member overlay** — `#btn-eu`, amber; 26 of 27 match the border data (Malta is not in `world.geojson`)
+- [x] **Yandex Maps import** — `ll / z / spn / text / pt / rtext` URL parsing → pins, route polyline + waypoints,
+      plus `?um=constructor:HASH` user maps fetched through the local proxy and parsed out of the page
+- [x] **Import naming** — `#import-name-input` in the preview, `window._pendingImportName`, auto-name from
+      preset / saved map / source kind ("Google Maps KML", "Yandex Map", "GPX Import", "GeoJSON Import")
+- [x] **Imported Maps panel** — one row per import with show/hide checkbox, feature list with colour dots and
+      Collapse All; it replaced map-new's ad-hoc second `L.control.layers` (which duplicated the base-layer control)
+- [x] **Single-click country select** — click selects (300 ms debounce), double click still selects and drills into
+      regions; border weights/hover and the `_hiddenBySel` guard restored to the map.html values
+
+Still different on purpose: map.html keeps the draggable floating toolbar + bottom bar layout, map-new keeps the
+top bar + right sidebar with 9 themes (classic, minimal, sidebar-left, dark-pro, cyber, terminal, daylight, amber, glass).
+
 ## Bugs fixed on the way (map-new)
 
 - Areas and circles now survive the export → import round trip: a GeoJSON `Polygon` used to be flattened
@@ -40,6 +60,9 @@ Legend: `[x]` = done on map.html · `[~]` = implemented and tested on **map-new.
 - `fire` annotations were exported as a one-point `LineString` (invalid GeoJSON) — now a `Point`.
 - Export and "save map" used two copies of the same converter; both use `annToFeature()` now, so they can
   no longer drift apart.
+- **NATO/EU labels never rendered** (fixed in both pages): `_polygonCentroid()` called `layer.eachLayer()`, but
+  `onEachFeature` hands over the `L.Polygon` itself, so it threw for every country and the `try { … } catch (_) {}`
+  around the label code swallowed it. It now accepts a group *or* a single path.
 
 ## Next steps (not implemented yet)
 
