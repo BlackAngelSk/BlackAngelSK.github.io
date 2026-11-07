@@ -720,9 +720,16 @@ body {
 /* Fullscreen button */
 .leaflet-control-fullscreen {
     background: rgba(8, 14, 35, 0.9) !important;
+    border: 1px solid rgba(100, 160, 255, 0.2) !important;
+    border-top: none !important;
     color: #8ec8ff !important;
-    border-color: rgba(100, 160, 255, 0.2) !important;
-    border-radius: 8px !important;
+    width: 32px !important;
+    height: 30px !important;
+    line-height: 30px !important;
+    font-size: 15px !important;
+    text-align: center;
+    cursor: pointer;
+    border-radius: 0 0 8px 8px !important;
 }
 .leaflet-control-fullscreen:hover {
     background: rgba(40, 80, 160, 0.9) !important;
@@ -2537,7 +2544,8 @@ body.layout-editing #sidebar {
 /* ── Imported Maps Panel (one row per import, feature list) ── */
 #imported-maps-panel {
     position: fixed;
-    top: 60px; left: 12px;
+    /* right of the Leaflet zoom buttons, below the fixed top bar */
+    top: 56px; left: 56px;
     width: 220px;
     max-width: calc(100dvw - 32px);
     max-height: calc(100vh - 120px);
@@ -2640,5 +2648,11 @@ body.layout-editing #sidebar {
 }
 
 @media (max-width: 760px) {
-    #imported-maps-panel { top: 52px; left: 6px; width: min(220px, 55vw); max-height: 45vh; }
+    #imported-maps-panel { top: 52px; left: 52px; width: min(220px, calc(100vw - 210px)); max-height: 45vh; }
 }
+
+/* ── Leaflet's own controls vs the fixed chrome ────
+   The zoom buttons sat at y=10 (behind the 48px top bar) and the attribution
+   line was hidden by the 32px status bar. */
+.leaflet-top.leaflet-left { top: 48px; }
+.leaflet-bottom.leaflet-right { bottom: 32px; }
