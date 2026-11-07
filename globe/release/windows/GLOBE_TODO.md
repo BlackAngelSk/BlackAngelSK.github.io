@@ -2,27 +2,39 @@
 
 Feature ideas and improvements for globe/index.html.
 
+Last upgrade: **v2 — live layers pack** (cursor coordinates, keyboard control, graticule,
+day/night terminator with a real sun position, flight arcs, live ISS + earthquakes,
+great-circle measurement, compass, shareable URL state, PNG export, FPS meter).
+
 ---
 
 ## 🔥 High Priority
 
-- [ ] **Coordinates Display** — Show lat/lon of cursor position in real-time (bottom-left HUD)
-- [ ] **Keyboard Shortcuts** — Arrow keys to rotate, +/- to zoom, number keys to toggle layers
-- [ ] **Equator / Tropics / Arctic Circles** — Toggle guide lines (great circles at 0°, ±23.5°, ±66.5°)
+- [x] **Coordinates Display** — Cursor lat/lon in real time (bottom-left HUD); shows the
+      great-circle distance and bearing to the first measure point while measuring
+- [x] **Keyboard Shortcuts** — Arrows spin/tilt, +/- zoom, digits toggle layers, `?` help sheet
+- [x] **Equator / Tropics / Arctic Circles** — Graticule toggle: 0°, ±23.44°, ±66.56°, prime
+      meridian + a faint 30° reference grid
 - [x] **Fullscreen Button** — Toggle browser fullscreen mode
-- [ ] **URL State** — Encode camera position, active layers in URL hash so views are shareable via link
-- [ ] **Compass Rose** — Show N/S/E/W orientation indicator that updates as globe rotates
+- [x] **URL State** — Camera, globe rotation and every layer live in the hash; the address
+      bar is a shareable view (restored on load)
+- [x] **Compass Rose** — Heading readout under the clock, rose rotates with the camera
 
 ## 🟡 Medium Priority
 
-- [ ] **ISS / Satellite Tracker** — Show the International Space Station orbiting the globe in real-time using TLE data + SGP4 propagation
-- [ ] **Flight Path Arcs** — Curved arcs between major cities showing airline routes with animated dots traveling along them
-- [ ] **Day/Night Terminator Line** — A glowing line showing where sunrise/sunset currently is on Earth
-- [ ] **Distance Measurement** — Click two points to measure great-circle distance between them
+- [x] **ISS / Satellite Tracker** — Live position, altitude, velocity, visibility footprint
+      and a ground trail from wheretheiss.at (CORS-friendly, refreshed every 5 s). Not SGP4
+      from TLE — the API does the propagation for us and is honest about staleness
+- [x] **Flight Path Arcs** — 20 great-circle routes between major cities with animated
+      travelling dots
+- [x] **Day/Night Terminator Line** — Glowing great circle from the real sub-solar point;
+      the key light is moved onto that same sun direction so the shading is not a lie
+- [x] **Distance Measurement** — Click two points: km, nautical miles, bearing, great-circle arc
 - [ ] **Country Highlight on Hover** — Highlight the hovered country border in a different color
-- [ ] **Earthquake Markers** — Live data from USGS API showing recent seismic activity as pulsing dots
+- [x] **Earthquake Markers** — Live USGS M4.5+ (last 24 h) as pulsing rings sized by magnitude,
+      hover tooltip, colour-coded by magnitude
 - [ ] **Mini-map** — Small 2D overview map in corner showing current camera view orientation
-- [ ] **Screenshot / Export** — Save the current globe view as PNG
+- [x] **Screenshot / Export** — Save the current globe view as PNG
 - [ ] **Custom Annotations** — Drop markers with custom labels and colors, saved in localStorage
 - [ ] **Favorite/Pinned Locations** — Let users pin locations to the globe (persisted in localStorage)
 
@@ -34,11 +46,11 @@ Feature ideas and improvements for globe/index.html.
 - [ ] **Population Density Heatmap** — Color-coded overlay showing population density
 - [ ] **Time Zones** — Show timezone boundaries as lines
 - [x] **Major Rivers** — Overlay major world river paths (19 rivers with toggle)
-- [x] **Fullscreen Button** — Toggle browser fullscreen mode with ⛶ Full button
 - [ ] **Airport Markers** — Show major international airports with IATA codes
 - [ ] **GDP / HDI Choropleth** — Color countries by economic or development data
 - [x] **Live Clock** — Show current UTC + local time for the point facing the camera
-- [ ] **Sun Position Indicator** — Show where the sun is right now relative to Earth
+- [x] **Sun Position Indicator** — Sun marker + label at the true sub-solar point (with the
+      terminator layer)
 - [ ] **Country Flags** — Show small flag icons next to city labels
 - [ ] **Wikipedia Quick Info** — On country click, fetch brief summary from Wikipedia API
 
@@ -56,11 +68,12 @@ Feature ideas and improvements for globe/index.html.
 
 ## 🔧 Technical Improvements
 
-- [ ] **LOD (Level of Detail)** — Reduce polygon count when zoomed out, increase when zoomed in
+- [x] **LOD (Level of Detail)** — 192/128/64/32 segment spheres swapped by camera distance,
+      with an on-screen LOD readout
 - [ ] **Texture Streaming** — Load higher-res textures only when zoomed in
 - [ ] **Web Workers** — Offload GeoJSON parsing to a web worker for smoother loading
-- [ ] **Performance Monitoring** — FPS counter toggle in corner
-- [ ] **Touch Gestures** — Pinch-to-zoom, two-finger rotate for mobile
+- [x] **Performance Monitoring** — FPS counter next to the LOD readout
+- [x] **Touch Gestures** — Pinch-to-zoom / two-finger rotate (OrbitControls), compact HUD on mobile
 - [ ] **Right-click Context Menu** — Copy coordinates, get info, zoom to location
 - [ ] **Settings Panel** — Collapsible panel grouping all toggle options instead of individual buttons
 - [ ] **Lightning Strikes** — Random animated flashes in storm regions
@@ -86,3 +99,15 @@ Feature ideas and improvements for globe/index.html.
 - [x] Loading screen with progress
 - [x] Link to 2D map page
 - [x] Conflict visualization layer with 28 hotspots, severity levels, pulsing markers, info panel, toggle, legend
+- [x] Live layer pack v2 (see the list above)
+
+## 🐞 Fixed in v2
+
+- Clock HUD latitude was inverted (`asin` instead of `acos`) and its longitude ignored the
+  globe's rotation, so the "local time for the point facing you" was wrong; it now uses the
+  camera position in the globe's own frame.
+- The `#lod-hud` element was being overwritten wholesale (`textContent = …`), which wiped the
+  FPS readout; the LOD text now has its own node.
+- The temporary "Development has been stopped" banner is gone.
+- The control bar sized itself to half the viewport (fixed-position shrink-to-fit at
+  `left:50%`), which stacked every button into a narrow column on phones.

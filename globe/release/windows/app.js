@@ -1,13 +1,21 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
-const TEX_URL = {
-  day: 'https://raw.githubusercontent.com/mrdoob/three.js/dev/examples/textures/planets/earth_atmos_2048.jpg',
-  night: 'https://raw.githubusercontent.com/mrdoob/three.js/dev/examples/textures/planets/earth_lights_2048.png',
-  clouds: 'https://raw.githubusercontent.com/mrdoob/three.js/dev/examples/textures/planets/earth_clouds_2048.png',
-  bump: 'https://raw.githubusercontent.com/mrdoob/three.js/dev/examples/textures/planets/earth_normal_2048.jpg',
-  spec: 'https://raw.githubusercontent.com/mrdoob/three.js/dev/examples/textures/planets/earth_specular_2048.jpg',
+// Texture sources — local copies first (vendor/ in globe/textures), then remote mirrors.
+// Pinned to the r160 tag that matches the import map; the `dev` branch moves and
+// earth_clouds_2048.png was removed from it (404), which killed the cloud layer.
+const PLANET_TEX = {
+  day: 'earth_atmos_2048.jpg',
+  night: 'earth_lights_2048.png',
+  clouds: 'earth_clouds_1024.png',
+  bump: 'earth_normal_2048.jpg',
+  spec: 'earth_specular_2048.jpg',
 };
+const TEX_URL = Object.fromEntries(Object.entries(PLANET_TEX).map(([k, f]) => [k, [
+  'textures/' + f,
+  'https://cdn.jsdelivr.net/gh/mrdoob/three.js@r160/examples/textures/planets/' + f,
+  'https://raw.githubusercontent.com/mrdoob/three.js/r160/examples/textures/planets/' + f,
+]]));
 // --- LOD (Level of Detail) System ---
 const LOD_THRESHOLDS=[
   {maxDist:200,segments:192},{maxDist:300,segments:128},
@@ -453,13 +461,26 @@ const loader=new THREE.TextureLoader();
 let ld=0;const tot=5;
 function onL(n){ld++;updateProgress('Loading textures... '+ld+'/'+tot);if(ld>=tot)hidLoad();}
 function onE(n,e){console.warn(n,e);ld++;if(ld>=tot)hidLoad();}
-function mkT(u,ok){return loader.load(u,t=>{
-  t.colorSpace=THREE.SRGBColorSpace;
-  t.anisotropy=renderer.capabilities.getMaxAnisotropy();
-  t.minFilter=THREE.LinearMipmapLinearFilter;
-  t.magFilter=THREE.LinearFilter;
-  if(ok)ok(t);onL(u);
-},undefined,e=>onE(u,e));}
+// Loads the first texture URL that succeeds, walking the mirror list on failure.
+function mkT(urls,ok){
+  const list=Array.isArray(urls)?urls.slice():[urls];
+  const tex=new THREE.Texture();
+  tex.colorSpace=THREE.SRGBColorSpace;
+  tex.anisotropy=renderer.capabilities.getMaxAnisotropy();
+  tex.minFilter=THREE.LinearMipmapLinearFilter;
+  tex.magFilter=THREE.LinearFilter;
+  let i=0;
+  const next=()=>{
+    if(i>=list.length){onE('tex:'+(list[list.length-1]||'?'));return;}
+    const u=list[i++];
+    loader.load(u,t=>{
+      tex.image=t.image;tex.needsUpdate=true;
+      if(ok)ok(tex);onL(u);
+    },undefined,()=>next());
+  };
+  next();
+  return tex;
+}
 
 const dT=mkT(TEX_URL.day);
 const nT=mkT(TEX_URL.night);
@@ -709,7 +730,9 @@ document.addEventListener('fullscreenchange',()=>{
 
 // Map button — navigate to interactive map
 const btnMap=document.getElementById('btn-map');
-if(btnMap)btnMap.addEventListener('click',()=>{window.location.href='map.html';});
+// 🗺 Map button → the new themeable map UI (map-new.html). The older map.html
+// is still served at /globe/map.html for anyone who wants the classic layout.
+if(btnMap)btnMap.addEventListener('click',()=>{window.location.href='map-new.html';});
 
 const btnConflict=document.getElementById('btn-conflicts');
 const conflictLegend=document.getElementById('conflict-legend');
@@ -912,8 +935,12 @@ const clockUtc=document.getElementById('clock-utc');
 const clockLocal=document.getElementById('clock-local');
 const clockCoords=document.getElementById('clock-coords');
 function updateClock(){
-  const n=camera.position.clone().normalize();
-  const lat=90-Math.asin(n.y)*180/Math.PI;
+  // the globe group is rotated, so the geographic point facing the camera is
+  // the camera position expressed in the globe's own frame
+  const n=gG.worldToLocal(camera.position.clone()).normalize();
+  // lat was computed with asin (which runs from 90 at the pole to 0 at the
+  // equator the wrong way round) — acos matches latLonToV3.
+  const lat=90-Math.acos(Math.max(-1,Math.min(1,n.y)))*180/Math.PI;
   let lon=Math.atan2(n.z,-n.x)*180/Math.PI-180;
   if(lon<-180)lon+=360;if(lon>180)lon-=360;
   const now=new Date();
@@ -925,7 +952,7 @@ function updateClock(){
   const lH=Math.floor(localSec/3600),lM=Math.floor((localSec%3600)/60),lS=Math.floor(localSec%60);
   const utcLabel=lon>=0?'+'+Math.round(lon/15):''+Math.round(lon/15);
   if(clockLocal)clockLocal.textContent=String(lH).padStart(2,'0')+':'+String(lM).padStart(2,'0')+':'+String(lS).padStart(2,'0')+' UTC'+utcLabel;
-  if(clockCoords)clockCoords.textContent=lat.toFixed(1)+'\u00B0'+(lat>=0?'N':'S')+'  '+Math.abs(lon).toFixed(1)+'\u00B0'+(lon>=0?'E':'W');
+  if(clockCoords)clockCoords.textContent=Math.abs(lat).toFixed(1)+'\u00B0'+(lat>=0?'N':'S')+'  '+Math.abs(lon).toFixed(1)+'\u00B0'+(lon>=0?'E':'W');
 }
 
 // Animation
@@ -936,7 +963,7 @@ function updateLOD(){
   if(seg===_lastLODSeg)return;
   _lastLODSeg=seg;
   for(const{mesh,radius}of lodMeshes)mesh.geometry=_getSphereGeo(radius,seg);
-  const el=document.getElementById('lod-hud');
+  const el=document.getElementById('lod-text');
   if(el){const lb={192:'Ultra',128:'High',64:'Medium',32:'Low'};el.textContent='LOD: '+(lb[seg]||seg)+' ('+seg+' seg)';}
 }
 
@@ -991,6 +1018,7 @@ function animate(){
 
   updateLOD();
   updateClock();
+  updateExtras();
   ctrl.update();renderer.render(scene,camera);
 }
 
@@ -1257,6 +1285,801 @@ renderer.domElement.addEventListener('click',(e)=>{
     if(aH.length>0){const r=aH[0].object.userData.routeData;
         if(r)showRoutePopup(r,e.clientX,e.clientY);}
 });
+
+// ============================================================
+// UPGRADE PACK — cursor coordinates, keyboard shortcuts, graticule,
+// day/night terminator + sun, flight arcs, live ISS & earthquakes,
+// great-circle measurement, compass, URL state, PNG export, FPS.
+// ============================================================
+
+const UP_CLAMP=(v,a,b)=>Math.max(a,Math.min(b,v));
+const upRay=new THREE.Raycaster();
+const upV2=new THREE.Vector2();
+
+// ---------- geodetic helpers (same frame as latLonToV3) ----------
+function upLatLonFromLocal(v){
+  const n=v.clone().normalize();
+  const lat=90-Math.acos(UP_CLAMP(n.y,-1,1))*180/Math.PI;
+  let lon=Math.atan2(n.z,-n.x)*180/Math.PI-180;
+  while(lon<-180)lon+=360;while(lon>180)lon-=360;
+  return {lat,lon};
+}
+function upFmt(lat,lon){
+  const la=Math.abs(lat).toFixed(2)+'\u00B0'+(lat>=0?'N':'S');
+  const lo=Math.abs(lon).toFixed(2)+'\u00B0'+(lon>=0?'E':'W');
+  return la+'  '+lo;
+}
+function upBearing(a,b){
+  const p1=a.lat*Math.PI/180,p2=b.lat*Math.PI/180,d=(b.lon-a.lon)*Math.PI/180;
+  const y=Math.sin(d)*Math.cos(p2);
+  const x=Math.cos(p1)*Math.sin(p2)-Math.sin(p1)*Math.cos(p2)*Math.cos(d);
+  return (Math.atan2(y,x)*180/Math.PI+360)%360;
+}
+const UP_CARD=['N','NNE','NE','ENE','E','ESE','SE','SSE','S','SSW','SW','WSW','W','WNW','NW','NNW'];
+const upCard=d=>UP_CARD[Math.round(d/22.5)%16];
+// unit vector for a lat/lon on the unit sphere
+const upUnit=(lat,lon)=>latLonToV3(lat,lon,1).normalize();
+// orthonormal basis around a unit vector
+function upBasis(sV){
+  const ref=Math.abs(sV.dot(new THREE.Vector3(0,1,0)))>0.98?new THREE.Vector3(1,0,0):new THREE.Vector3(0,1,0);
+  const u=new THREE.Vector3().crossVectors(sV,ref).normalize();
+  const v=new THREE.Vector3().crossVectors(sV,u).normalize();
+  return {u,v};
+}
+
+// ---------- DOM ----------
+const upHudEl=document.getElementById('cursor-hud');
+const upCoordsEl=document.getElementById('cursor-coords');
+const upExtraEl=document.getElementById('cursor-extra');
+const upToastEl=document.getElementById('toast');
+const upFpsEl=document.getElementById('fps');
+const upHelpEl=document.getElementById('help-panel');
+const upRoseEl=document.getElementById('compass-rose');
+const upNeedleEl=document.getElementById('compass-needle');
+const upHeadingEl=document.getElementById('compass-heading');
+
+let upToastTimer=null;
+function upToast(msg,ms){
+  if(!upToastEl)return;
+  upToastEl.textContent=msg;
+  upToastEl.classList.add('show');
+  clearTimeout(upToastTimer);
+  upToastTimer=setTimeout(()=>upToastEl.classList.remove('show'),ms||3000);
+}
+
+// Push a label token up-screen from its marker so the glow does not hide it.
+const _upInvQ=new THREE.Quaternion();
+function upLabelOffset(pos,dist){
+  const upW=new THREE.Vector3(0,1,0).applyQuaternion(camera.quaternion);
+  upW.applyQuaternion(_upInvQ.copy(gG.quaternion).invert());
+  const n=pos.clone().normalize();
+  const t=upW.sub(n.clone().multiplyScalar(upW.dot(n)));
+  if(t.lengthSq()<1e-6)t.set(0,1,0);
+  return pos.clone().add(t.normalize().multiplyScalar(dist));
+}
+
+// ---------- small canvas textures ----------
+function upGlowTex(color){
+  const c=document.createElement('canvas');c.width=c.height=64;
+  const x=c.getContext('2d');
+  const g=x.createRadialGradient(32,32,0,32,32,32);
+  g.addColorStop(0,'rgba(255,255,255,0.95)');
+  g.addColorStop(0.28,color);
+  g.addColorStop(1,'rgba(0,0,0,0)');
+  x.fillStyle=g;x.fillRect(0,0,64,64);
+  return new THREE.CanvasTexture(c);
+}
+function upRingTex(color){
+  const c=document.createElement('canvas');c.width=c.height=64;
+  const x=c.getContext('2d');
+  const g=x.createRadialGradient(32,32,17,32,32,31);
+  g.addColorStop(0,'rgba(0,0,0,0)');
+  g.addColorStop(0.55,color);
+  g.addColorStop(1,'rgba(0,0,0,0)');
+  x.fillStyle=g;x.beginPath();x.arc(32,32,31,0,Math.PI*2);x.fill();
+  const g2=x.createRadialGradient(32,32,0,32,32,8);
+  g2.addColorStop(0,'rgba(255,255,255,0.95)');
+  g2.addColorStop(0.45,color);
+  g2.addColorStop(1,'rgba(0,0,0,0)');
+  x.fillStyle=g2;x.beginPath();x.arc(32,32,8,0,Math.PI*2);x.fill();
+  return new THREE.CanvasTexture(c);
+}
+function upLabelTex(text,color,px){
+  const c=document.createElement('canvas');c.width=256;c.height=64;
+  const x=c.getContext('2d');
+  x.font='bold '+(px||20)+'px Arial,sans-serif';
+  x.textAlign='center';x.textBaseline='middle';
+  // dark outline keeps the token readable over bright ocean/land textures
+  x.lineWidth=6;x.strokeStyle='rgba(2,10,24,0.9)';x.lineJoin='round';
+  x.strokeText(text,128,32);
+  x.fillStyle=color||'rgba(255,255,255,0.92)';
+  x.fillText(text,128,32);
+  return new THREE.CanvasTexture(c);
+}
+
+// ============================================================
+// 1. CURSOR COORDINATES
+// ============================================================
+let upHover=null; // {lat,lon} under the pointer
+const upMeasure={on:false,pts:[],line:null,marks:new THREE.Group()};
+
+function upHoverAt(cx,cy){
+  upV2.x=(cx/window.innerWidth)*2-1;
+  upV2.y=-(cy/window.innerHeight)*2+1;
+  upRay.setFromCamera(upV2,camera);
+  const hit=upRay.intersectObject(earthMesh,false)[0];
+  if(!hit)return null;
+  const local=gG.worldToLocal(hit.point.clone());
+  return upLatLonFromLocal(local);
+}
+
+function upRefreshCursor(){
+  if(!upCoordsEl)return;
+  if(upMeasure.pts.length===1&&upHover){
+    const a=upMeasure.pts[0],d=latLonDist(a.lat,a.lon,upHover.lat,upHover.lon);
+    const brg=upBearing(a,upHover);
+    upCoordsEl.textContent=upHover?upFmt(upHover.lat,upHover.lon):'—';
+    upExtraEl.textContent=Math.round(d).toLocaleString()+' km · '+brg.toFixed(0)+'\u00B0 '+upCard(brg)+' from A';
+    return;
+  }
+  if(!upHover){
+    upCoordsEl.textContent=upMeasure.on?'Click the globe':'—';
+    if(upMeasure.pts.length===2){
+      const[a,b]=upMeasure.pts,d=latLonDist(a.lat,a.lon,b.lat,b.lon);
+      upExtraEl.textContent='A→B '+Math.round(d).toLocaleString()+' km · '+upBearing(a,b).toFixed(0)+'\u00B0';
+    }else if(upMeasure.on&&upMeasure.pts.length===1){
+      upExtraEl.textContent='Click the second point';
+    }else if(upMeasure.on){
+      upExtraEl.textContent='Click the first point';
+    }else{
+      upExtraEl.textContent='';
+    }
+    return;
+  }
+  upCoordsEl.textContent=upFmt(upHover.lat,upHover.lon);
+  if(!upMeasure.on)upExtraEl.textContent='';
+}
+
+renderer.domElement.addEventListener('mousemove',e=>{
+  upHover=upHoverAt(e.clientX,e.clientY);
+  if(upHudEl)upHudEl.classList.toggle('live',!!upHover);
+  if(upMeasure.on)renderer.domElement.style.cursor='crosshair';
+  upRefreshCursor();
+});
+renderer.domElement.addEventListener('mouseleave',()=>{
+  upHover=null;
+  if(upHudEl)upHudEl.classList.remove('live');
+  upRefreshCursor();
+});
+
+// ============================================================
+// 2. GRATICULE — equator, tropics, polar circles + 30° grid
+// ============================================================
+const upGridGroup=new THREE.Group();gG.add(upGridGroup);upGridGroup.visible=false;
+
+function upParallel(lat,color,opacity,radius){
+  const pts=[];
+  for(let lon=-180;lon<=180;lon+=2)pts.push(latLonToV3(lat,lon,radius));
+  return new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts),
+    new THREE.LineBasicMaterial({color,transparent:true,opacity,depthWrite:false}));
+}
+function upMeridian(lon,color,opacity,radius){
+  const pts=[];
+  for(let lat=-90;lat<=90;lat+=2)pts.push(latLonToV3(lat,lon,radius));
+  return new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts),
+    new THREE.LineBasicMaterial({color,transparent:true,opacity,depthWrite:false}));
+}
+// faint 30° reference grid first, guides painted on top
+for(let lon=-180;lon<180;lon+=30)upGridGroup.add(upMeridian(lon,0x4d86c8,0.24,ER*1.003));
+for(let lat=-60;lat<=60;lat+=30){if(lat!==0)upGridGroup.add(upParallel(lat,0x4d86c8,0.24,ER*1.003));}
+upGridGroup.add(upParallel(0,0x55ccff,0.6,ER*1.004));            // equator
+upGridGroup.add(upParallel(23.44,0xffcc55,0.45,ER*1.004));      // Tropic of Cancer
+upGridGroup.add(upParallel(-23.44,0xffcc55,0.45,ER*1.004));     // Tropic of Capricorn
+upGridGroup.add(upParallel(66.56,0x99ccff,0.45,ER*1.004));      // Arctic circle
+upGridGroup.add(upParallel(-66.56,0x99ccff,0.45,ER*1.004));     // Antarctic circle
+upGridGroup.add(upMeridian(0,0x55ccff,0.5,ER*1.004));           // prime meridian
+
+// ============================================================
+// 3. DAY/NIGHT TERMINATOR + SUN POSITION
+// ============================================================
+const upTermGroup=new THREE.Group();gG.add(upTermGroup);upTermGroup.visible=false;
+const upTermGeom=new THREE.BufferGeometry();
+upTermGeom.setAttribute('position',new THREE.BufferAttribute(new Float32Array(361*3),3));
+const upTermLine=new THREE.Line(upTermGeom,new THREE.LineBasicMaterial({color:0xffe08a,transparent:true,opacity:0.9,depthWrite:false}));
+upTermGroup.add(upTermLine);
+const upSunSprite=new THREE.Sprite(new THREE.SpriteMaterial({
+  map:upGlowTex('rgba(255,224,138,0.85)'),transparent:true,blending:THREE.AdditiveBlending,depthWrite:false
+}));
+upSunSprite.scale.set(11,11,1);
+upTermGroup.add(upSunSprite);
+const upSunLabel=new THREE.Sprite(new THREE.SpriteMaterial({
+  map:upLabelTex('SUN','rgba(255,224,138,0.95)',30),transparent:true,depthTest:false,depthWrite:false,opacity:0.9
+}));
+upSunLabel.scale.set(11,2.75,1);
+upTermGroup.add(upSunLabel);
+
+// Sub-solar point: declination from the day of year, longitude from UTC.
+function upSubsolar(now){
+  const doy=(now.getTime()-Date.UTC(now.getUTCFullYear(),0,1))/86400000;
+  const lat=-23.44*Math.cos(2*Math.PI*(doy+10)/365.24);
+  const h=now.getUTCHours()+now.getUTCMinutes()/60+now.getUTCSeconds()/3600;
+  let lon=180-h*15;
+  while(lon>180)lon-=360;while(lon<-180)lon+=360;
+  return {lat,lon};
+}
+function upUpdateTerminator(){
+  const s=upSubsolar(new Date());
+  const sV=upUnit(s.lat,s.lon);
+  const {u,v}=upBasis(sV);
+  const arr=upTermGeom.attributes.position.array;
+  const N=360;
+  for(let i=0;i<=N;i++){
+    const a=i/N*Math.PI*2;
+    const p=u.clone().multiplyScalar(Math.cos(a)).add(v.clone().multiplyScalar(Math.sin(a))).multiplyScalar(ER*1.013);
+    arr[i*3]=p.x;arr[i*3+1]=p.y;arr[i*3+2]=p.z;
+  }
+  upTermGeom.attributes.position.needsUpdate=true;
+  upTermGeom.computeBoundingSphere();
+  const sunPos=sV.clone().multiplyScalar(ER*1.16);
+  upSunSprite.position.copy(sunPos);
+  upSunLabel.position.copy(upLabelOffset(sunPos,7));
+  // keep the key light on the real sun so the line is not a lie
+  sL.position.copy(sV).applyQuaternion(gG.quaternion).multiplyScalar(300);
+}
+
+// ============================================================
+// 4. FLIGHT PATH ARCS
+// ============================================================
+const upCityMap={};
+CITIES.forEach(c=>{if(c[0]!=='__origin__')upCityMap[c[0]]={lat:c[1],lon:c[2]};});
+const FLIGHT_ROUTES=[
+  ['New York','London'],['London','Dubai'],['Dubai','Singapore'],
+  ['Singapore','Sydney'],['Tokyo','LA'],['LA','New York'],
+  ['Sao Paulo','Paris'],['Johannesburg','Cairo'],['Mumbai','Dubai'],
+  ['Beijing','Frankfurt'],['Chicago','Toronto'],['Moscow','Beijing'],
+  ['Madrid','Mexico City'],['Cape Town','Sao Paulo'],['Istanbul','Bangkok'],
+  ['Perth','Singapore'],['Tokyo','Sydney'],['Lagos','London'],
+  ['New York','Sao Paulo'],['Vancouver','Tokyo'],
+];
+const upFlightGroup=new THREE.Group();gG.add(upFlightGroup);upFlightGroup.visible=false;
+const upFlights=[];
+const upDotTex=upGlowTex('rgba(140,225,255,0.9)');
+
+function upArcPoints(a,b,segs){
+  const n=segs||64;
+  const p1=upUnit(a.lat,a.lon),p2=upUnit(b.lat,b.lon);
+  const ang=Math.acos(UP_CLAMP(p1.dot(p2),-1,1));
+  const pts=[];
+  for(let i=0;i<=n;i++){
+    const t=i/n;
+    let p;
+    if(ang<1e-4){p=p1.clone();}
+    else{
+      const s=Math.sin(ang);
+      p=p1.clone().multiplyScalar(Math.sin((1-t)*ang)/s)
+           .add(p2.clone().multiplyScalar(Math.sin(t*ang)/s)).normalize();
+    }
+    const lift=ER*(0.012+0.085*Math.sin(Math.PI*t));
+    pts.push(p.multiplyScalar(ER+lift));
+  }
+  return pts;
+}
+
+FLIGHT_ROUTES.forEach(([an,bn])=>{
+  const a=upCityMap[an],b=upCityMap[bn];
+  if(!a||!b)return;
+  const pts=upArcPoints(a,b,64);
+  const line=new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts),
+    new THREE.LineBasicMaterial({color:0x6fdcff,transparent:true,opacity:0.28,depthWrite:false}));
+  upFlightGroup.add(line);
+  const dot=new THREE.Sprite(new THREE.SpriteMaterial({
+    map:upDotTex,transparent:true,blending:THREE.AdditiveBlending,depthWrite:false,depthTest:true
+  }));
+  dot.scale.set(2.4,2.4,1);
+  upFlightGroup.add(dot);
+  upFlights.push({pts,dot,t:Math.random()});
+});
+function upTickFlights(dt){
+  for(const f of upFlights){
+    f.t=(f.t+dt*0.07)%1;
+    const n=f.pts.length-1;
+    const idx=f.t*n,i=Math.floor(idx),fr=idx-i;
+    f.dot.position.copy(f.pts[i]).lerp(f.pts[Math.min(i+1,n)],fr);
+    f.dot.material.opacity=0.45+0.55*Math.sin(Math.PI*f.t);
+  }
+}
+
+// ============================================================
+// 5. ISS TRACKER (live position, wheretheiss.at — CORS-friendly)
+// ============================================================
+const upIssGroup=new THREE.Group();gG.add(upIssGroup);upIssGroup.visible=false;
+const upIssDot=new THREE.Sprite(new THREE.SpriteMaterial({
+  map:upGlowTex('rgba(159,230,255,0.95)'),transparent:true,blending:THREE.AdditiveBlending,depthWrite:false
+}));
+upIssDot.scale.set(6,6,1);
+upIssGroup.add(upIssDot);
+const upIssLabel=new THREE.Sprite(new THREE.SpriteMaterial({
+  map:upLabelTex('ISS','rgba(159,230,255,0.95)',30),transparent:true,depthTest:false,depthWrite:false
+}));
+upIssLabel.scale.set(11,2.75,1);
+upIssGroup.add(upIssLabel);
+const upIssFoot=new THREE.Line(new THREE.BufferGeometry(),
+  new THREE.LineBasicMaterial({color:0x6fdcff,transparent:true,opacity:0.8,depthWrite:false}));
+upIssGroup.add(upIssFoot);
+const upIssTrail=new THREE.Line(new THREE.BufferGeometry(),
+  new THREE.LineBasicMaterial({color:0x9fe6ff,transparent:true,opacity:0.7,depthWrite:false}));
+upIssGroup.add(upIssTrail);
+
+let upIssData=null,upIssTimer=null,upIssTrailPts=[],upIssNext=0,upIssPos=null;
+
+function upPlaceISS(d){
+  const alt=Number(d.altitude)||420;
+  const R=ER*(1+alt/6371)*1.002;
+  const pos=latLonToV3(d.latitude,d.longitude,R);
+  upIssDot.position.copy(pos);
+  upIssPos=pos.clone();
+  upIssLabel.position.copy(upLabelOffset(pos,7));
+  const sV=upUnit(d.latitude,d.longitude);
+  const {u,v}=upBasis(sV);
+  const foot=[];const ang=(Number(d.footprint)||4500)/6371;
+  const rr=Math.sin(ang)*ER*1.004;
+  for(let i=0;i<=64;i++){
+    const a=i/64*Math.PI*2;
+    foot.push(u.clone().multiplyScalar(Math.cos(a)).add(v.clone().multiplyScalar(Math.sin(a))).multiplyScalar(rr).add(sV.clone().multiplyScalar(Math.cos(ang)*ER*1.004)));
+  }
+  upIssFoot.geometry.dispose();
+  upIssFoot.geometry=new THREE.BufferGeometry().setFromPoints(foot);
+  upIssTrailPts.push(pos.clone());
+  if(upIssTrailPts.length>90)upIssTrailPts.shift();
+  upIssTrail.geometry.dispose();
+  upIssTrail.geometry=new THREE.BufferGeometry().setFromPoints(upIssTrailPts);
+}
+async function upFetchISS(){
+  try{
+    const r=await fetch('https://api.wheretheiss.at/v1/satellites/25544',{cache:'no-store'});
+    if(!r.ok)throw new Error('HTTP '+r.status);
+    const d=await r.json();
+    if(!upIssGroup.visible){upIssGroup.visible=true;document.getElementById('btn-iss')?.classList.add('active');}
+    upIssData=d;
+    upPlaceISS(d);
+    if(!upIssNext){
+      upToast('ISS · '+Number(d.latitude).toFixed(1)+'\u00B0 '+Number(d.longitude).toFixed(1)+'\u00B0 · '+Math.round(d.altitude)+' km · '+Math.round(d.velocity)+' km/h');
+    }
+    upIssNext=1;
+  }catch(e){
+    upToast('ISS feed unreachable: '+e.message);
+    upStopISS();
+  }
+}
+function upStartISS(){
+  upIssGroup.visible=true;
+  if(!upIssTimer){upFetchISS();upIssTimer=setInterval(upFetchISS,5000);}
+}
+function upStopISS(){
+  upIssGroup.visible=false;
+  if(upIssTimer){clearInterval(upIssTimer);upIssTimer=null;}
+  upIssNext=0;upIssTrailPts=[];
+}
+
+// ============================================================
+// 6. LIVE EARTHQUAKES (USGS M4.5+, last 24 h — CORS-friendly)
+// ============================================================
+const upQuakeGroup=new THREE.Group();gG.add(upQuakeGroup);upQuakeGroup.visible=false;
+const upQuakes=[];
+let upQuakesLoaded=false;
+
+function upQuakeColor(m){
+  if(m>=6.5)return{core:'#ff4d4d',ring:'rgba(255,77,77,0.55)'};
+  if(m>=5.5)return{core:'#ff9f1c',ring:'rgba(255,159,28,0.5)'};
+  return{core:'#ffd166',ring:'rgba(255,209,102,0.45)'};
+}
+function upClearQuakes(){
+  upQuakes.length=0;
+  while(upQuakeGroup.children.length)upQuakeGroup.remove(upQuakeGroup.children[0]);
+}
+async function upFetchQuakes(){
+  try{
+    const r=await fetch('https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/4.5_day.geojson',{cache:'no-store'});
+    if(!r.ok)throw new Error('HTTP '+r.status);
+    const d=await r.json();
+    upClearQuakes();
+    const feats=(d.features||[]).filter(f=>f.geometry&&f.geometry.coordinates);
+    feats.forEach(f=>{
+      const[lon,lat]=f.geometry.coordinates;
+      const m=f.properties.mag||0;
+      const col=upQuakeColor(m);
+      const size=3.2+(m-4.5)*2.2;
+      const spr=new THREE.Sprite(new THREE.SpriteMaterial({
+        map:upRingTex(col.ring),transparent:true,blending:THREE.AdditiveBlending,depthWrite:false,depthTest:true
+      }));
+      spr.position.copy(latLonToV3(lat,lon,ER*1.03));
+      spr.scale.set(size,size,1);
+      spr.userData={quake:{lat,lon,mag:m,place:f.properties.place||'Unknown',time:f.properties.time}};
+      upQuakeGroup.add(spr);
+      const core=new THREE.Sprite(new THREE.SpriteMaterial({
+        map:upGlowTex(col.core),transparent:true,blending:THREE.AdditiveBlending,depthWrite:false,depthTest:true
+      }));
+      core.position.copy(latLonToV3(lat,lon,ER*1.028));
+      core.scale.set(size*0.35,size*0.35,1);
+      upQuakeGroup.add(core);
+      upQuakes.push({sprite:spr,base:size,phase:Math.random()*Math.PI*2,data:{lat,lon,mag:m,place:f.properties.place||'Unknown',time:f.properties.time}});
+    });
+    upQuakesLoaded=true;
+    upToast('Earthquakes: '+upQuakes.length+' events M4.5+ in the last 24 h');
+  }catch(e){
+    upToast('Earthquake feed unreachable: '+e.message);
+    document.getElementById('btn-quakes')?.classList.remove('active');
+    upQuakeGroup.visible=false;
+  }
+}
+function upTickQuakes(now){
+  const t=now*0.001;
+  for(const q of upQuakes){
+    const p=0.75+0.25*Math.sin(t*2+q.phase);
+    q.sprite.scale.set(q.base*p,q.base*p,1);
+    q.sprite.material.opacity=0.55+0.45*Math.sin(t*1.6+q.phase);
+  }
+}
+
+// ============================================================
+// 7. DISTANCE MEASUREMENT
+// ============================================================
+const upMeasureGroup=new THREE.Group();gG.add(upMeasureGroup);upMeasureGroup.visible=false;
+
+function upRebuildMeasure(){
+  while(upMeasureGroup.children.length)upMeasureGroup.remove(upMeasureGroup.children[0]);
+  const pts=upMeasure.pts;
+  if(!pts.length){upMeasureGroup.visible=false;return;}
+  upMeasureGroup.visible=true;
+  for(const p of pts){
+    const spr=new THREE.Sprite(new THREE.SpriteMaterial({
+      map:upGlowTex('rgba(255,205,90,0.95)'),transparent:true,blending:THREE.AdditiveBlending,depthWrite:false
+    }));
+    spr.position.copy(latLonToV3(p.lat,p.lon,ER*1.03));
+    spr.scale.set(5,5,1);
+    upMeasureGroup.add(spr);
+  }
+  if(pts.length===2){
+    const arc=upArcPoints(pts[0],pts[1],96).map(p=>p.multiplyScalar(1.002));
+    upMeasureGroup.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(arc),
+      new THREE.LineBasicMaterial({color:0xffcd5a,transparent:true,opacity:0.9,depthWrite:false})));
+  }
+  upRefreshCursor();
+}
+function upToggleMeasure(on){
+  upMeasure.on=on;
+  document.getElementById('btn-measure')?.classList.toggle('active',on);
+  upHudEl?.classList.toggle('measuring',on);
+  renderer.domElement.style.cursor=on?'crosshair':'grab';
+  if(!on){upMeasure.pts=[];}
+  upRebuildMeasure();
+  if(on)upToast('Measure: click two points on the globe · Esc to clear');
+}
+function upMeasureClick(cx,cy){
+  const ll=upHoverAt(cx,cy);
+  if(!ll)return;
+  if(upMeasure.pts.length>=2)upMeasure.pts=[];
+  upMeasure.pts.push(ll);
+  upRebuildMeasure();
+  if(upMeasure.pts.length===2){
+    const[a,b]=upMeasure.pts;
+    const d=latLonDist(a.lat,a.lon,b.lat,b.lon);
+    const brg=upBearing(a,b);
+    upToast(Math.round(d).toLocaleString()+' km  ·  '+brg.toFixed(1)+'\u00B0 '+upCard(brg)+'  ·  '+Math.round(d*0.539957).toLocaleString()+' NM',6000);
+  }
+}
+// capture phase on window beats the canvas handlers for clicks while measuring
+window.addEventListener('click',e=>{
+  if(!upMeasure.on)return;
+  if(e.target!==renderer.domElement)return;
+  e.preventDefault();e.stopPropagation();
+  upMeasureClick(e.clientX,e.clientY);
+},true);
+
+// ============================================================
+// 8. LAYER TOGGLES (new buttons + keyboard)
+// ============================================================
+const upBtnGrid=document.getElementById('btn-grid');
+const upBtnTerm=document.getElementById('btn-terminator');
+const upBtnFlights=document.getElementById('btn-flights');
+const upBtnIss=document.getElementById('btn-iss');
+const upBtnQuakes=document.getElementById('btn-quakes');
+const upBtnMeasure=document.getElementById('btn-measure');
+const upBtnShot=document.getElementById('btn-shot');
+const upBtnHelp=document.getElementById('btn-help');
+
+if(upBtnGrid)upBtnGrid.addEventListener('click',()=>{
+  upGridGroup.visible=!upGridGroup.visible;
+  upBtnGrid.classList.toggle('active',upGridGroup.visible);
+  upSaveUrl();
+});
+if(upBtnTerm)upBtnTerm.addEventListener('click',()=>{
+  upTermGroup.visible=!upTermGroup.visible;
+  upBtnTerm.classList.toggle('active',upTermGroup.visible);
+  upUpdateTerminator();
+  upSaveUrl();
+});
+if(upBtnFlights)upBtnFlights.addEventListener('click',()=>{
+  upFlightGroup.visible=!upFlightGroup.visible;
+  upBtnFlights.classList.toggle('active',upFlightGroup.visible);
+  upSaveUrl();
+});
+if(upBtnIss)upBtnIss.addEventListener('click',()=>{
+  if(upIssGroup.visible){upStopISS();upBtnIss.classList.remove('active');}
+  else{upStartISS();upBtnIss.classList.add('active');}
+  upSaveUrl();
+});
+if(upBtnQuakes)upBtnQuakes.addEventListener('click',()=>{
+  if(upQuakeGroup.visible){upQuakeGroup.visible=false;upBtnQuakes.classList.remove('active');}
+  else{upQuakeGroup.visible=true;upBtnQuakes.classList.add('active');upFetchQuakes();}
+  upSaveUrl();
+});
+if(upBtnMeasure)upBtnMeasure.addEventListener('click',()=>upToggleMeasure(!upMeasure.on));
+if(upBtnShot)upBtnShot.addEventListener('click',()=>upScreenshot());
+if(upBtnHelp)upBtnHelp.addEventListener('click',()=>upToggleHelp());
+document.getElementById('close-help')?.addEventListener('click',()=>upToggleHelp(false));
+
+function upToggleHelp(force){
+  if(!upHelpEl)return;
+  const show=typeof force==='boolean'?force:upHelpEl.classList.contains('hidden');
+  upHelpEl.classList.toggle('hidden',!show);
+}
+
+// ============================================================
+// 9. SCREENSHOT
+// ============================================================
+function upScreenshot(){
+  try{
+    renderer.render(scene,camera);
+    const url=renderer.domElement.toDataURL('image/png');
+    const a=document.createElement('a');
+    const d=new Date();
+    const pad=n=>String(n).padStart(2,'0');
+    a.href=url;
+    a.download='globe-'+d.getFullYear()+pad(d.getMonth()+1)+pad(d.getDate())+'-'+pad(d.getHours())+pad(d.getMinutes())+pad(d.getSeconds())+'.png';
+    document.body.appendChild(a);a.click();a.remove();
+    upToast('Screenshot saved');
+  }catch(e){upToast('Screenshot failed: '+e.message);}
+}
+
+// ============================================================
+// 10. COMPASS + FPS HUD
+// ============================================================
+function upUpdateCompass(){
+  if(!upRoseEl)return;
+  const az=(Math.atan2(camera.position.x,camera.position.z)*180/Math.PI+360)%360;
+  upRoseEl.style.transform='rotate('+(-az).toFixed(1)+'deg)';
+  if(upNeedleEl)upNeedleEl.style.transform='rotate('+(az).toFixed(1)+'deg)';
+  if(upHeadingEl)upHeadingEl.textContent=String(Math.round(az)).padStart(3,'0')+'\u00B0 '+upCard(az);
+}
+
+// ============================================================
+// 11. CAMERA / GLOBE KEYBOARD CONTROL
+// ============================================================
+function upStopAnim(){
+  cntryMode=false;gsapDest=null;gsapT=0;
+}
+function upSpin(delta){
+  autoRo=false;
+  btnRot.classList.remove('active');
+  gG.rotation.y+=delta;
+}
+function upOrbit(dTheta,dPhi){
+  upStopAnim();
+  const sph=new THREE.Spherical().setFromVector3(camera.position);
+  sph.theta+=dTheta;
+  sph.phi=UP_CLAMP(sph.phi+dPhi,0.06,Math.PI-0.06);
+  camera.position.setFromSpherical(sph);
+  camera.lookAt(0,0,0);
+  ctrl.update();
+}
+function upZoom(f){
+  upStopAnim();
+  const d=UP_CLAMP(camera.position.length()*f,ctrl.minDistance,ctrl.maxDistance);
+  camera.position.setLength(d);
+  ctrl.update();
+  upSaveUrl();
+}
+
+const UP_LAYER_KEYS={'1':'btn-rotate','2':'btn-clouds','3':'btn-atmosphere','4':'btn-night','5':'btn-cities',
+  '6':'btn-timezones','7':'btn-conflicts','8':'btn-rivers','9':'btn-routes','0':'btn-grid',
+  't':'btn-terminator','l':'btn-flights','i':'btn-iss','q':'btn-quakes'};
+
+window.addEventListener('keydown',e=>{
+  const tag=(e.target&&e.target.tagName||'').toLowerCase();
+  if(tag==='input'||tag==='textarea'||e.target.isContentEditable)return;
+  if(e.ctrlKey||e.metaKey||e.altKey)return;
+  const k=e.key;
+  const step=0.06;
+  if(k==='ArrowLeft'){e.preventDefault();upSpin(-step);upSaveUrl();return;}
+  if(k==='ArrowRight'){e.preventDefault();upSpin(step);upSaveUrl();return;}
+  if(k==='ArrowUp'){e.preventDefault();upOrbit(0,-0.08);upSaveUrl();return;}
+  if(k==='ArrowDown'){e.preventDefault();upOrbit(0,0.08);upSaveUrl();return;}
+  if(k==='+'||k==='='){e.preventDefault();upZoom(0.85);return;}
+  if(k==='-'||k==='_'){e.preventDefault();upZoom(1.15);return;}
+  if(k==='?'||k==='/'){e.preventDefault();upToggleHelp();return;}
+  if(k==='Escape'){
+    upToggleHelp(false);
+    countryPanel.classList.add('hidden');highlightCountry(-1);
+    conflictPanel.classList.add('hidden');
+    routePopup.classList.add('hidden');
+    if(upMeasure.on)upToggleMeasure(false);
+    return;
+  }
+  if(k==='m'||k==='M'){upToggleMeasure(!upMeasure.on);return;}
+  if(k==='s'||k==='S'){upScreenshot();return;}
+  if(k==='f'||k==='F'){document.getElementById('btn-fullscreen')?.click();return;}
+  if(k==='r'||k==='R'){
+    camera.position.set(0,0,350);camera.lookAt(0,0,0);
+    autoRo=true;btnRot.classList.add('active');ctrl.update();
+    upSaveUrl();upToast('View reset');return;
+  }
+  if(k==='c'||k==='C'){
+    if(upHover){
+      const txt=upHover.lat.toFixed(4)+', '+upHover.lon.toFixed(4);
+      if(navigator.clipboard&&navigator.clipboard.writeText){
+        navigator.clipboard.writeText(txt).then(()=>upToast('Copied '+txt),()=>upToast(txt,5000));
+      }else upToast(txt,5000);
+    }else upToast('Hover the globe first');
+    return;
+  }
+  const btn=UP_LAYER_KEYS[k.toLowerCase()];
+  if(btn){
+    const el=document.getElementById(btn);
+    if(el){el.click();upSaveUrl();}
+  }
+});
+
+// ---------- hover tooltips for quakes / ISS ----------
+renderer.domElement.addEventListener('mousemove',e=>{
+  if(!upQuakeGroup.visible&&!upIssGroup.visible)return;
+  upV2.x=(e.clientX/window.innerWidth)*2-1;
+  upV2.y=-(e.clientY/window.innerHeight)*2+1;
+  upRay.setFromCamera(upV2,camera);
+  if(upQuakeGroup.visible){
+    const qh=upRay.intersectObjects(upQuakeGroup.children,false);
+    const hit=qh.map(h=>h.object.userData.quake).find(Boolean);
+    if(hit){
+      tooltip.style.display='block';
+      tooltip.style.left=(e.clientX+12)+'px';tooltip.style.top=(e.clientY-20)+'px';
+      tooltip.style.background='rgba(45,18,6,0.94)';tooltip.style.borderColor='rgba(255,150,60,0.55)';
+      const t=new Date(hit.time);
+      tooltip.innerHTML='<strong style="color:#ffb37a">M'+hit.mag.toFixed(1)+'</strong> '+hit.place+
+        '<br><span style="font-size:0.7rem;color:rgba(230,190,160,0.75)">'+
+        hit.lat.toFixed(2)+'\u00B0 '+(hit.lat>=0?'N':'S')+', '+Math.abs(hit.lon).toFixed(2)+'\u00B0 '+(hit.lon>=0?'E':'W')+
+        ' · '+t.toISOString().slice(11,16)+' UTC</span>';
+      renderer.domElement.style.cursor='pointer';
+    }
+  }
+  if(upIssGroup.visible&&upIssData){
+    const ih=upRay.intersectObject(upIssDot,false);
+    if(ih.length){
+      tooltip.style.display='block';
+      tooltip.style.left=(e.clientX+12)+'px';tooltip.style.top=(e.clientY-20)+'px';
+      tooltip.style.background='rgba(8,32,48,0.94)';tooltip.style.borderColor='rgba(120,210,255,0.55)';
+      tooltip.innerHTML='<strong style="color:#9fe6ff">ISS</strong> '+
+        Number(upIssData.latitude).toFixed(2)+'\u00B0 '+(upIssData.latitude>=0?'N':'S')+', '+
+        Math.abs(Number(upIssData.longitude)).toFixed(2)+'\u00B0 '+(upIssData.longitude>=0?'E':'W')+
+        '<br><span style="font-size:0.7rem;color:rgba(180,220,245,0.8)">'+Math.round(upIssData.altitude)+' km · '+
+        Math.round(upIssData.velocity).toLocaleString()+' km/h</span>';
+      renderer.domElement.style.cursor='pointer';
+    }
+  }
+},false);
+
+// ============================================================
+// 12. URL STATE  (#v=lat,lon,dist&g=rotation&l=bitmask)
+// ============================================================
+const UP_LAYER_ORDER=['rotate','clouds','atmo','night','cities','tz','conflicts','rivers','routes','grid','term','flights','iss','quakes'];
+const UP_LAYER_BTN={
+  clouds:'btn-clouds',atmo:'btn-atmosphere',night:'btn-night',cities:'btn-cities',
+  tz:'btn-timezones',conflicts:'btn-conflicts',rivers:'btn-rivers',routes:'btn-routes',
+  grid:'btn-grid',term:'btn-terminator',flights:'btn-flights',iss:'btn-iss',quakes:'btn-quakes'
+};
+const upLayerOn=k=>{
+  switch(k){
+    case 'rotate':return autoRo;
+    case 'clouds':return shCloud;
+    case 'atmo':return shAtm;
+    case 'night':return nMde;
+    case 'cities':return shCt;
+    case 'tz':return shTz;
+    case 'conflicts':return shConflict;
+    case 'rivers':return shRivers;
+    case 'routes':return shRoutes;
+    case 'grid':return upGridGroup.visible;
+    case 'term':return upTermGroup.visible;
+    case 'flights':return upFlightGroup.visible;
+    case 'iss':return upIssGroup.visible;
+    case 'quakes':return upQuakeGroup.visible;
+  }
+  return false;
+};
+let upLastHash='';
+function upSaveUrl(){
+  if(!history.replaceState)return;
+  const view=upLatLonFromLocal(camera.position.clone());
+  const bits=UP_LAYER_ORDER.map(k=>upLayerOn(k)?'1':'0').join('');
+  const hash='#v='+view.lat.toFixed(2)+','+view.lon.toFixed(2)+','+Math.round(camera.position.length())+
+             '&g='+gG.rotation.y.toFixed(3)+'&l='+bits;
+  // only touch the history when something actually moved
+  if(hash===upLastHash)return;
+  upLastHash=hash;
+  history.replaceState(null,'',hash);
+}
+function upApplyLayer(k,on){
+  const id=UP_LAYER_BTN[k];
+  if(!id)return;
+  const el=document.getElementById(id);
+  if(!el)return;
+  if(el.classList.contains('active')!==on)el.click();
+}
+function upLoadUrl(){
+  const raw=location.hash.replace(/^#/,'');
+  if(!raw)return false;
+  let p;
+  try{p=new URLSearchParams(raw);}catch(e){return false;}
+  const v=p.get('v');
+  if(!v)return false;
+  const [la,lo,di]=v.split(',').map(Number);
+  if(isFinite(la)&&isFinite(lo)&&isFinite(di)&&di>0){
+    camera.position.copy(latLonToV3(la,lo,di));
+    camera.lookAt(0,0,0);
+    ctrl.update();
+  }
+  const g=p.get('g');
+  if(g!==null&&isFinite(parseFloat(g))){
+    autoRo=false;
+    gG.rotation.y=parseFloat(g);
+    btnRot.classList.remove('active');
+  }
+  const l=p.get('l');
+  if(l&&l.length>=UP_LAYER_ORDER.length){
+    UP_LAYER_ORDER.forEach((k,i)=>{
+      if(k==='rotate')return;
+      upApplyLayer(k,l[i]==='1');
+    });
+  }
+  return true;
+}
+
+// ============================================================
+// 13. FRAME HOOK
+// ============================================================
+let upFrames=0,upFpsAcc=0,upLastT=performance.now(),upHudT=0,upTick=0,upSaveT=0;
+function updateExtras(){
+  const now=performance.now();
+  const dtMs=Math.min(now-upLastT,120);
+  upLastT=now;
+  const dt=dtMs/1000;
+  upFrames++;upFpsAcc+=dtMs;
+  if(upFpsAcc>=500&&upFpsEl){
+    upFpsEl.textContent=Math.round(upFrames*1000/upFpsAcc)+' FPS';
+    upFrames=0;upFpsAcc=0;
+  }
+  upTick++;
+  // keep the sun/light aligned even when the terminator layer is hidden
+  if(upTermGroup.visible||upTick%180===0)upUpdateTerminator();
+  if(upFlightGroup.visible)upTickFlights(dt);
+  if(upIssGroup.visible&&upIssPos)upIssLabel.position.copy(upLabelOffset(upIssPos,7));
+  if(upTermGroup.visible)upSunLabel.position.copy(upLabelOffset(upSunSprite.position,7));
+  if(upQuakeGroup.visible)upTickQuakes(now);
+  if(now-upHudT>200){upHudT=now;upUpdateCompass();}
+  // camera moves made by dragging do not fire a save — debounce them
+  if(now-upSaveT>800){upSaveT=now;upSaveUrl();}
+}
+
+// restore a shared view, then keep the hash fresh
+if(upLoadUrl())upToast('View restored from link');
+ctrl.addEventListener('end',()=>upSaveUrl());
+
+// debug handle (also handy from the console)
+window.__globe={scene,camera,renderer,controls:ctrl,group:gG,
+  layers:{grid:upGridGroup,terminator:upTermGroup,flights:upFlightGroup,iss:upIssGroup,quakes:upQuakeGroup,measure:upMeasureGroup},
+  state:()=>Object.fromEntries(UP_LAYER_ORDER.map(k=>[k,upLayerOn(k)])),
+  iss:()=>upIssData, quakes:()=>upQuakes.map(q=>q.data),
+  subsolar:()=>upSubsolar(new Date()), measure:()=>upMeasure.pts};
+
 
 animate();
 console.log('🌍 Earth Globe loaded successfully!');

@@ -58,7 +58,13 @@ canvas {
     left: 50%;
     transform: translateX(-50%);
     display: flex;
-    gap: 10px;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: center;
+    gap: 8px;
+    row-gap: 8px;
+    width: max-content;
+    max-width: min(1180px, calc(100vw - 24px));
     z-index: 10;
 }
 
@@ -526,8 +532,8 @@ canvas {
 @media (max-width: 600px) {
     #header h1 { font-size: 0.95rem; }
     #search-wrap { width: 50vw; }
-    #controls { flex-wrap: wrap; justify-content: center; }
-    #controls button { font-size: 0.75rem; padding: 6px 12px; }
+    #controls { flex-wrap: wrap; justify-content: center; max-width: calc(100vw - 16px); }
+    #controls button { font-size: 0.72rem; padding: 6px 10px; }
     #conflict-panel { width: calc(100vw - 40px); left: 20px; }
     #conflict-legend { bottom: 80px; }
 }
@@ -642,6 +648,22 @@ canvas {
     min-width: 200px;
 }
 
+/* The three panels below are marked `hidden` in the markup and toggled with
+   classList in app.js, but no rule ever hid them — an empty route popup and the
+   cargo/network panels rendered over the globe at load even with Routes off. */
+#route-popup,
+#maritime-legend,
+#maritime-stats {
+    transition: opacity 0.25s ease, visibility 0.25s ease;
+}
+#route-popup.hidden,
+#maritime-legend.hidden,
+#maritime-stats.hidden {
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+}
+
 .ms-title {
     font-size: 0.68rem;
     text-transform: uppercase;
@@ -674,4 +696,247 @@ canvas {
     #maritime-legend { bottom: 80px; left: 10px; }
     #maritime-stats { bottom: 80px; right: 10px; }
     #route-popup { left: 10px !important; top: auto !important; bottom: 140px !important; right: 10px; max-width: none; min-width: 0; }
+}
+
+/* === Upgrade pack: cursor HUD, compass, help sheet, toast, FPS === */
+
+#lod-hud #fps {
+    color: rgba(120, 210, 255, 0.55);
+    margin-left: 8px;
+    font-size: 0.72rem;
+}
+
+#cursor-hud {
+    position: fixed;
+    left: 16px;
+    bottom: 16px;
+    z-index: 15;
+    min-width: 196px;
+    padding: 8px 14px;
+    border-radius: 10px;
+    background: rgba(10, 20, 50, 0.85);
+    border: 1px solid rgba(100, 160, 255, 0.3);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    font-family: 'Courier New', monospace;
+    pointer-events: none;
+    transition: border-color 0.25s ease, box-shadow 0.25s ease;
+}
+
+#cursor-coords {
+    white-space: nowrap;
+    font-size: 0.86rem;
+    letter-spacing: 0.5px;
+    color: rgba(180, 210, 255, 0.75);
+    font-variant-numeric: tabular-nums;
+}
+
+#cursor-hud.live {
+    border-color: rgba(120, 200, 255, 0.65);
+    box-shadow: 0 0 16px rgba(80, 160, 255, 0.22);
+}
+
+#cursor-hud.live #cursor-coords { color: #cfe6ff; }
+
+#cursor-hud.measuring {
+    border-color: rgba(255, 200, 80, 0.7);
+    box-shadow: 0 0 16px rgba(255, 190, 60, 0.2);
+}
+
+#cursor-extra {
+    font-size: 0.72rem;
+    line-height: 1.5;
+    color: rgba(255, 205, 110, 0.85);
+    margin-top: 2px;
+}
+
+#cursor-extra:empty { display: none; }
+
+/* Compass rose */
+#compass {
+    position: fixed;
+    top: 132px;
+    right: 16px;
+    width: 74px;
+    height: 74px;
+    z-index: 15;
+    border-radius: 50%;
+    background: rgba(10, 20, 50, 0.72);
+    border: 1px solid rgba(100, 160, 255, 0.25);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    pointer-events: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+#compass-rose {
+    position: absolute;
+    inset: 4px;
+    border-radius: 50%;
+    transition: transform 0.12s linear;
+}
+
+#compass-rose span {
+    position: absolute;
+    font-size: 0.56rem;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    color: rgba(150, 190, 255, 0.55);
+    transform: translate(-50%, -50%);
+}
+
+#compass-rose .c-n { top: 9%; left: 50%; color: #ff8080; }
+#compass-rose .c-s { top: 91%; left: 50%; }
+#compass-rose .c-e { top: 50%; left: 91%; }
+#compass-rose .c-w { top: 50%; left: 9%; }
+
+#compass-needle {
+    position: absolute;
+    width: 2px;
+    height: 26px;
+    background: linear-gradient(to bottom, #ff8080 0%, #ff8080 50%, rgba(120, 180, 255, 0.35) 50%);
+    border-radius: 2px;
+    transform-origin: 50% 50%;
+    top: 11px;
+}
+
+#compass-heading {
+    position: absolute;
+    bottom: -18px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-family: 'Courier New', monospace;
+    font-size: 0.66rem;
+    letter-spacing: 1px;
+    color: rgba(140, 180, 255, 0.65);
+    white-space: nowrap;
+}
+
+/* Shortcut sheet */
+#help-panel {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 300;
+    width: min(560px, calc(100vw - 32px));
+    max-height: 82vh;
+    overflow-y: auto;
+    padding: 22px 26px;
+    transition: opacity 0.25s ease, visibility 0.25s ease;
+}
+
+#help-panel.hidden {
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+}
+
+#help-panel h2 {
+    font-size: 1rem;
+    letter-spacing: 1px;
+    font-weight: 600;
+    color: #cfe6ff;
+    margin-bottom: 14px;
+}
+
+#close-help { position: absolute; top: 12px; right: 14px; }
+
+.hk-grid {
+    display: grid;
+    grid-template-columns: auto auto 1fr;
+    gap: 7px 10px;
+    align-items: center;
+    font-size: 0.78rem;
+    color: rgba(200, 220, 240, 0.8);
+}
+
+.hk-grid kbd {
+    display: inline-block;
+    min-width: 22px;
+    padding: 2px 6px;
+    text-align: center;
+    font-family: 'Courier New', monospace;
+    font-size: 0.72rem;
+    color: #d6e8ff;
+    background: rgba(80, 130, 220, 0.18);
+    border: 1px solid rgba(120, 170, 255, 0.35);
+    border-radius: 5px;
+}
+
+.hk-note {
+    margin-top: 16px;
+    font-size: 0.72rem;
+    line-height: 1.6;
+    color: rgba(150, 185, 230, 0.6);
+}
+
+/* Toast */
+#toast {
+    position: fixed;
+    left: 50%;
+    top: 58px;
+    transform: translate(-50%, -12px);
+    z-index: 250;
+    padding: 8px 18px;
+    border-radius: 999px;
+    background: rgba(10, 22, 48, 0.92);
+    border: 1px solid rgba(100, 180, 255, 0.4);
+    color: #cfe6ff;
+    font-size: 0.78rem;
+    letter-spacing: 0.3px;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.28s ease, transform 0.28s ease;
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    max-width: calc(100vw - 32px);
+    text-align: center;
+}
+
+#toast.show {
+    opacity: 1;
+    transform: translate(-50%, 0);
+}
+
+#btn-measure.active {
+    background: rgba(255, 190, 60, 0.18);
+    border-color: rgba(255, 200, 80, 0.6);
+    color: #ffce6b;
+}
+
+#btn-iss.active {
+    background: rgba(120, 210, 255, 0.16);
+    border-color: rgba(120, 210, 255, 0.55);
+    color: #9fe6ff;
+}
+
+#btn-quakes.active {
+    background: rgba(255, 110, 60, 0.16);
+    border-color: rgba(255, 120, 60, 0.55);
+    color: #ff9a6b;
+}
+
+@media (max-width: 760px) {
+    #cursor-hud { left: 10px; bottom: auto; top: 96px; min-width: 0; padding: 6px 10px; }
+    #cursor-coords { font-size: 0.74rem; }
+    #cursor-extra { font-size: 0.66rem; }
+    #compass { display: none; }
+    #toast { top: 54px; font-size: 0.72rem; max-width: calc(100vw - 20px); }
+    .hk-grid { font-size: 0.72rem; }
+    #clock-hud { top: 54px; right: 10px; padding: 7px 10px; min-width: 0; }
+    #clock-utc { font-size: 0.78rem; margin-bottom: 2px; }
+    #clock-local { font-size: 0.95rem; margin-bottom: 2px; }
+    #clock-coords { font-size: 0.66rem; }
+    #lod-hud { top: 48px; left: 10px; padding: 6px 10px; font-size: 0.7rem; }
+    #controls { left: 8px; right: 8px; bottom: 10px; transform: none; width: auto;
+                max-width: none; gap: 5px; row-gap: 5px; }
+    #controls button { font-size: 0.66rem; padding: 6px 8px; border-radius: 7px; }
+}
+
+/* touch devices have no hover cursor */
+@media (hover: none) {
+    #cursor-hud { display: none; }
 }

@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Earth Globe</title>
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='14' fill='%232a6ecb'/%3E%3Cpath d='M4 12h24M4 20h24M16 2c5 4 5 24 0 28M16 2c-5 4-5 24 0 28' stroke='%23a8d6ff' fill='none' stroke-width='1.6'/%3E%3C/svg%3E">
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -28,7 +29,7 @@
         <h2 id="country-name"></h2>
         <p id="country-info"></p>
     </div>
-    <div id="lod-hud" aria-live="polite" aria-label="Level of Detail">LOD: Medium (64 seg)</div>
+    <div id="lod-hud" aria-live="polite" aria-label="Level of Detail"><span id="lod-text">LOD: Medium (64 seg)</span> <span id="fps">– FPS</span></div>
     <div id="conflict-legend" class="hidden">
         <div class="cl-title">⚔ Conflicts</div>
         <div class="cl-item"><span class="cl-dot cl-critical"></span> Critical — Active high-intensity war</div>
@@ -49,18 +50,35 @@
         <div id="clock-local"></div>
         <div id="clock-coords"></div>
     </div>
+    <div id="compass" aria-hidden="true">
+        <div id="compass-rose"><span class="c-n">N</span><span class="c-e">E</span><span class="c-s">S</span><span class="c-w">W</span></div>
+        <div id="compass-needle"></div>
+        <div id="compass-heading">000°</div>
+    </div>
     <div id="globe-container"></div>
+    <div id="cursor-hud" aria-live="polite" aria-label="Cursor coordinates">
+        <div id="cursor-coords">—</div>
+        <div id="cursor-extra"></div>
+    </div>
     <div id="controls" role="toolbar" aria-label="Globe controls">
-        <button id="btn-rotate" class="active" title="Toggle auto-rotation" aria-label="Toggle auto-rotation">⟳ Rotate</button>
-        <button id="btn-clouds" class="active" title="Toggle clouds" aria-label="Toggle clouds">☁ Clouds</button>
-        <button id="btn-atmosphere" class="active" title="Toggle atmosphere" aria-label="Toggle atmosphere">🌐 Atmo</button>
-        <button id="btn-night" title="Toggle day/night" aria-label="Toggle day/night">🌙 Night</button>
-        <button id="btn-cities" class="active" title="Toggle cities" aria-label="Toggle cities">🏙 Cities</button>
-        <button id="btn-timezones" title="Toggle timezone lines" aria-label="Toggle timezone lines">🕐 TZ</button>
-        <button id="btn-conflicts" title="Toggle conflict hotspots" aria-label="Toggle conflict hotspots">⚔ Conflicts</button>
-        <button id="btn-rivers" title="Toggle major world rivers" aria-label="Toggle major world rivers">🌊 Rivers</button>
-        <button id="btn-routes" title="Toggle maritime trade routes" aria-label="Toggle maritime trade routes">⚓ Routes</button>
-        <button id="btn-fullscreen" title="Toggle fullscreen" aria-label="Toggle fullscreen">⛶ Full</button>
+        <button id="btn-rotate" class="active" title="Toggle auto-rotation (1)" aria-label="Toggle auto-rotation">⟳ Rotate</button>
+        <button id="btn-clouds" class="active" title="Toggle clouds (2)" aria-label="Toggle clouds">☁ Clouds</button>
+        <button id="btn-atmosphere" class="active" title="Toggle atmosphere (3)" aria-label="Toggle atmosphere">🌐 Atmo</button>
+        <button id="btn-night" title="Toggle day/night (4)" aria-label="Toggle day/night">🌙 Night</button>
+        <button id="btn-cities" class="active" title="Toggle cities (5)" aria-label="Toggle cities">🏙 Cities</button>
+        <button id="btn-timezones" title="Toggle timezone lines (6)" aria-label="Toggle timezone lines">🕐 TZ</button>
+        <button id="btn-conflicts" title="Toggle conflict hotspots (7)" aria-label="Toggle conflict hotspots">⚔ Conflicts</button>
+        <button id="btn-rivers" title="Toggle major world rivers (8)" aria-label="Toggle major world rivers">🌊 Rivers</button>
+        <button id="btn-routes" title="Toggle maritime trade routes (9)" aria-label="Toggle maritime trade routes">⚓ Routes</button>
+        <button id="btn-grid" title="Toggle graticule: equator, tropics, polar circles (0)" aria-label="Toggle graticule">🌐 Grid</button>
+        <button id="btn-terminator" title="Toggle day/night terminator + sun position (T)" aria-label="Toggle day/night terminator">🌗 Term</button>
+        <button id="btn-flights" title="Toggle flight path arcs (L)" aria-label="Toggle flight paths">✈ Flights</button>
+        <button id="btn-iss" title="Track the ISS in real time (I)" aria-label="Toggle ISS tracker">🛰 ISS</button>
+        <button id="btn-quakes" title="Toggle live earthquakes, M4.5+ last 24h (Q)" aria-label="Toggle earthquakes">🌋 Quakes</button>
+        <button id="btn-measure" title="Measure great-circle distance (M)" aria-label="Toggle distance measurement">📏 Measure</button>
+        <button id="btn-shot" title="Save current view as PNG (S)" aria-label="Save screenshot">📷 Shot</button>
+        <button id="btn-fullscreen" title="Toggle fullscreen (F)" aria-label="Toggle fullscreen">⛶ Full</button>
+        <button id="btn-help" title="Keyboard shortcuts (?)" aria-label="Keyboard shortcuts">? Keys</button>
         <button id="btn-map" title="Open Interactive Map with Annotations" aria-label="Open Interactive Map">🗺 Map</button>
     </div>
     <!-- Maritime Trade Route Popup -->
@@ -94,6 +112,33 @@
         <div class="ms-row"><span class="ms-label">Hub Ports</span><span class="ms-value" id="ms-ports">10</span></div>
         <div class="ms-row"><span class="ms-label">Network Health</span><span class="ms-value ms-health" id="ms-health">98.4%</span></div>
     </div>
+
+    <!-- Keyboard shortcut sheet -->
+    <div id="help-panel" class="glass hidden" role="dialog" aria-label="Keyboard shortcuts">
+        <button id="close-help" class="popup-close" aria-label="Close shortcuts">×</button>
+        <h2>⌨ Shortcuts</h2>
+        <div class="hk-grid">
+            <kbd>←</kbd><kbd>→</kbd><span>Spin the globe</span>
+            <kbd>↑</kbd><kbd>↓</kbd><span>Tilt the camera</span>
+            <kbd>+</kbd><kbd>−</kbd><span>Zoom in / out</span>
+            <kbd>1</kbd>…<kbd>9</kbd><span>Rotate · Clouds · Atmo · Night · Cities · TZ · Conflicts · Rivers · Routes</span>
+            <kbd>0</kbd><span>Graticule (equator, tropics, polar circles)</span>
+            <kbd>T</kbd><span>Day/night terminator + sun</span>
+            <kbd>L</kbd><span>Flight path arcs</span>
+            <kbd>I</kbd><span>ISS tracker</span>
+            <kbd>Q</kbd><span>Live earthquakes</span>
+            <kbd>M</kbd><span>Measure distance</span>
+            <kbd>S</kbd><span>Save view as PNG</span>
+            <kbd>F</kbd><span>Fullscreen</span>
+            <kbd>R</kbd><span>Reset view</span>
+            <kbd>C</kbd><span>Copy coordinates under cursor</span>
+            <kbd>Esc</kbd><span>Close panels / cancel measure</span>
+            <kbd>?</kbd><span>This sheet</span>
+        </div>
+        <p class="hk-note">The URL hash keeps the camera, globe rotation and every layer — copy the address to share the exact view.</p>
+    </div>
+
+    <div id="toast" role="status" aria-live="polite"></div>
 
     <script type="importmap">
     {
