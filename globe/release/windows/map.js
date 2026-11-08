@@ -2219,7 +2219,12 @@ function confirmImport() {
             layer.addTo(grp);
             count++;
         } else if (f.geometryType === 'Polygon') {
-            const coords = f.geometry.coordinates.map(c => [c[1], c[0]]);
+            /* GeoJSON hands over [outerRing, ...holes]; KML/GPX and the polygon
+               tool hand over a flat ring. Accept both. */
+            const rawC = f.geometry.coordinates || [];
+            const ringLL = (Array.isArray(rawC[0]) && Array.isArray(rawC[0][0])) ? rawC[0] : rawC;
+            const coords = ringLL.map(c => [c[1], c[0]]);
+            if (coords.length < 3) return;
             const layer = L.polygon(coords, {
                 color: f.color, fillColor: f.fillColor || f.color,
                 fillOpacity: f.fillOpacity || 0.3,
@@ -2228,7 +2233,7 @@ function confirmImport() {
             layer.bindTooltip(f.name || '', { sticky: true, className: 'import-tooltip' });
             const prevColor = S.color;
             S.color = f.fillColor || f.color;
-            storeAnnotation(layer, 'polygon', f.geometry.coordinates, { text: f.text || f.name }, { locked: true });
+            storeAnnotation(layer, 'polygon', coords, { text: f.text || f.name }, { locked: true });
             S.color = prevColor;
             layer.addTo(grp);
             attachHighlightHandler(layer);
@@ -3031,8 +3036,11 @@ function parseKML(kmlText) {
     const parseErr = doc.querySelector('parsererror');
     if (parseErr) { console.error('KML parse error:', parseErr.textContent.slice(0, 300)); throw new Error('Invalid KML/XML'); }
     const root = doc.getElementsByTagName('Document')[0] || doc.getElementsByTagName('Folder')[0] || doc.documentElement;
-    const nameEl = root.getElementsByTagName('name')[0];
-    const docName = nameEl ? nameEl.textContent.trim() : 'Google Maps';
+    /* only a direct child <name> is the document name — getElementsByTagName
+       walked into the first <Placemark> and named unnamed KML after its first
+       pin ("Pin A") */
+    const nameEl = Array.from(root.children || []).find(c => c.localName === 'name');
+    const docName = nameEl && nameEl.textContent.trim() ? nameEl.textContent.trim() : 'Google Maps';
 
     /* Check for NetworkLink stub (Google My Maps download quirk) */
     const netLink = root.getElementsByTagName('NetworkLink')[0];

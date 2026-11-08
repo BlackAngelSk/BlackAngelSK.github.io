@@ -63,6 +63,16 @@ top bar + right sidebar with 9 themes (classic, minimal, sidebar-left, dark-pro,
 - **NATO/EU labels never rendered** (fixed in both pages): `_polygonCentroid()` called `layer.eachLayer()`, but
   `onEachFeature` hands over the `L.Polygon` itself, so it threw for every country and the `try { … } catch (_) {}`
   around the label code swallowed it. It now accepts a group *or* a single path.
+- **"Import Selected" could not be clicked** with a long preview list: the import modal had no `max-height`
+  and the preview list no scroll cap, so the button was pushed below the fold (a 20-feature preset put it at
+  y=1030 on a 900 px window). The modal now caps at 90vh, the list scrolls at 280 px and the action row is sticky.
+- **KML polygons aborted the whole import**: `confirmImport` assumed the nested GeoJSON ring
+  (`coordinates[0]`), while KML hands over a flat ring, so `L.polygon()` threw, the modal stayed open and the
+  partially imported features were never registered. Both shapes are accepted now, each feature is wrapped in
+  its own try/catch, and a failure can no longer stop the modal from closing.
+- **Unnamed KML was named after its first pin**: `getElementsByTagName('name')[0]` walked into the first
+  `<Placemark>`, so an unnamed document pre-filled the import name with e.g. "Pin A". Only a direct child
+  `<name>` counts now.
 
 ## Next steps (not implemented yet)
 

@@ -953,6 +953,31 @@ body {
 #import-preview, #import-actions {
     padding: 12px 20px;
 }
+
+/* ── Modal bodies must stay inside the viewport ──────
+   They had no max-height and the preview list no scroll cap, so importing a
+   20-feature preset pushed "Import Selected" below the fold where it could not
+   be clicked at all (map.css has these two rules, map-new.css lost them). */
+#import-modal-content,
+#overlay-modal-content,
+#proxy-modal-content {
+    max-height: min(90vh, 920px);
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(100, 160, 255, 0.3) transparent;
+}
+#import-preview-list {
+    max-height: 280px;
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(100, 160, 255, 0.3) transparent;
+}
+#import-actions {
+    position: sticky;
+    bottom: 0;
+    z-index: 2;
+    background: var(--t-bg, rgba(8, 14, 35, 0.98));
+}
 .import-preview-header {
     display: flex;
     align-items: center;

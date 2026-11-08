@@ -2319,6 +2319,7 @@ function confirmImport() {
     const folderGroups = {};
     let count = 0;
     toImport.forEach(f => {
+      try {
         const folder = f.folder || 'Imported';
         if (!folderGroups[folder]) folderGroups[folder] = L.layerGroup();
         const grp = folderGroups[folder];
@@ -2339,8 +2340,13 @@ function confirmImport() {
             layer.addTo(grp);
             count++;
         } else if (f.geometryType === 'Polygon') {
-            /* coordinates[0] is the outer ring — take the ring, not the rings array */
-            const ring = (f.geometry.coordinates[0] || []).map(c => [c[1], c[0]]);
+            /* GeoJSON hands over [outerRing, ...holes] ([[[lng,lat]…]]), while KML
+               and the polygon tool hand over a flat ring ([[lng,lat]…]). Accept
+               both — assuming one shape is what made KML imports blow up. */
+            const rawC = f.geometry.coordinates || [];
+            const ringLL = (Array.isArray(rawC[0]) && Array.isArray(rawC[0][0])) ? rawC[0] : rawC;
+            const ring = ringLL.map(c => [c[1], c[0]]);
+            if (ring.length < 3) return;
             const layer = L.polygon(ring, {
                 color: f.color, fillColor: f.fillColor || f.color,
                 fillOpacity: f.fillOpacity || 0.3,
@@ -2385,6 +2391,10 @@ function confirmImport() {
             marker.addTo(grp);
             count++;
         }
+      } catch (err) {
+        /* skip a single broken feature instead of aborting the whole import */
+        console.warn('Skipping feature during import:', (f && f.name) || f, err);
+      }
     });
 
     /* Add all folder groups to map */
@@ -2407,7 +2417,7 @@ function confirmImport() {
             visible: true
         });
     });
-    updateImportedMapsPanel();
+    try { updateImportedMapsPanel(); } catch (err) { console.warn('Imported maps panel failed:', err); }
 
     closeImportModal();
     if (count > 0) {
@@ -2780,8 +2790,11 @@ function parseKML(kmlText) {
     const parseErr = doc.querySelector('parsererror');
     if (parseErr) { console.error('KML parse error:', parseErr.textContent.slice(0, 300)); throw new Error('Invalid KML/XML'); }
     const root = doc.getElementsByTagName('Document')[0] || doc.getElementsByTagName('Folder')[0] || doc.documentElement;
-    const nameEl = root.getElementsByTagName('name')[0];
-    const docName = nameEl ? nameEl.textContent.trim() : 'Google Maps';
+    /* only a direct child <name> is the document name — getElementsByTagName
+       walked into the first <Placemark> and named unnamed KML after its first
+       pin ("Pin A") */
+    const nameEl = Array.from(root.children || []).find(c => c.localName === 'name');
+    const docName = nameEl && nameEl.textContent.trim() ? nameEl.textContent.trim() : 'Google Maps';
 
     /* Check for NetworkLink stub (Google My Maps download quirk) */
     const netLink = root.getElementsByTagName('NetworkLink')[0];
