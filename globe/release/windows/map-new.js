@@ -165,12 +165,37 @@ map.whenReady(function () {
 
 osm.addTo(map);
 
-/* Layer control — Standard, Topographic, Satellite (all free, no API keys) */
-L.control.layers({
-    '\u{1F5FA} Standard': osm,
-    '\u{1F3D4} Topographic': topo,
-    '\u{1F6F0} Satellite': sat
-}, null, { position: 'topright' }).addTo(map);
+/* Base map switcher — Standard, Topographic, Satellite (all free, no API keys).
+   A Leaflet control at topright was unusable here: the fixed top bar and the
+   theme-switcher button (z-index 1000) covered it, so it lives in the sidebar. */
+const BASE_MAPS = [
+    { id: 'btn-base-standard', layer: osm, name: 'Standard' },
+    { id: 'btn-base-topo', layer: topo, name: 'Topographic' },
+    { id: 'btn-base-sat', layer: sat, name: 'Satellite' }
+];
+let baseMapId = 'btn-base-standard';
+
+function setBaseMap(id) {
+    const target = BASE_MAPS.find(b => b.id === id);
+    if (!target) return;
+    BASE_MAPS.forEach(b => {
+        if (b.layer === target.layer) {
+            if (!map.hasLayer(b.layer)) b.layer.addTo(map);
+        } else if (map.hasLayer(b.layer)) {
+            map.removeLayer(b.layer);
+        }
+        const btn = document.getElementById(b.id);
+        if (btn) btn.classList.toggle('active', b.id === id);
+    });
+    baseMapId = id;
+    const st = document.getElementById('status-text');
+    if (st) st.textContent = '\u{1F5FA}\uFE0F ' + target.name + ' base map';
+}
+BASE_MAPS.forEach(b => {
+    const btn = document.getElementById(b.id);
+    if (btn) btn.addEventListener('click', () => setBaseMap(b.id));
+});
+setBaseMap(baseMapId);
 
 /* ── Map Label Languages ─────────────────────────── */
 const LANGUAGES = [

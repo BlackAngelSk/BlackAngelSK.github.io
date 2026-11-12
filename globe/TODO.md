@@ -73,6 +73,9 @@ top bar + right sidebar with 9 themes (classic, minimal, sidebar-left, dark-pro,
 - **Unnamed KML was named after its first pin**: `getElementsByTagName('name')[0]` walked into the first
   `<Placemark>`, so an unnamed document pre-filled the import name with e.g. "Pin A". Only a direct child
   `<name>` counts now.
+- **Base map switcher was invisible in map-new**: the Leaflet layers control sat at `topright`, under the
+  fixed top bar and behind the theme-switcher button (z-index 1000), so Standard/Topographic/Satellite could
+  not be reached. It is now a "Base map" section in the sidebar (the control itself is gone).
 
 ## Next steps (not implemented yet)
 
