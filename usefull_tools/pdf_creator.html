@@ -531,7 +531,8 @@
           <div class="dropzone" id="dropzone">
             <span class="big">[ + ]</span>
             Click or drop images here<br>
-            <span style="font-size:11px;">JPG · PNG · WebP · GIF · BMP — one image per page</span>
+            <span style="font-size:11px;">JPG · PNG · WebP · GIF · BMP — one image per page</span><br>
+            <span style="font-size:10px;">auto-rotated · colour-corrected · small images stay small</span>
           </div>
           <input type="file" id="file-input" accept="image/*" multiple style="display:none;">
           <div class="img-list" id="img-list" style="margin-top:12px;"></div>
@@ -568,13 +569,14 @@
             <div class="opt-group">
               <label>Fit Mode</label>
               <select id="img-fit">
-                <option value="fit" selected>Fit — show whole image</option>
+                <option value="fit" selected>Fit page (no upscaling)</option>
                 <option value="fill">Fill — crop to page</option>
               </select>
             </div>
           </div>
           <div class="checkbox-row">
             <label><input type="checkbox" id="img-compress" checked> Compress (smaller PDF)</label>
+            <label style="margin-left:18px;"><input type="checkbox" id="img-bw"> Black &amp; white</label>
           </div>
         </div>
 
@@ -903,48 +905,128 @@
     /* ════════════════════════════════════════════
        IMAGES → PDF
        ════════════════════════════════════════════ */
-    function fileToImageData(file) {
+    const MAX_EDGE = 4096; // cap long edge: 300+ dpi on A4, keeps PDFs sane
+
+    function setBusy(msg) {
+      if (msg) { $('status').textContent = msg; } else { updateStatus(); }
+    }
+
+    function loadImage(src) {
+      return new Promise((resolve, reject) => {
+        const img = new Image();
+        img.onload = () => resolve(img);
+        img.onerror = () => reject(new Error('image decode failed'));
+        img.src = src;
+      });
+    }
+
+    async function decodeImage(file) {
+      // createImageBitmap applies EXIF orientation → w/h are the final display dims
+      if ('createImageBitmap' in window) {
+        try {
+          const bmp = await createImageBitmap(file, { imageOrientation: 'from-image' });
+          return { src: bmp, w: bmp.width, h: bmp.height, close: () => bmp.close() };
+        } catch (e) { /* fall through to <img> */ }
+      }
       return new Promise((resolve, reject) => {
         const url = URL.createObjectURL(file);
         const img = new Image();
-        img.onload = () => {
-          const w = img.naturalWidth, h = img.naturalHeight;
-          const finish = (dataURL, fmt) => resolve({ dataURL, fmt, w, h, img });
-          if (file.type === 'image/jpeg' || file.type === 'image/png') {
-            const fr = new FileReader();
-            fr.onload = () => finish(fr.result, file.type === 'image/png' ? 'PNG' : 'JPEG');
-            fr.onerror = () => { URL.revokeObjectURL(url); reject(new Error('read failed')); };
-            fr.readAsDataURL(file);
-          } else {
-            // webp / gif / bmp → re-encode via canvas (white background for alpha)
-            const canvas = document.createElement('canvas');
-            canvas.width = w; canvas.height = h;
-            const ctx = canvas.getContext('2d');
-            ctx.fillStyle = '#fff';
-            ctx.fillRect(0, 0, w, h);
-            ctx.drawImage(img, 0, 0);
-            finish(canvas.toDataURL('image/jpeg', 0.92), 'JPEG');
-          }
-          URL.revokeObjectURL(url);
-        };
+        img.onload = () => resolve({
+          src: img, w: img.naturalWidth, h: img.naturalHeight,
+          close: () => URL.revokeObjectURL(url)
+        });
         img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('not an image')); };
         img.src = url;
       });
     }
 
+    function manualGray(ctx, w, h) {
+      const d = ctx.getImageData(0, 0, w, h);
+      const p = d.data;
+      for (let i = 0; i < p.length; i += 4) {
+        const g = (0.299 * p[i] + 0.587 * p[i + 1] + 0.114 * p[i + 2]) | 0;
+        p[i] = p[i + 1] = p[i + 2] = g;
+      }
+      ctx.putImageData(d, 0, 0);
+    }
+
+    // Decode ANY image → canvas (EXIF-rotated, sRGB, size-capped, optional gray)
+    // → embed-safe JPEG/PNG. Fixes CMYK jpegs, progressive jpegs, 16-bit /
+    // palette / 1-bit pngs and rotated jpegs on every viewer (incl. Windows).
+    async function normalizeImage(file) {
+      const dec = await decodeImage(file);
+      try {
+        const scale = Math.min(1, MAX_EDGE / Math.max(dec.w, dec.h));
+        const tw = Math.max(1, Math.round(dec.w * scale));
+        const th = Math.max(1, Math.round(dec.h * scale));
+        const canvas = document.createElement('canvas');
+        canvas.width = tw; canvas.height = th;
+        const ctx = canvas.getContext('2d');
+        const bw = $('img-bw').checked;
+        const compress = $('img-compress').checked;
+        const pngSource = file.type === 'image/png';
+        let graySet = false;
+        if (bw && 'filter' in ctx) {
+          ctx.filter = 'grayscale(1)';
+          graySet = ctx.filter === 'grayscale(1)';
+        }
+        // non-PNG sources are flattened onto white (JPEG has no alpha)
+        if (!pngSource) { ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, tw, th); }
+        ctx.drawImage(dec.src, 0, 0, tw, th);
+        if (bw && !graySet) manualGray(ctx, tw, th);
+        let dataURL, fmt;
+        if (pngSource) {
+          // document scans (palette / 1-bit / gray) stay PNG and tiny;
+          // photos saved as PNG get flattened and pick the smaller JPEG
+          const pngURL = canvas.toDataURL('image/png');
+          const flat = document.createElement('canvas');
+          flat.width = tw; flat.height = th;
+          const fctx = flat.getContext('2d');
+          fctx.fillStyle = '#fff';
+          fctx.fillRect(0, 0, tw, th);
+          fctx.drawImage(canvas, 0, 0);
+          const jpgURL = flat.toDataURL('image/jpeg', compress ? 0.85 : 0.95);
+          if (pngURL.length <= jpgURL.length) { dataURL = pngURL; fmt = 'PNG'; }
+          else { dataURL = jpgURL; fmt = 'JPEG'; }
+        } else {
+          dataURL = canvas.toDataURL('image/jpeg', compress ? 0.85 : 0.95);
+          fmt = 'JPEG';
+        }
+        return { dataURL, fmt, w: tw, h: th };
+      } finally {
+        dec.close();
+      }
+    }
+
     async function addFiles(files) {
       hideError();
+      setBusy('Processing images...');
       for (const file of files) {
         if (!file.type.startsWith('image/')) continue;
         try {
-          const data = await fileToImageData(file);
-          imageItems.push({ id: ++uid, name: file.name, ...data });
+          const n = await normalizeImage(file);
+          imageItems.push({ id: ++uid, name: file.name, file, ...n });
         } catch (e) {
           showError('Could not load: ' + file.name);
         }
       }
+      setBusy('');
       renderImageList();
       schedulePreview();
+    }
+
+    async function renormalizeAll() {
+      if (!imageItems.length) { schedulePreview(50); return; }
+      setBusy('Processing images...');
+      for (const item of imageItems) {
+        try {
+          const n = await normalizeImage(item.file);
+          item.dataURL = n.dataURL; item.fmt = n.fmt; item.w = n.w; item.h = n.h;
+        } catch (e) { /* keep previous encoding */ }
+      }
+      setBusy('');
+      renderImageList();
+      schedulePreview(50);
     }
 
     function renderImageList() {
@@ -979,7 +1061,7 @@
       schedulePreview();
     }
 
-    function buildImagesDoc() {
+    async function buildImagesDoc() {
       const { jsPDF } = window.jspdf;
       const format      = $('img-format').value;
       const orientation = $('img-orient').value;
@@ -989,7 +1071,8 @@
 
       const doc = new jsPDF({ unit: 'pt', format, orientation, compress: true });
 
-      imageItems.forEach((item, i) => {
+      for (let i = 0; i < imageItems.length; i++) {
+        const item = imageItems[i];
         if (i > 0) doc.addPage();
         const pw = doc.internal.pageSize.getWidth();
         const ph = doc.internal.pageSize.getHeight();
@@ -997,28 +1080,31 @@
         const availH = ph - margin * 2;
 
         if (fitMode === 'fill') {
-          // center-crop to page ratio via canvas, then stretch to page area
+          // centre-crop the normalised copy to the page ratio, stretch to page area
+          const src = await loadImage(item.dataURL);
+          const iw = src.naturalWidth, ih = src.naturalHeight;
           const targetAspect = availW / availH;
-          let sw = item.w, sh = item.h, sx = 0, sy = 0;
-          if (item.w / item.h > targetAspect) { sw = item.h * targetAspect; sx = (item.w - sw) / 2; }
-          else { sh = item.w / targetAspect; sy = (item.h - sh) / 2; }
+          let sw = iw, sh = ih, sx = 0, sy = 0;
+          if (iw / ih > targetAspect) { sw = ih * targetAspect; sx = (iw - sw) / 2; }
+          else { sh = iw / targetAspect; sy = (ih - sh) / 2; }
           const scalePx = Math.min(2.5, 2200 / Math.max(sw, sh));
           const canvas = document.createElement('canvas');
           canvas.width = Math.max(1, Math.round(sw * scalePx));
           canvas.height = Math.max(1, Math.round(sh * scalePx));
           const ctx = canvas.getContext('2d');
-          if (compress) { ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, canvas.width, canvas.height); }
-          ctx.drawImage(item.img, sx, sy, sw, sh, 0, 0, canvas.width, canvas.height);
-          const fmt = compress ? 'JPEG' : 'PNG';
-          const data = canvas.toDataURL(compress ? 'image/jpeg' : 'image/png', 0.92);
-          doc.addImage(data, fmt, margin, margin, availW, availH, undefined, 'FAST');
+          ctx.fillStyle = '#fff';
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+          ctx.drawImage(src, sx, sy, sw, sh, 0, 0, canvas.width, canvas.height);
+          doc.addImage(canvas.toDataURL('image/jpeg', compress ? 0.85 : 0.95),
+            'JPEG', margin, margin, availW, availH);
         } else {
-          const s = Math.min(availW / item.w, availH / item.h);
+          // fit page, but never upscale past the image's own size
+          const s = Math.min(availW / item.w, availH / item.h, 1);
           const dw = item.w * s, dh = item.h * s;
           const x = (pw - dw) / 2, yy = (ph - dh) / 2;
-          doc.addImage(item.dataURL, item.fmt, x, yy, dw, dh, undefined, compress ? 'FAST' : undefined);
+          doc.addImage(item.dataURL, item.fmt, x, yy, dw, dh);
         }
-      });
+      }
 
       doc.setProperties({ title: 'Images', creator: 'BlackAngelSK PDF Creator' });
       return doc;
@@ -1037,7 +1123,10 @@
       return currentMode === 'text' ? buildTextDoc() : buildImagesDoc();
     }
 
-    function updatePreview() {
+    let previewToken = 0;
+
+    async function updatePreview() {
+      const token = ++previewToken;
       try {
         if (!window.jspdf || !window.jspdf.jsPDF) { showError('PDF library failed to load — check your connection and reload.'); return; }
         if (!hasContent()) {
@@ -1047,8 +1136,9 @@
           if (lastBlobUrl) { URL.revokeObjectURL(lastBlobUrl); lastBlobUrl = null; }
           return;
         }
+        const doc = await buildDoc();
+        if (token !== previewToken) return; // a newer run superseded this one
         hideError();
-        const doc = buildDoc();
         const url = doc.output('bloburl');
         if (lastBlobUrl) URL.revokeObjectURL(lastBlobUrl);
         lastBlobUrl = url;
@@ -1058,7 +1148,7 @@
         const n = doc.getNumberOfPages();
         pageInfo.textContent = n + (n === 1 ? ' page' : ' pages');
       } catch (e) {
-        showError('Preview failed: ' + e.message);
+        if (token === previewToken) showError('Preview failed: ' + e.message);
       }
     }
 
@@ -1074,7 +1164,7 @@
       return name;
     }
 
-    function download() {
+    async function download() {
       try {
         hideError();
         if (!window.jspdf || !window.jspdf.jsPDF) { showError('PDF library failed to load — check your connection and reload.'); return; }
@@ -1082,20 +1172,21 @@
           showError(currentMode === 'text' ? 'Nothing to export — type some text first.' : 'Nothing to export — add some images first.');
           return;
         }
-        buildDoc().save(getFilename());
+        const doc = await buildDoc();
+        doc.save(getFilename());
       } catch (e) {
         showError('PDF generation failed: ' + e.message);
       }
     }
 
-    function openInTab() {
+    async function openInTab() {
       try {
         hideError();
         if (!hasContent()) {
           showError(currentMode === 'text' ? 'Nothing to export — type some text first.' : 'Nothing to export — add some images first.');
           return;
         }
-        const url = buildDoc().output('bloburl');
+        const url = (await buildDoc()).output('bloburl');
         window.open(url, '_blank');
       } catch (e) {
         showError('Could not open PDF: ' + e.message);
@@ -1130,8 +1221,10 @@
     [textInput, titleInput].forEach(el => el.addEventListener('input', () => schedulePreview()));
     ['opt-format', 'opt-orient', 'opt-fontsize', 'opt-lh', 'opt-margin', 'opt-footer', 'opt-pagenum']
       .forEach(id => $(id).addEventListener('change', () => schedulePreview(50)));
-    ['img-format', 'img-orient', 'img-margin', 'img-fit', 'img-compress']
+    ['img-format', 'img-orient', 'img-margin', 'img-fit']
       .forEach(id => $(id).addEventListener('change', () => schedulePreview(50)));
+    ['img-compress', 'img-bw']
+      .forEach(id => $(id).addEventListener('change', renormalizeAll));
 
     // Example
     $('btn-example').addEventListener('click', () => {
