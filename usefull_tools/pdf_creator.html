@@ -1,0 +1,1191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PDF Creator — BlackAngelSK</title>
+  <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; }
+
+    :root {
+      --green: #00ff00;
+      --green-dim: #006600;
+      --green-mid: #00cc00;
+      --green-glow: rgba(0, 255, 0, 0.15);
+      --bg: #000;
+      --card: #0a0a0a;
+      --border: #00ff00;
+      --input-bg: #0d0d0d;
+    }
+
+    body {
+      font-family: 'Courier New', monospace;
+      background: var(--bg);
+      color: var(--green);
+      margin: 0;
+      padding: 0;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ── Header ────────────────────────────────── */
+    header {
+      width: 100%;
+      background: #111;
+      padding: 16px 24px;
+      font-size: 18px;
+      font-weight: bold;
+      text-transform: uppercase;
+      border-bottom: 2px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+    header a { color: var(--green); text-decoration: none; }
+    header a:hover { text-decoration: underline; }
+    header .sep { color: var(--green-dim); }
+    header .title { color: var(--green-mid); font-size: 14px; letter-spacing: 1px; }
+
+    /* ── Layout ────────────────────────────────── */
+    .app {
+      flex: 1;
+      display: grid;
+      grid-template-columns: minmax(360px, 470px) 1fr;
+      max-width: 1500px;
+      width: 100%;
+      margin: 0 auto;
+      align-items: stretch;
+    }
+
+    /* ── Left Panel: Controls ──────────────────── */
+    .panel-left {
+      padding: 28px 26px;
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+      border-right: 1px solid #1a1a1a;
+      overflow-y: auto;
+    }
+
+    .section-label {
+      font-size: 11px;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      color: var(--green-dim);
+      margin-bottom: 6px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .section-label::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: linear-gradient(90deg, #1a1a1a, transparent);
+    }
+    .section-label .lnk {
+      color: var(--green-mid);
+      font-size: 10px;
+      letter-spacing: 1px;
+      cursor: pointer;
+      text-decoration: underline;
+      text-transform: none;
+    }
+    .section-label .lnk:hover { color: var(--green); }
+
+    /* ── Mode tabs ─────────────────────────────── */
+    .presets { display: flex; flex-wrap: wrap; gap: 8px; }
+    .preset {
+      padding: 8px 16px;
+      background: var(--input-bg);
+      border: 1px solid #1e1e1e;
+      color: var(--green-mid);
+      font-family: inherit;
+      font-size: 13px;
+      cursor: pointer;
+      transition: all 0.2s;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+    .preset:hover {
+      border-color: var(--green);
+      color: var(--green);
+      background: #111;
+      box-shadow: 0 0 10px var(--green-glow);
+    }
+    .preset.active {
+      border-color: var(--green);
+      color: #000;
+      background: var(--green);
+    }
+
+    /* ── Inputs ────────────────────────────────── */
+    input[type="text"] {
+      width: 100%;
+      background: var(--input-bg);
+      color: var(--green);
+      border: 1px solid #1e1e1e;
+      padding: 8px 10px;
+      font-family: inherit;
+      font-size: 13px;
+      outline: none;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    input[type="text"]:focus {
+      border-color: var(--green);
+      box-shadow: 0 0 12px var(--green-glow);
+    }
+    input[type="text"]::placeholder { color: #1a3a1a; }
+
+    textarea {
+      width: 100%;
+      min-height: 220px;
+      background: var(--input-bg);
+      color: var(--green);
+      border: 1px solid #1e1e1e;
+      padding: 12px;
+      font-family: inherit;
+      font-size: 14px;
+      resize: vertical;
+      outline: none;
+      transition: border-color 0.2s, box-shadow 0.2s;
+      line-height: 1.6;
+    }
+    textarea:focus {
+      border-color: var(--green);
+      box-shadow: 0 0 12px var(--green-glow), inset 0 0 12px rgba(0,255,0,0.03);
+    }
+    textarea::placeholder { color: #1a3a1a; }
+
+    .hint {
+      font-size: 11px;
+      color: #2a5a2a;
+      margin-top: 6px;
+      line-height: 1.7;
+    }
+
+    /* ── Options grid ──────────────────────────── */
+    .opts-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+    .opts-grid.cols-1 { grid-template-columns: 1fr; }
+    .opt-group label {
+      display: block;
+      font-size: 11px;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: var(--green-dim);
+      margin-bottom: 6px;
+    }
+    select {
+      width: 100%;
+      background: var(--input-bg);
+      color: var(--green);
+      border: 1px solid #1e1e1e;
+      padding: 8px 10px;
+      font-family: inherit;
+      font-size: 13px;
+      cursor: pointer;
+      outline: none;
+      transition: border-color 0.2s;
+      appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath d='M2 4l4 4 4-4' fill='none' stroke='%2300ff00' stroke-width='1.5'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 10px center;
+    }
+    select:focus { border-color: var(--green); }
+    select option { background: #111; color: var(--green); }
+
+    .checkbox-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-top: 4px;
+    }
+    .checkbox-row label {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 12px;
+      color: var(--green-mid);
+      cursor: pointer;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      user-select: none;
+    }
+    input[type="checkbox"] {
+      width: 15px;
+      height: 15px;
+      accent-color: var(--green);
+      cursor: pointer;
+    }
+
+    /* ── Dropzone ──────────────────────────────── */
+    .dropzone {
+      border: 1px dashed #1e1e1e;
+      background: var(--input-bg);
+      padding: 24px 16px;
+      text-align: center;
+      color: var(--green-dim);
+      font-size: 12px;
+      cursor: pointer;
+      transition: all 0.2s;
+      line-height: 1.8;
+    }
+    .dropzone:hover { border-color: var(--green-mid); color: var(--green-mid); }
+    .dropzone.dragover {
+      border-color: var(--green);
+      color: var(--green);
+      background: #0f1a0f;
+      box-shadow: 0 0 14px var(--green-glow);
+    }
+    .dropzone .big { font-size: 30px; display: block; margin-bottom: 4px; letter-spacing: 3px; }
+
+    /* ── Image list ────────────────────────────── */
+    .img-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      max-height: 300px;
+      overflow-y: auto;
+    }
+    .img-list:empty { display: none; }
+    .img-row {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      border: 1px solid #1a1a1a;
+      padding: 6px;
+      background: var(--input-bg);
+    }
+    .thumb {
+      width: 56px;
+      height: 56px;
+      object-fit: cover;
+      border: 1px solid #1e1e1e;
+      flex-shrink: 0;
+      background: #000;
+    }
+    .img-meta { flex: 1; min-width: 0; }
+    .img-name {
+      font-size: 12px;
+      color: var(--green);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .img-dims { font-size: 11px; color: var(--green-dim); margin-top: 2px; }
+    .img-actions { display: flex; gap: 4px; }
+    .mini {
+      width: 28px;
+      height: 28px;
+      background: var(--input-bg);
+      color: var(--green-mid);
+      border: 1px solid #1e1e1e;
+      cursor: pointer;
+      font-family: inherit;
+      font-size: 12px;
+      transition: all 0.15s;
+    }
+    .mini:hover { border-color: var(--green); color: var(--green); }
+    .mini.danger:hover { border-color: #ff4444; color: #ff4444; }
+
+    /* ── Action buttons ────────────────────────── */
+    .actions { display: flex; gap: 10px; }
+    .btn {
+      flex: 1;
+      padding: 11px 16px;
+      background: var(--input-bg);
+      color: var(--green);
+      border: 1px solid #1e1e1e;
+      font-family: inherit;
+      font-size: 13px;
+      cursor: pointer;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+    }
+    .btn:hover:not(:disabled) {
+      border-color: var(--green);
+      box-shadow: 0 0 10px var(--green-glow);
+      background: #111;
+    }
+    .btn:active:not(:disabled) { transform: scale(0.97); }
+    .btn:disabled { opacity: 0.3; cursor: not-allowed; }
+    .btn .icon { font-size: 15px; }
+
+    /* ── Error / status ────────────────────────── */
+    .error-msg {
+      color: #ff4444;
+      font-size: 12px;
+      display: none;
+      padding: 8px 12px;
+      border: 1px solid #ff444433;
+      background: #ff444408;
+      line-height: 1.6;
+    }
+    .error-msg.visible { display: block; }
+
+    .status {
+      font-size: 12px;
+      color: var(--green-dim);
+      line-height: 1.6;
+    }
+    .status .ok { color: var(--green); }
+    .status .warn { color: #ffaa33; }
+
+    /* ── Right panel: preview ──────────────────── */
+    .panel-right {
+      padding: 28px 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      background: var(--card);
+      min-width: 0;
+    }
+    .preview-head {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .preview-label {
+      font-size: 11px;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      color: var(--green-dim);
+    }
+    .page-info {
+      font-size: 11px;
+      color: var(--green-mid);
+      margin-left: auto;
+      letter-spacing: 1px;
+    }
+    .preview-stage {
+      flex: 1;
+      min-height: 460px;
+      position: relative;
+      border: 1px solid #1a1a1a;
+      background: #060606;
+    }
+    #pdf-frame {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      border: 0;
+      display: none;
+      background: #fff;
+    }
+    .preview-placeholder {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      color: #1a3a1a;
+      font-size: 13px;
+      line-height: 2;
+      gap: 8px;
+      padding: 20px;
+    }
+    .preview-placeholder .big { font-size: 44px; letter-spacing: 6px; }
+
+    /* ── Footer ────────────────────────────────── */
+    footer {
+      background: #111;
+      padding: 12px;
+      font-size: 13px;
+      border-top: 2px solid var(--border);
+      text-align: center;
+      color: var(--green-dim);
+    }
+
+    /* ── Scrollbars ────────────────────────────── */
+    ::-webkit-scrollbar { width: 10px; height: 10px; }
+    ::-webkit-scrollbar-track { background: #0a0a0a; }
+    ::-webkit-scrollbar-thumb { background: #1e1e1e; border: 2px solid #0a0a0a; }
+    ::-webkit-scrollbar-thumb:hover { background: #2a5a2a; }
+
+    /* ── Responsive ────────────────────────────── */
+    @media (max-width: 900px) {
+      .app { grid-template-columns: 1fr; }
+      .panel-left { border-right: none; border-bottom: 1px solid #1a1a1a; }
+      .preview-stage { min-height: 420px; }
+    }
+    @media (max-width: 480px) {
+      header { font-size: 14px; padding: 12px 16px; }
+      .panel-left, .panel-right { padding: 20px 16px; }
+      .opts-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <a href="../index.html">BlackAngelSK</a>
+    <span class="sep">/</span>
+    <span class="title">PDF Creator</span>
+  </header>
+
+  <div class="app">
+
+    <!-- ── Left: Controls ──────────────────────── -->
+    <div class="panel-left">
+
+      <div>
+        <div class="section-label">Mode</div>
+        <div class="presets">
+          <button class="preset active" data-mode="text" id="tab-text">📄 Text</button>
+          <button class="preset" data-mode="images" id="tab-images">🖼️ Images</button>
+        </div>
+      </div>
+
+      <!-- ══ TEXT MODE ══ -->
+      <div id="mode-text" style="display:flex;flex-direction:column;gap:18px;">
+
+        <div>
+          <div class="section-label">Document Title <span class="lnk" id="btn-example">insert example</span></div>
+          <input type="text" id="opt-title" placeholder="Optional title...">
+        </div>
+
+        <div>
+          <div class="section-label">Text</div>
+          <textarea id="text-input" placeholder="Type or paste your text here..."></textarea>
+          <div class="hint">Supports: # ## ### headings · **bold** · *italic* · - bullets · 1. lists · --- divider</div>
+        </div>
+
+        <div>
+          <div class="section-label">Page Setup</div>
+          <div class="opts-grid">
+            <div class="opt-group">
+              <label>Page Size</label>
+              <select id="opt-format">
+                <option value="a4" selected>A4</option>
+                <option value="letter">Letter</option>
+                <option value="a5">A5</option>
+                <option value="legal">Legal</option>
+              </select>
+            </div>
+            <div class="opt-group">
+              <label>Orientation</label>
+              <select id="opt-orient">
+                <option value="portrait" selected>Portrait</option>
+                <option value="landscape">Landscape</option>
+              </select>
+            </div>
+            <div class="opt-group">
+              <label>Font Size</label>
+              <select id="opt-fontsize">
+                <option value="10">10 pt</option>
+                <option value="11" selected>11 pt</option>
+                <option value="12">12 pt</option>
+                <option value="14">14 pt</option>
+                <option value="16">16 pt</option>
+              </select>
+            </div>
+            <div class="opt-group">
+              <label>Line Spacing</label>
+              <select id="opt-lh">
+                <option value="1.3">1.3 — tight</option>
+                <option value="1.5" selected>1.5 — normal</option>
+                <option value="1.8">1.8 — wide</option>
+                <option value="2">2.0 — double</option>
+              </select>
+            </div>
+            <div class="opt-group">
+              <label>Margins</label>
+              <select id="opt-margin">
+                <option value="40">Small</option>
+                <option value="56" selected>Medium</option>
+                <option value="72">Large</option>
+                <option value="90">Extra Large</option>
+              </select>
+            </div>
+            <div class="opt-group">
+              <label>Footer Text</label>
+              <input type="text" id="opt-footer" placeholder="Optional footer...">
+            </div>
+          </div>
+          <div class="checkbox-row">
+            <label><input type="checkbox" id="opt-pagenum" checked> Page numbers</label>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- ══ IMAGES MODE ══ -->
+      <div id="mode-images" style="display:none;flex-direction:column;gap:18px;">
+
+        <div>
+          <div class="section-label">Images <span class="lnk" id="btn-clear">clear all</span></div>
+          <div class="dropzone" id="dropzone">
+            <span class="big">[ + ]</span>
+            Click or drop images here<br>
+            <span style="font-size:11px;">JPG · PNG · WebP · GIF · BMP — one image per page</span>
+          </div>
+          <input type="file" id="file-input" accept="image/*" multiple style="display:none;">
+          <div class="img-list" id="img-list" style="margin-top:12px;"></div>
+        </div>
+
+        <div>
+          <div class="section-label">Page Setup</div>
+          <div class="opts-grid">
+            <div class="opt-group">
+              <label>Page Size</label>
+              <select id="img-format">
+                <option value="a4" selected>A4</option>
+                <option value="letter">Letter</option>
+                <option value="a5">A5</option>
+                <option value="legal">Legal</option>
+              </select>
+            </div>
+            <div class="opt-group">
+              <label>Orientation</label>
+              <select id="img-orient">
+                <option value="portrait" selected>Portrait</option>
+                <option value="landscape">Landscape</option>
+              </select>
+            </div>
+            <div class="opt-group">
+              <label>Margins</label>
+              <select id="img-margin">
+                <option value="0">None (full page)</option>
+                <option value="24" selected>Small</option>
+                <option value="40">Medium</option>
+                <option value="60">Large</option>
+              </select>
+            </div>
+            <div class="opt-group">
+              <label>Fit Mode</label>
+              <select id="img-fit">
+                <option value="fit" selected>Fit — show whole image</option>
+                <option value="fill">Fill — crop to page</option>
+              </select>
+            </div>
+          </div>
+          <div class="checkbox-row">
+            <label><input type="checkbox" id="img-compress" checked> Compress (smaller PDF)</label>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- ══ Shared: output ══ -->
+      <div>
+        <div class="section-label">Output</div>
+        <div class="opt-group" style="margin-bottom:12px;">
+          <label>File Name</label>
+          <input type="text" id="opt-filename" value="document" placeholder="document">
+        </div>
+        <div class="actions">
+          <button class="btn" id="btn-download">
+            <span class="icon">↓</span> Download PDF
+          </button>
+          <button class="btn" id="btn-open">
+            <span class="icon">⧉</span> Open in tab
+          </button>
+        </div>
+      </div>
+
+      <div class="error-msg" id="error-msg"></div>
+      <div class="status" id="status"></div>
+
+    </div>
+
+    <!-- ── Right: Preview ──────────────────────── -->
+    <div class="panel-right">
+      <div class="preview-head">
+        <div class="preview-label">Live PDF Preview</div>
+        <div class="page-info" id="page-info"></div>
+      </div>
+      <div class="preview-stage">
+        <div class="preview-placeholder" id="preview-placeholder">
+          <span class="big">▤ ▤ ▤</span>
+          Start typing to see the PDF preview...
+        </div>
+        <iframe id="pdf-frame" title="PDF preview"></iframe>
+      </div>
+    </div>
+
+  </div>
+
+  <footer>&copy; 2026 BlackAngelSK</footer>
+
+  <script>
+    const $ = id => document.getElementById(id);
+
+    /* ════════════════════════════════════════════
+       FONTS — Roboto with full Unicode coverage
+       (jsPDF built-in fonts break on á č š ž ľ ô…)
+       ════════════════════════════════════════════ */
+    const FONT_SOURCES = {
+      normal:     ['fonts/roboto-regular-webfont.ttf',    'https://cdn.jsdelivr.net/npm/roboto-font@0.1.0/fonts/Roboto/roboto-regular-webfont.ttf'],
+      bold:       ['fonts/roboto-bold-webfont.ttf',       'https://cdn.jsdelivr.net/npm/roboto-font@0.1.0/fonts/Roboto/roboto-bold-webfont.ttf'],
+      italic:     ['fonts/roboto-italic-webfont.ttf',     'https://cdn.jsdelivr.net/npm/roboto-font@0.1.0/fonts/Roboto/roboto-italic-webfont.ttf'],
+      bolditalic: ['fonts/roboto-bolditalic-webfont.ttf', 'https://cdn.jsdelivr.net/npm/roboto-font@0.1.0/fonts/Roboto/roboto-bolditalic-webfont.ttf']
+    };
+    let fontCache = null;        // { style: base64 }
+    let fontsStatus = 'loading'; // 'loading' | 'ready' | 'fallback'
+
+    function ab2b64(buf) {
+      const bytes = new Uint8Array(buf);
+      let bin = '';
+      const chunk = 0x8000;
+      for (let i = 0; i < bytes.length; i += chunk) {
+        bin += String.fromCharCode.apply(null, bytes.subarray(i, i + chunk));
+      }
+      return btoa(bin);
+    }
+
+    async function loadFonts() {
+      const cache = {};
+      for (const style of Object.keys(FONT_SOURCES)) {
+        let buf = null;
+        for (const url of FONT_SOURCES[style]) {
+          try {
+            const res = await fetch(url);
+            if (!res.ok) continue;
+            buf = await res.arrayBuffer();
+            break;
+          } catch (e) { /* try next source */ }
+        }
+        if (!buf) { fontsStatus = 'fallback'; return; }
+        cache[style] = ab2b64(buf);
+      }
+      fontCache = cache;
+      fontsStatus = 'ready';
+    }
+
+    function registerFonts(doc) {
+      if (!fontCache) return 'helvetica';
+      for (const [style, b64] of Object.entries(fontCache)) {
+        const fname = 'Roboto-' + style + '.ttf';
+        doc.addFileToVFS(fname, b64);
+        doc.addFont(fname, 'Roboto', style);
+      }
+      return 'Roboto';
+    }
+
+    function updateStatus() {
+      const el = $('status');
+      if (fontsStatus === 'loading') {
+        el.textContent = 'Loading fonts...';
+      } else if (fontsStatus === 'ready') {
+        el.innerHTML = '<span class="ok">●</span> Unicode font loaded — full diacritics (á č š ž ľ ô…)';
+      } else {
+        el.innerHTML = '<span class="warn">▲</span> Built-in font only — diacritics may be missing. Serve this page over http(s) for full support.';
+      }
+    }
+
+    /* ════════════════════════════════════════════
+       STATE
+       ════════════════════════════════════════════ */
+    let currentMode = 'text';
+    let imageItems = [];
+    let uid = 0;
+    let previewTimer = null;
+    let lastBlobUrl = null;
+
+    const textInput   = $('text-input');
+    const titleInput  = $('opt-title');
+    const frame       = $('pdf-frame');
+    const placeholder = $('preview-placeholder');
+    const pageInfo    = $('page-info');
+    const errEl       = $('error-msg');
+
+    /* ════════════════════════════════════════════
+       MARKDOWN — minimal parser
+       ════════════════════════════════════════════ */
+    function parseInline(text) {
+      const runs = [];
+      let buf = '', bold = false, italic = false, i = 0;
+      const push = () => { if (buf) { runs.push({ text: buf, bold, italic }); buf = ''; } };
+      while (i < text.length) {
+        if (text.startsWith('**', i) || text.startsWith('__', i)) { push(); bold = !bold; i += 2; }
+        else if (text[i] === '*' || text[i] === '_') { push(); italic = !italic; i += 1; }
+        else { buf += text[i]; i += 1; }
+      }
+      push();
+      return runs;
+    }
+
+    function parseBlocks(text) {
+      const lines = text.replace(/\r\n?/g, '\n').split('\n');
+      const blocks = [];
+      let para = null;
+      const flushPara = () => { if (para) { blocks.push(para); para = null; } };
+      for (const raw of lines) {
+        const line = raw.replace(/\s+$/, '');
+        let m;
+        if (/^\s*$/.test(line)) { flushPara(); blocks.push({ kind: 'blank' }); continue; }
+        if ((m = line.match(/^\s*(#{1,3})\s+(.+)$/))) { flushPara(); blocks.push({ kind: 'h' + m[1].length, text: m[2].trim() }); continue; }
+        if (/^\s*(-{3,}|\*{3,}|_{3,})\s*$/.test(line)) { flushPara(); blocks.push({ kind: 'hr' }); continue; }
+        if ((m = line.match(/^(\s*)[-*\u2022]\s+(.+)$/))) { flushPara(); blocks.push({ kind: 'bullet', indent: Math.floor(m[1].length / 2), runs: parseInline(m[2]) }); continue; }
+        if ((m = line.match(/^(\s*)(\d+)[.)]\s+(.+)$/))) { flushPara(); blocks.push({ kind: 'ordered', indent: Math.floor(m[1].length / 2), num: m[2], runs: parseInline(m[3]) }); continue; }
+        const trimmed = line.trim();
+        if (para) { para.runs.push({ text: ' ', bold: false, italic: false }, ...parseInline(trimmed)); }
+        else { para = { kind: 'p', runs: parseInline(trimmed) }; }
+      }
+      flushPara();
+      return blocks;
+    }
+
+    /* ════════════════════════════════════════════
+       TEXT → PDF
+       ════════════════════════════════════════════ */
+    function buildTextDoc() {
+      const { jsPDF } = window.jspdf;
+      const format      = $('opt-format').value;
+      const orientation = $('opt-orient').value;
+      const margin      = parseInt($('opt-margin').value, 10);
+      const fontSize    = parseInt($('opt-fontsize').value, 10);
+      const lhMult      = parseFloat($('opt-lh').value);
+      const pageNumbers = $('opt-pagenum').checked;
+      const footerText  = $('opt-footer').value.trim();
+      const title       = titleInput.value.trim();
+
+      const doc = new jsPDF({ unit: 'pt', format, orientation, compress: true });
+      const fontName = registerFonts(doc);
+
+      const pw = doc.internal.pageSize.getWidth();
+      const ph = doc.internal.pageSize.getHeight();
+      const contentW = pw - margin * 2;
+      const hasFooter = pageNumbers || footerText;
+      const contentBottom = ph - margin - (hasFooter ? 30 : 0);
+      const lineH = fontSize * lhMult;
+
+      let y = margin;
+
+      const measureWidth = (text, style, size) => {
+        doc.setFont(fontName, style);
+        doc.setFontSize(size);
+        return doc.getTextWidth(text);
+      };
+
+      const ensureSpace = need => {
+        if (y + need > contentBottom) { doc.addPage(); y = margin; }
+      };
+
+      // Wrap runs into lines of words: [{text, style, width, isSpace}]
+      const wrapRuns = (runs, maxFirst, maxRest, size) => {
+        const words = [];
+        for (const run of runs) {
+          const style = run.bold ? (run.italic ? 'bolditalic' : 'bold') : (run.italic ? 'italic' : 'normal');
+          for (const part of run.text.split(/(\s+)/)) {
+            if (!part) continue;
+            words.push({ text: /^\s+$/.test(part) ? ' ' : part, style, isSpace: /^\s+$/.test(part) });
+          }
+        }
+        const lines = [];
+        let cur = [], curW = 0;
+        const limit = () => (lines.length === 0 ? maxFirst : maxRest);
+        const pushWord = w => {
+          const width = measureWidth(w.text, w.style, size);
+          cur.push({ text: w.text, style: w.style, width, isSpace: w.isSpace });
+          curW += width;
+        };
+        const flush = () => {
+          while (cur.length && cur[cur.length - 1].isSpace) { curW -= cur[cur.length - 1].width; cur.pop(); }
+          if (cur.length) lines.push(cur);
+          cur = []; curW = 0;
+        };
+        for (const w of words) {
+          if (w.isSpace) { if (cur.length) pushWord(w); continue; }
+          const wWidth = measureWidth(w.text, w.style, size);
+          if (cur.length && curW + wWidth > limit()) flush();
+          if (wWidth > limit()) {
+            let chunk = '';
+            for (const ch of w.text) {
+              if (chunk && measureWidth(chunk + ch, w.style, size) > limit()) {
+                pushWord({ text: chunk, style: w.style, isSpace: false });
+                flush();
+                chunk = ch;
+              } else { chunk += ch; }
+            }
+            if (chunk) pushWord({ text: chunk, style: w.style, isSpace: false });
+            continue;
+          }
+          pushWord(w);
+        }
+        flush();
+        return lines;
+      };
+
+      const drawWrapped = (runs, { size, lhF, indent, prefix, sBefore, sAfter }) => {
+        y += sBefore;
+        let allRuns = runs, prefixW = 0;
+        if (prefix) {
+          prefixW = measureWidth(prefix, 'normal', size);
+          allRuns = [{ text: prefix, bold: false, italic: false }, ...runs];
+        }
+        const x0 = margin + indent;
+        const xc = margin + indent + prefixW;
+        const wrapped = wrapRuns(allRuns, contentW - indent, contentW - indent - prefixW, size);
+        const adv = size * lhF;
+        for (let i = 0; i < wrapped.length; i++) {
+          ensureSpace(adv);
+          const baseline = y + size * 0.82;
+          let x = i === 0 ? x0 : xc;
+          for (const run of wrapped[i]) {
+            doc.setFont(fontName, run.style);
+            doc.setFontSize(size);
+            doc.text(run.text, x, baseline);
+            x += run.width;
+          }
+          y += adv;
+        }
+        y += sAfter;
+      };
+
+      // Title
+      if (title) {
+        const tSize = Math.round(fontSize * 1.7);
+        drawWrapped([{ text: title, bold: true, italic: false }],
+          { size: tSize, lhF: 1.3, indent: 0, prefix: null, sBefore: 0, sAfter: lineH * 0.6 });
+      }
+
+      // Body
+      for (const b of parseBlocks(textInput.value)) {
+        if (b.kind === 'blank') { y += lineH * 0.55; continue; }
+        if (b.kind === 'hr') {
+          ensureSpace(lineH);
+          y += lineH * 0.4;
+          doc.setDrawColor(190);
+          doc.setLineWidth(0.75);
+          doc.line(margin, y, pw - margin, y);
+          y += lineH * 0.6;
+          continue;
+        }
+        let size = fontSize, lhF = lhMult, indent = 0, prefix = null;
+        let sBefore = 0, sAfter = lineH * 0.45;
+        let runs = b.runs;
+        if (b.kind === 'h1') { size = fontSize * 1.6;  lhF = 1.3; sBefore = lineH * 0.9; sAfter = lineH * 0.35; runs = [{ text: b.text, bold: true, italic: false }]; }
+        if (b.kind === 'h2') { size = fontSize * 1.35; lhF = 1.3; sBefore = lineH * 0.7; sAfter = lineH * 0.3;  runs = [{ text: b.text, bold: true, italic: false }]; }
+        if (b.kind === 'h3') { size = fontSize * 1.15; lhF = 1.3; sBefore = lineH * 0.5; sAfter = lineH * 0.25; runs = [{ text: b.text, bold: true, italic: false }]; }
+        if (b.kind === 'bullet')  { indent = 16 + b.indent * 16; prefix = '\u2022 '; sAfter = lineH * 0.18; }
+        if (b.kind === 'ordered') { indent = 16 + b.indent * 16; prefix = b.num + '. '; sAfter = lineH * 0.18; }
+        drawWrapped(runs, { size, lhF, indent, prefix, sBefore, sAfter });
+      }
+
+      // Footer / page numbers
+      if (hasFooter) {
+        const pageCount = doc.getNumberOfPages();
+        for (let p = 1; p <= pageCount; p++) {
+          doc.setPage(p);
+          doc.setFont(fontName, 'normal');
+          doc.setFontSize(9);
+          doc.setTextColor(120);
+          const fy = ph - 24;
+          if (footerText) doc.text(footerText, margin, fy);
+          if (pageNumbers) doc.text(p + ' / ' + pageCount, pw - margin, fy, { align: 'right' });
+          doc.setTextColor(0);
+        }
+      }
+
+      doc.setProperties({
+        title: title || 'Document',
+        creator: 'BlackAngelSK PDF Creator',
+        subject: 'Created with the browser-based PDF Creator'
+      });
+      return doc;
+    }
+
+    /* ════════════════════════════════════════════
+       IMAGES → PDF
+       ════════════════════════════════════════════ */
+    function fileToImageData(file) {
+      return new Promise((resolve, reject) => {
+        const url = URL.createObjectURL(file);
+        const img = new Image();
+        img.onload = () => {
+          const w = img.naturalWidth, h = img.naturalHeight;
+          const finish = (dataURL, fmt) => resolve({ dataURL, fmt, w, h, img });
+          if (file.type === 'image/jpeg' || file.type === 'image/png') {
+            const fr = new FileReader();
+            fr.onload = () => finish(fr.result, file.type === 'image/png' ? 'PNG' : 'JPEG');
+            fr.onerror = () => { URL.revokeObjectURL(url); reject(new Error('read failed')); };
+            fr.readAsDataURL(file);
+          } else {
+            // webp / gif / bmp → re-encode via canvas (white background for alpha)
+            const canvas = document.createElement('canvas');
+            canvas.width = w; canvas.height = h;
+            const ctx = canvas.getContext('2d');
+            ctx.fillStyle = '#fff';
+            ctx.fillRect(0, 0, w, h);
+            ctx.drawImage(img, 0, 0);
+            finish(canvas.toDataURL('image/jpeg', 0.92), 'JPEG');
+          }
+          URL.revokeObjectURL(url);
+        };
+        img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('not an image')); };
+        img.src = url;
+      });
+    }
+
+    async function addFiles(files) {
+      hideError();
+      for (const file of files) {
+        if (!file.type.startsWith('image/')) continue;
+        try {
+          const data = await fileToImageData(file);
+          imageItems.push({ id: ++uid, name: file.name, ...data });
+        } catch (e) {
+          showError('Could not load: ' + file.name);
+        }
+      }
+      renderImageList();
+      schedulePreview();
+    }
+
+    function renderImageList() {
+      const listEl = $('img-list');
+      listEl.innerHTML = '';
+      imageItems.forEach((item, idx) => {
+        const row = document.createElement('div');
+        row.className = 'img-row';
+        row.innerHTML =
+          '<img class="thumb" src="' + item.dataURL + '" alt="">' +
+          '<div class="img-meta">' +
+            '<div class="img-name" title="' + escapeHtml(item.name) + '">' + escapeHtml(item.name) + '</div>' +
+            '<div class="img-dims">' + item.w + ' \u00d7 ' + item.h + ' px</div>' +
+          '</div>' +
+          '<div class="img-actions">' +
+            '<button class="mini" data-act="up" title="Move up">\u2191</button>' +
+            '<button class="mini" data-act="down" title="Move down">\u2193</button>' +
+            '<button class="mini danger" data-act="del" title="Remove">\u2715</button>' +
+          '</div>';
+        row.querySelector('[data-act="up"]').onclick = () => moveItem(idx, -1);
+        row.querySelector('[data-act="down"]').onclick = () => moveItem(idx, 1);
+        row.querySelector('[data-act="del"]').onclick = () => { imageItems.splice(idx, 1); renderImageList(); schedulePreview(); };
+        listEl.appendChild(row);
+      });
+    }
+
+    function moveItem(idx, dir) {
+      const to = idx + dir;
+      if (to < 0 || to >= imageItems.length) return;
+      [imageItems[idx], imageItems[to]] = [imageItems[to], imageItems[idx]];
+      renderImageList();
+      schedulePreview();
+    }
+
+    function buildImagesDoc() {
+      const { jsPDF } = window.jspdf;
+      const format      = $('img-format').value;
+      const orientation = $('img-orient').value;
+      const margin      = parseInt($('img-margin').value, 10);
+      const fitMode     = $('img-fit').value;
+      const compress    = $('img-compress').checked;
+
+      const doc = new jsPDF({ unit: 'pt', format, orientation, compress: true });
+
+      imageItems.forEach((item, i) => {
+        if (i > 0) doc.addPage();
+        const pw = doc.internal.pageSize.getWidth();
+        const ph = doc.internal.pageSize.getHeight();
+        const availW = pw - margin * 2;
+        const availH = ph - margin * 2;
+
+        if (fitMode === 'fill') {
+          // center-crop to page ratio via canvas, then stretch to page area
+          const targetAspect = availW / availH;
+          let sw = item.w, sh = item.h, sx = 0, sy = 0;
+          if (item.w / item.h > targetAspect) { sw = item.h * targetAspect; sx = (item.w - sw) / 2; }
+          else { sh = item.w / targetAspect; sy = (item.h - sh) / 2; }
+          const scalePx = Math.min(2.5, 2200 / Math.max(sw, sh));
+          const canvas = document.createElement('canvas');
+          canvas.width = Math.max(1, Math.round(sw * scalePx));
+          canvas.height = Math.max(1, Math.round(sh * scalePx));
+          const ctx = canvas.getContext('2d');
+          if (compress) { ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, canvas.width, canvas.height); }
+          ctx.drawImage(item.img, sx, sy, sw, sh, 0, 0, canvas.width, canvas.height);
+          const fmt = compress ? 'JPEG' : 'PNG';
+          const data = canvas.toDataURL(compress ? 'image/jpeg' : 'image/png', 0.92);
+          doc.addImage(data, fmt, margin, margin, availW, availH, undefined, 'FAST');
+        } else {
+          const s = Math.min(availW / item.w, availH / item.h);
+          const dw = item.w * s, dh = item.h * s;
+          const x = (pw - dw) / 2, yy = (ph - dh) / 2;
+          doc.addImage(item.dataURL, item.fmt, x, yy, dw, dh, undefined, compress ? 'FAST' : undefined);
+        }
+      });
+
+      doc.setProperties({ title: 'Images', creator: 'BlackAngelSK PDF Creator' });
+      return doc;
+    }
+
+    /* ════════════════════════════════════════════
+       PREVIEW / OUTPUT
+       ════════════════════════════════════════════ */
+    function hasContent() {
+      return currentMode === 'text'
+        ? !!(textInput.value.trim() || titleInput.value.trim())
+        : imageItems.length > 0;
+    }
+
+    function buildDoc() {
+      return currentMode === 'text' ? buildTextDoc() : buildImagesDoc();
+    }
+
+    function updatePreview() {
+      try {
+        if (!window.jspdf || !window.jspdf.jsPDF) { showError('PDF library failed to load — check your connection and reload.'); return; }
+        if (!hasContent()) {
+          frame.style.display = 'none';
+          placeholder.style.display = 'flex';
+          pageInfo.textContent = '';
+          if (lastBlobUrl) { URL.revokeObjectURL(lastBlobUrl); lastBlobUrl = null; }
+          return;
+        }
+        hideError();
+        const doc = buildDoc();
+        const url = doc.output('bloburl');
+        if (lastBlobUrl) URL.revokeObjectURL(lastBlobUrl);
+        lastBlobUrl = url;
+        frame.src = url;
+        frame.style.display = 'block';
+        placeholder.style.display = 'none';
+        const n = doc.getNumberOfPages();
+        pageInfo.textContent = n + (n === 1 ? ' page' : ' pages');
+      } catch (e) {
+        showError('Preview failed: ' + e.message);
+      }
+    }
+
+    function schedulePreview(delay = 400) {
+      clearTimeout(previewTimer);
+      previewTimer = setTimeout(updatePreview, delay);
+    }
+
+    function getFilename() {
+      let name = $('opt-filename').value.trim().replace(/[\\/:*?"<>|]/g, '');
+      if (!name) name = 'document';
+      if (!/\.pdf$/i.test(name)) name += '.pdf';
+      return name;
+    }
+
+    function download() {
+      try {
+        hideError();
+        if (!window.jspdf || !window.jspdf.jsPDF) { showError('PDF library failed to load — check your connection and reload.'); return; }
+        if (!hasContent()) {
+          showError(currentMode === 'text' ? 'Nothing to export — type some text first.' : 'Nothing to export — add some images first.');
+          return;
+        }
+        buildDoc().save(getFilename());
+      } catch (e) {
+        showError('PDF generation failed: ' + e.message);
+      }
+    }
+
+    function openInTab() {
+      try {
+        hideError();
+        if (!hasContent()) {
+          showError(currentMode === 'text' ? 'Nothing to export — type some text first.' : 'Nothing to export — add some images first.');
+          return;
+        }
+        const url = buildDoc().output('bloburl');
+        window.open(url, '_blank');
+      } catch (e) {
+        showError('Could not open PDF: ' + e.message);
+      }
+    }
+
+    /* ════════════════════════════════════════════
+       UI PLUMBING
+       ════════════════════════════════════════════ */
+    function escapeHtml(text) {
+      const map = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' };
+      return String(text).replace(/[&<>"']/g, m => map[m]);
+    }
+
+    function showError(msg) { errEl.textContent = msg; errEl.classList.add('visible'); }
+    function hideError() { errEl.classList.remove('visible'); }
+
+    function setMode(mode) {
+      currentMode = mode;
+      document.querySelectorAll('.preset[data-mode]').forEach(b => b.classList.toggle('active', b.dataset.mode === mode));
+      $('mode-text').style.display = mode === 'text' ? 'flex' : 'none';
+      $('mode-images').style.display = mode === 'images' ? 'flex' : 'none';
+      schedulePreview(50);
+    }
+
+    // Mode tabs
+    document.querySelectorAll('.preset[data-mode]').forEach(btn => {
+      btn.addEventListener('click', () => setMode(btn.dataset.mode));
+    });
+
+    // Text inputs → live preview
+    [textInput, titleInput].forEach(el => el.addEventListener('input', () => schedulePreview()));
+    ['opt-format', 'opt-orient', 'opt-fontsize', 'opt-lh', 'opt-margin', 'opt-footer', 'opt-pagenum']
+      .forEach(id => $(id).addEventListener('change', () => schedulePreview(50)));
+    ['img-format', 'img-orient', 'img-margin', 'img-fit', 'img-compress']
+      .forEach(id => $(id).addEventListener('change', () => schedulePreview(50)));
+
+    // Example
+    $('btn-example').addEventListener('click', () => {
+      titleInput.value = 'Uk\u00e1\u017eka dokumentu';
+      textInput.value =
+        'Toto je **r\u00fdchly test** PDF gener\u00e1tora. Diakritika: \u00e1 \u00e4 \u010d \u010f \u00e9 \u00ed \u013e \u013a \u0148 \u00f3 \u00f4 \u0155 \u0161 \u0165 \u00fa \u00fd \u017e.\n\n' +
+        '## Zoznam\n' +
+        '- prv\u00e1 polo\u017eka\n' +
+        '- druh\u00e1 polo\u017eka s *kurz\u00edvou*\n\n' +
+        '## Kroky\n' +
+        '1. Nap\u00ed\u0161 text\n' +
+        '2. Klikni na Download PDF\n\n' +
+        '---\n' +
+        'Vygenerovan\u00e9 priamo v prehliada\u010di, bez servera.';
+      schedulePreview(0);
+    });
+
+    // Dropzone
+    const dropzone = $('dropzone');
+    const fileInput = $('file-input');
+    dropzone.addEventListener('click', () => fileInput.click());
+    fileInput.addEventListener('change', () => { addFiles([...fileInput.files]); fileInput.value = ''; });
+    dropzone.addEventListener('dragover', e => { e.preventDefault(); dropzone.classList.add('dragover'); });
+    dropzone.addEventListener('dragleave', () => dropzone.classList.remove('dragover'));
+    dropzone.addEventListener('drop', e => {
+      e.preventDefault();
+      dropzone.classList.remove('dragover');
+      const files = [...((e.dataTransfer && e.dataTransfer.files) || [])];
+      if (files.length) addFiles(files);
+    });
+
+    $('btn-clear').addEventListener('click', () => { imageItems = []; renderImageList(); schedulePreview(0); });
+
+    // Actions
+    $('btn-download').addEventListener('click', download);
+    $('btn-open').addEventListener('click', openInTab);
+
+    document.addEventListener('keydown', e => {
+      if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); download(); }
+    });
+
+    /* ════════════════════════════════════════════
+       INIT
+       ════════════════════════════════════════════ */
+    (async () => {
+      if (!window.jspdf || !window.jspdf.jsPDF) {
+        showError('PDF library failed to load — check your internet connection and reload.');
+      }
+      updateStatus();
+      await loadFonts();
+      updateStatus();
+      schedulePreview(0);
+    })();
+  </script>
+
+</body>
+</html>
