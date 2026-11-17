@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Image Converter — BlackAngelSK</title>
+  <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; }
+    :root {
+      --green: #00ff00; --green-dim: #006600; --green-mid: #00cc00;
+      --green-glow: rgba(0, 255, 0, 0.15);
+      --bg: #000; --card: #0a0a0a; --border: #00ff00; --input-bg: #0d0d0d;
+    }
+    body {
+      font-family: 'Courier New', monospace;
+      background: var(--bg); color: var(--green);
+      margin: 0; padding: 0; min-height: 100vh;
+      display: flex; flex-direction: column;
+    }
+    header {
+      background: #111; padding: 16px 24px; font-size: 18px; font-weight: bold;
+      text-transform: uppercase; border-bottom: 2px solid var(--border);
+      display: flex; align-items: center; gap: 16px;
+    }
+    header a { color: var(--green); text-decoration: none; }
+    header a:hover { text-decoration: underline; }
+    header .sep { color: var(--green-dim); }
+    header .title { color: var(--green-mid); font-size: 14px; letter-spacing: 1px; }
+
+    main {
+      flex: 1; width: 100%; max-width: 880px; margin: 0 auto;
+      padding: 26px 20px; display: flex; flex-direction: column; gap: 18px;
+    }
+
+    .section-label {
+      font-size: 11px; letter-spacing: 3px; text-transform: uppercase;
+      color: var(--green-dim); margin-bottom: 6px;
+      display: flex; align-items: center; gap: 8px;
+    }
+    .section-label::after {
+      content: ''; flex: 1; height: 1px;
+      background: linear-gradient(90deg, #1a1a1a, transparent);
+    }
+    .section-label .lnk {
+      color: var(--green-mid); font-size: 10px; letter-spacing: 1px;
+      cursor: pointer; text-decoration: underline; text-transform: none;
+    }
+    .section-label .lnk:hover { color: var(--green); }
+
+    .dropzone {
+      border: 1px dashed #1e1e1e; background: var(--input-bg);
+      padding: 26px 16px; text-align: center; color: var(--green-dim);
+      font-size: 12px; cursor: pointer; transition: all 0.2s; line-height: 1.8;
+    }
+    .dropzone:hover { border-color: var(--green-mid); color: var(--green-mid); }
+    .dropzone.dragover {
+      border-color: var(--green); color: var(--green);
+      background: #0f1a0f; box-shadow: 0 0 14px var(--green-glow);
+    }
+    .dropzone .big { font-size: 30px; display: block; margin-bottom: 4px; letter-spacing: 3px; }
+
+    .img-list { display: flex; flex-direction: column; gap: 8px; }
+    .img-row {
+      display: flex; gap: 10px; align-items: center;
+      border: 1px solid #1a1a1a; padding: 6px; background: var(--input-bg);
+    }
+    .thumb {
+      width: 52px; height: 52px; object-fit: cover;
+      border: 1px solid #1e1e1e; flex-shrink: 0; background: #000;
+    }
+    .meta { flex: 1; min-width: 0; }
+    .name {
+      font-size: 12px; color: var(--green);
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .sub { font-size: 11px; color: var(--green-dim); margin-top: 2px; }
+    .sub .ok { color: var(--green); }
+
+    .opts-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .opt-group label {
+      display: block; font-size: 11px; letter-spacing: 2px;
+      text-transform: uppercase; color: var(--green-dim); margin-bottom: 6px;
+    }
+    select {
+      width: 100%; background: var(--input-bg); color: var(--green);
+      border: 1px solid #1e1e1e; padding: 8px 10px;
+      font-family: inherit; font-size: 13px; cursor: pointer; outline: none;
+      appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath d='M2 4l4 4 4-4' fill='none' stroke='%2300ff00' stroke-width='1.5'/%3E%3C/svg%3E");
+      background-repeat: no-repeat; background-position: right 10px center;
+    }
+    select:focus { border-color: var(--green); }
+    select option { background: #111; color: var(--green); }
+    input[type="range"] { width: 100%; accent-color: var(--green); cursor: pointer; }
+    input[type="checkbox"] { width: 15px; height: 15px; accent-color: var(--green); cursor: pointer; }
+    .checkbox-row label {
+      display: flex; align-items: center; gap: 8px;
+      font-size: 12px; color: var(--green-mid); cursor: pointer;
+      text-transform: uppercase; letter-spacing: 1px; user-select: none;
+    }
+
+    .actions { display: flex; gap: 10px; flex-wrap: wrap; }
+    .btn {
+      flex: 1; min-width: 130px; padding: 11px 16px;
+      background: var(--input-bg); color: var(--green);
+      border: 1px solid #1e1e1e; font-family: inherit; font-size: 13px;
+      cursor: pointer; text-transform: uppercase; letter-spacing: 1px;
+      transition: all 0.2s; display: flex; align-items: center; justify-content: center; gap: 6px;
+    }
+    .btn:hover:not(:disabled) { border-color: var(--green); box-shadow: 0 0 10px var(--green-glow); background: #111; }
+    .btn:active:not(:disabled) { transform: scale(0.97); }
+    .btn:disabled { opacity: 0.3; cursor: not-allowed; }
+    .btn .icon { font-size: 15px; }
+    .mini {
+      width: 28px; height: 28px; background: var(--input-bg); color: var(--green-mid);
+      border: 1px solid #1e1e1e; cursor: pointer; font-family: inherit; font-size: 12px;
+      transition: all 0.15s; flex-shrink: 0;
+    }
+    .mini:hover { border-color: var(--green); color: var(--green); }
+    .mini.danger:hover { border-color: #ff4444; color: #ff4444; }
+
+    .error-msg {
+      color: #ff4444; font-size: 12px; display: none;
+      padding: 8px 12px; border: 1px solid #ff444433; background: #ff444408; line-height: 1.6;
+    }
+    .error-msg.visible { display: block; }
+    .status { font-size: 12px; color: var(--green-dim); line-height: 1.6; }
+
+    footer {
+      background: #111; padding: 12px; font-size: 13px;
+      border-top: 2px solid var(--border); text-align: center; color: var(--green-dim);
+    }
+    @media (max-width: 560px) { .opts-grid { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+
+  <header>
+    <a href="../index.html">BlackAngelSK</a>
+    <span class="sep">/</span>
+    <span class="title">Image Converter</span>
+  </header>
+
+  <main>
+
+    <div>
+      <div class="section-label">Images <span class="lnk" id="btn-clear">clear all</span></div>
+      <div class="dropzone" id="dropzone">
+        <span class="big">[ + ]</span>
+        Click or drop images here<br>
+        <span style="font-size:11px;">JPG · PNG · WebP · GIF · BMP — batch convert, resize, compress</span>
+      </div>
+      <input type="file" id="file-input" accept="image/*" multiple style="display:none;">
+      <div class="img-list" id="img-list" style="margin-top:12px;"></div>
+    </div>
+
+    <div>
+      <div class="section-label">Options</div>
+      <div class="opts-grid">
+        <div class="opt-group">
+          <label>Output format</label>
+          <select id="cv-format">
+            <option value="jpeg" selected>JPEG</option>
+            <option value="png">PNG</option>
+            <option value="webp">WebP</option>
+          </select>
+        </div>
+        <div class="opt-group">
+          <label>Quality <span id="cv-q-val" style="color:var(--green-mid);">85%</span></label>
+          <input type="range" id="cv-quality" min="40" max="100" value="85">
+        </div>
+        <div class="opt-group">
+          <label>Max dimension (px)</label>
+          <select id="cv-maxdim">
+            <option value="0" selected>Keep original</option>
+            <option value="1200">1200</option>
+            <option value="1920">1920</option>
+            <option value="2560">2560</option>
+            <option value="3840">3840</option>
+          </select>
+        </div>
+        <div class="opt-group">
+          <label>&nbsp;</label>
+          <div class="checkbox-row" style="padding-top:8px;">
+            <label><input type="checkbox" id="cv-gray"> Black &amp; white</label>
+          </div>
+        </div>
+      </div>
+      <div class="actions" style="margin-top:14px;">
+        <button class="btn" id="btn-convert"><span class="icon">⇄</span> Convert all</button>
+        <button class="btn" id="btn-zip"><span class="icon">⇩</span> Download ZIP</button>
+      </div>
+    </div>
+
+    <div class="error-msg" id="error-msg"></div>
+    <div class="status" id="status"></div>
+
+  </main>
+
+  <footer>&copy; 2026 BlackAngelSK</footer>
+
+  <script>
+    const $ = id => document.getElementById(id);
+    const MAX_EDGE = 4096;
+    let items = [];   // {id, name, file, w, h, dataURL, out:{blob, name, size}}
+    let uid = 0;
+
+    function showError(msg) { $('error-msg').textContent = msg; $('error-msg').classList.add('visible'); }
+    function hideError() { $('error-msg').classList.remove('visible'); }
+    function setStatus(msg) { $('status').textContent = msg || ''; }
+    function fmtBytes(n) {
+      if (n < 1024) return n + ' B';
+      if (n < 1048576) return (n / 1024).toFixed(1) + ' KB';
+      return (n / 1048576).toFixed(2) + ' MB';
+    }
+    function downloadBlob(blob, name) {
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = name;
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(a.href), 60000);
+    }
+    function escapeHtml(t) {
+      const m = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' };
+      return String(t).replace(/[&<>"']/g, c => m[c]);
+    }
+
+    async function decodeImage(file) {
+      if ('createImageBitmap' in window) {
+        try {
+          const bmp = await createImageBitmap(file, { imageOrientation: 'from-image' });
+          return { src: bmp, w: bmp.width, h: bmp.height, close: () => bmp.close() };
+        } catch (e) {}
+      }
+      return new Promise((resolve, reject) => {
+        const url = URL.createObjectURL(file);
+        const img = new Image();
+        img.onload = () => resolve({ src: img, w: img.naturalWidth, h: img.naturalHeight, close: () => URL.revokeObjectURL(url) });
+        img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('not an image')); };
+        img.src = url;
+      });
+    }
+
+    async function addFiles(files) {
+      hideError();
+      setStatus('Loading...');
+      for (const file of files) {
+        if (!file.type.startsWith('image/')) continue;
+        try {
+          const dec = await decodeImage(file);
+          // small preview thumbnail
+          const s = Math.min(1, 300 / Math.max(dec.w, dec.h));
+          const c = document.createElement('canvas');
+          c.width = Math.max(1, Math.round(dec.w * s));
+          c.height = Math.max(1, Math.round(dec.h * s));
+          c.getContext('2d').drawImage(dec.src, 0, 0, c.width, c.height);
+          const item = { id: ++uid, name: file.name, file, w: dec.w, h: dec.h, dataURL: c.toDataURL('image/jpeg', 0.8), out: null };
+          dec.close();
+          items.push(item);
+        } catch (e) {
+          showError('Could not load: ' + file.name);
+        }
+      }
+      setStatus('');
+      renderList();
+    }
+
+    function renderList() {
+      const list = $('img-list');
+      list.innerHTML = '';
+      items.forEach((it, idx) => {
+        const row = document.createElement('div');
+        row.className = 'img-row';
+        let sub = it.w + ' × ' + it.h + ' px';
+        if (it.out) {
+          const save = Math.round((1 - it.out.size / it.file.size) * 100);
+          sub += ' · ' + fmtBytes(it.file.size) + ' → <span class="ok">' + fmtBytes(it.out.size) +
+                 '</span> (' + (save >= 0 ? '-' + save : '+' + (-save)) + '%)';
+        } else {
+          sub += ' · ' + fmtBytes(it.file.size);
+        }
+        row.innerHTML =
+          '<img class="thumb" src="' + it.dataURL + '" alt="">' +
+          '<div class="meta"><div class="name" title="' + escapeHtml(it.name) + '">' + escapeHtml(it.name) + '</div>' +
+          '<div class="sub">' + sub + '</div></div>';
+        if (it.out) {
+          const dl = document.createElement('button');
+          dl.className = 'mini';
+          dl.textContent = '↓';
+          dl.title = 'Download ' + it.out.name;
+          dl.addEventListener('click', () => downloadBlob(it.out.blob, it.out.name));
+          row.appendChild(dl);
+        }
+        const del = document.createElement('button');
+        del.className = 'mini danger';
+        del.textContent = '✕';
+        del.title = 'Remove';
+        del.addEventListener('click', () => { items.splice(idx, 1); renderList(); });
+        row.appendChild(del);
+        list.appendChild(row);
+      });
+    }
+
+    async function convertOne(it) {
+      const fmt = $('cv-format').value;
+      const q = parseInt($('cv-quality').value, 10) / 100;
+      const maxDim = parseInt($('cv-maxdim').value, 10);
+      const gray = $('cv-gray').checked;
+
+      const dec = await decodeImage(it.file);
+      try {
+        const cap = Math.min(MAX_EDGE, maxDim > 0 ? maxDim : MAX_EDGE);
+        const s = Math.min(1, cap / Math.max(dec.w, dec.h));
+        const tw = Math.max(1, Math.round(dec.w * s));
+        const th = Math.max(1, Math.round(dec.h * s));
+        const canvas = document.createElement('canvas');
+        canvas.width = tw; canvas.height = th;
+        const ctx = canvas.getContext('2d');
+        let graySet = false;
+        if (gray && 'filter' in ctx) {
+          ctx.filter = 'grayscale(1)';
+          graySet = ctx.filter === 'grayscale(1)';
+        }
+        if (fmt !== 'png') { ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, tw, th); }
+        ctx.drawImage(dec.src, 0, 0, tw, th);
+        if (gray && !graySet) {
+          const d = ctx.getImageData(0, 0, tw, th);
+          const p = d.data;
+          for (let i = 0; i < p.length; i += 4) {
+            const g = (0.299 * p[i] + 0.587 * p[i + 1] + 0.114 * p[i + 2]) | 0;
+            p[i] = p[i + 1] = p[i + 2] = g;
+          }
+          ctx.putImageData(d, 0, 0);
+        }
+        const mime = fmt === 'png' ? 'image/png' : fmt === 'webp' ? 'image/webp' : 'image/jpeg';
+        const blob = await new Promise(res => canvas.toBlob(res, mime, fmt === 'png' ? undefined : q));
+        if (!blob) throw new Error('encode failed');
+        const base = it.name.replace(/\.[^.]+$/, '');
+        const ext = fmt === 'png' ? '.png' : fmt === 'webp' ? '.webp' : '.jpg';
+        it.out = { blob, name: base + ext, size: blob.size };
+      } finally {
+        dec.close();
+      }
+    }
+
+    $('btn-convert').addEventListener('click', async () => {
+      hideError();
+      if (!items.length) { showError('Add some images first.'); return; }
+      for (let i = 0; i < items.length; i++) {
+        setStatus('Converting ' + (i + 1) + '/' + items.length + '...');
+        try {
+          await convertOne(items[i]);
+        } catch (e) {
+          showError('Failed: ' + items[i].name + ' — ' + e.message);
+        }
+        renderList();
+      }
+      setStatus('✓ Converted ' + items.filter(i => i.out).length + '/' + items.length);
+    });
+
+    $('btn-zip').addEventListener('click', async () => {
+      hideError();
+      const done = items.filter(i => i.out);
+      if (!done.length) { showError('Convert first (nothing converted yet).'); return; }
+      if (!window.JSZip) { showError('ZIP library not loaded — check internet connection.'); return; }
+      setStatus('Packing ZIP...');
+      const zip = new JSZip();
+      done.forEach(i => zip.file(i.out.name, i.out.blob));
+      const blob = await zip.generateAsync({ type: 'blob' });
+      downloadBlob(blob, 'converted-images.zip');
+      setStatus('✓ ZIP with ' + done.length + ' images — ' + fmtBytes(blob.size));
+    });
+
+    $('cv-quality').addEventListener('input', () => { $('cv-q-val').textContent = $('cv-quality').value + '%'; });
+    $('btn-clear').addEventListener('click', () => { items = []; renderList(); });
+
+    const dropzone = $('dropzone');
+    const fileInput = $('file-input');
+    dropzone.addEventListener('click', () => fileInput.click());
+    fileInput.addEventListener('change', () => { addFiles([...fileInput.files]); fileInput.value = ''; });
+    dropzone.addEventListener('dragover', e => { e.preventDefault(); dropzone.classList.add('dragover'); });
+    dropzone.addEventListener('dragleave', () => dropzone.classList.remove('dragover'));
+    dropzone.addEventListener('drop', e => {
+      e.preventDefault();
+      dropzone.classList.remove('dragover');
+      const files = [...((e.dataTransfer && e.dataTransfer.files) || [])];
+      if (files.length) addFiles(files);
+    });
+  </script>
+
+</body>
+</html>

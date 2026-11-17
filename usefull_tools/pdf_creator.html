@@ -261,6 +261,11 @@
       border: 1px solid #1a1a1a;
       padding: 6px;
       background: var(--input-bg);
+      cursor: grab;
+    }
+    .img-row.drag-over {
+      border-color: var(--green);
+      box-shadow: 0 0 10px var(--green-glow);
     }
     .thumb {
       width: 56px;
@@ -454,8 +459,9 @@
       <div id="mode-text" style="display:flex;flex-direction:column;gap:18px;">
 
         <div>
-          <div class="section-label">Document Title <span class="lnk" id="btn-example">insert example</span></div>
+          <div class="section-label">Document Title <span class="lnk" id="btn-example">insert example</span> <span class="lnk" id="btn-import-text">import .txt/.md</span></div>
           <input type="text" id="opt-title" placeholder="Optional title...">
+          <input type="file" id="text-import" accept=".txt,.md,.markdown,text/plain,text/markdown" style="display:none;">
         </div>
 
         <div>
@@ -571,6 +577,14 @@
               <select id="img-fit">
                 <option value="fit" selected>Fit page (no upscaling)</option>
                 <option value="fill">Fill — crop to page</option>
+              </select>
+            </div>
+            <div class="opt-group">
+              <label>Layout</label>
+              <select id="img-layout">
+                <option value="1" selected>1 per page</option>
+                <option value="2">2 per page</option>
+                <option value="4">4 per page (2×2)</option>
               </select>
             </div>
           </div>
@@ -953,12 +967,14 @@
     // Decode ANY image → canvas (EXIF-rotated, sRGB, size-capped, optional gray)
     // → embed-safe JPEG/PNG. Fixes CMYK jpegs, progressive jpegs, 16-bit /
     // palette / 1-bit pngs and rotated jpegs on every viewer (incl. Windows).
-    async function normalizeImage(file) {
+    async function normalizeImage(file, rotation = 0) {
       const dec = await decodeImage(file);
       try {
         const scale = Math.min(1, MAX_EDGE / Math.max(dec.w, dec.h));
-        const tw = Math.max(1, Math.round(dec.w * scale));
-        const th = Math.max(1, Math.round(dec.h * scale));
+        const rot = ((rotation % 360) + 360) % 360;
+        const swap = rot === 90 || rot === 270;
+        const tw = Math.max(1, Math.round((swap ? dec.h : dec.w) * scale));
+        const th = Math.max(1, Math.round((swap ? dec.w : dec.h) * scale));
         const canvas = document.createElement('canvas');
         canvas.width = tw; canvas.height = th;
         const ctx = canvas.getContext('2d');
@@ -972,7 +988,10 @@
         }
         // non-PNG sources are flattened onto white (JPEG has no alpha)
         if (!pngSource) { ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, tw, th); }
-        ctx.drawImage(dec.src, 0, 0, tw, th);
+        const sw = dec.w * scale, sh = dec.h * scale;
+        ctx.translate(tw / 2, th / 2);
+        if (rot) ctx.rotate((rot * Math.PI) / 180);
+        ctx.drawImage(dec.src, -sw / 2, -sh / 2, sw, sh);
         if (bw && !graySet) manualGray(ctx, tw, th);
         let dataURL, fmt;
         if (pngSource) {
@@ -1020,7 +1039,7 @@
       setBusy('Processing images...');
       for (const item of imageItems) {
         try {
-          const n = await normalizeImage(item.file);
+          const n = await normalizeImage(item.file, item.rotation || 0);
           item.dataURL = n.dataURL; item.fmt = n.fmt; item.w = n.w; item.h = n.h;
         } catch (e) { /* keep previous encoding */ }
       }
@@ -1029,26 +1048,47 @@
       schedulePreview(50);
     }
 
+    let dragIdx = null;
+
     function renderImageList() {
       const listEl = $('img-list');
       listEl.innerHTML = '';
       imageItems.forEach((item, idx) => {
         const row = document.createElement('div');
         row.className = 'img-row';
+        row.draggable = true;
         row.innerHTML =
           '<img class="thumb" src="' + item.dataURL + '" alt="">' +
           '<div class="img-meta">' +
             '<div class="img-name" title="' + escapeHtml(item.name) + '">' + escapeHtml(item.name) + '</div>' +
-            '<div class="img-dims">' + item.w + ' \u00d7 ' + item.h + ' px</div>' +
+            '<div class="img-dims">' + item.w + ' \u00d7 ' + item.h + ' px' +
+              (item.rotation ? ' \u00b7 rotated ' + item.rotation + '\u00b0' : '') + '</div>' +
           '</div>' +
           '<div class="img-actions">' +
+            '<button class="mini" data-act="rot" title="Rotate 90\u00b0">\u21bb</button>' +
             '<button class="mini" data-act="up" title="Move up">\u2191</button>' +
             '<button class="mini" data-act="down" title="Move down">\u2193</button>' +
             '<button class="mini danger" data-act="del" title="Remove">\u2715</button>' +
           '</div>';
+        row.querySelector('[data-act="rot"]').onclick = () => rotateItem(idx);
         row.querySelector('[data-act="up"]').onclick = () => moveItem(idx, -1);
         row.querySelector('[data-act="down"]').onclick = () => moveItem(idx, 1);
         row.querySelector('[data-act="del"]').onclick = () => { imageItems.splice(idx, 1); renderImageList(); schedulePreview(); };
+        // drag to reorder
+        row.addEventListener('dragstart', e => { dragIdx = idx; e.dataTransfer.effectAllowed = 'move'; });
+        row.addEventListener('dragover', e => { e.preventDefault(); row.classList.add('drag-over'); });
+        row.addEventListener('dragleave', () => row.classList.remove('drag-over'));
+        row.addEventListener('drop', e => {
+          e.preventDefault();
+          row.classList.remove('drag-over');
+          if (dragIdx === null || dragIdx === idx) return;
+          const [moved] = imageItems.splice(dragIdx, 1);
+          imageItems.splice(idx, 0, moved);
+          dragIdx = null;
+          renderImageList();
+          schedulePreview();
+        });
+        row.addEventListener('dragend', () => { dragIdx = null; row.classList.remove('drag-over'); });
         listEl.appendChild(row);
       });
     }
@@ -1061,6 +1101,20 @@
       schedulePreview();
     }
 
+    async function rotateItem(idx) {
+      const item = imageItems[idx];
+      if (!item) return;
+      item.rotation = ((item.rotation || 0) + 90) % 360;
+      setBusy('Processing images...');
+      try {
+        const n = await normalizeImage(item.file, item.rotation);
+        item.dataURL = n.dataURL; item.fmt = n.fmt; item.w = n.w; item.h = n.h;
+      } catch (e) { /* keep previous */ }
+      setBusy('');
+      renderImageList();
+      schedulePreview(50);
+    }
+
     async function buildImagesDoc() {
       const { jsPDF } = window.jspdf;
       const format      = $('img-format').value;
@@ -1070,39 +1124,65 @@
       const compress    = $('img-compress').checked;
 
       const doc = new jsPDF({ unit: 'pt', format, orientation, compress: true });
+      const pw0 = doc.internal.pageSize.getWidth();
+      const ph0 = doc.internal.pageSize.getHeight();
+      const availW0 = pw0 - margin * 2;
+      const availH0 = ph0 - margin * 2;
+      const perPage = Math.max(1, parseInt($('img-layout').value, 10) || 1);
 
-      for (let i = 0; i < imageItems.length; i++) {
-        const item = imageItems[i];
-        if (i > 0) doc.addPage();
-        const pw = doc.internal.pageSize.getWidth();
-        const ph = doc.internal.pageSize.getHeight();
-        const availW = pw - margin * 2;
-        const availH = ph - margin * 2;
+      if (perPage > 1) {
+        // grid layouts — contain in cell, never upscale
+        const cols = perPage === 4 ? 2 : 1;
+        const rows = perPage === 4 ? 2 : 2;
+        const gap = 10;
+        const cellW = (availW0 - gap * (cols - 1)) / cols;
+        const cellH = (availH0 - gap * (rows - 1)) / rows;
+        const pages = Math.ceil(imageItems.length / perPage);
+        for (let p = 0; p < pages; p++) {
+          if (p > 0) doc.addPage();
+          imageItems.slice(p * perPage, (p + 1) * perPage).forEach((item, k) => {
+            const cx = margin + (k % cols) * (cellW + gap);
+            const cy = margin + Math.floor(k / cols) * (cellH + gap);
+            const s = Math.min(cellW / item.w, cellH / item.h, 1);
+            const dw = item.w * s, dh = item.h * s;
+            doc.addImage(item.dataURL, item.fmt,
+              cx + (cellW - dw) / 2, cy + (cellH - dh) / 2, dw, dh);
+          });
+        }
+      } else {
+        for (let i = 0; i < imageItems.length; i++) {
+          const item = imageItems[i];
+          if (i > 0) doc.addPage();
+          const pw = doc.internal.pageSize.getWidth();
+          const ph = doc.internal.pageSize.getHeight();
+          const availW = pw - margin * 2;
+          const availH = ph - margin * 2;
 
-        if (fitMode === 'fill') {
-          // centre-crop the normalised copy to the page ratio, stretch to page area
-          const src = await loadImage(item.dataURL);
-          const iw = src.naturalWidth, ih = src.naturalHeight;
-          const targetAspect = availW / availH;
-          let sw = iw, sh = ih, sx = 0, sy = 0;
-          if (iw / ih > targetAspect) { sw = ih * targetAspect; sx = (iw - sw) / 2; }
-          else { sh = iw / targetAspect; sy = (ih - sh) / 2; }
-          const scalePx = Math.min(2.5, 2200 / Math.max(sw, sh));
-          const canvas = document.createElement('canvas');
-          canvas.width = Math.max(1, Math.round(sw * scalePx));
-          canvas.height = Math.max(1, Math.round(sh * scalePx));
-          const ctx = canvas.getContext('2d');
-          ctx.fillStyle = '#fff';
-          ctx.fillRect(0, 0, canvas.width, canvas.height);
-          ctx.drawImage(src, sx, sy, sw, sh, 0, 0, canvas.width, canvas.height);
-          doc.addImage(canvas.toDataURL('image/jpeg', compress ? 0.85 : 0.95),
-            'JPEG', margin, margin, availW, availH);
-        } else {
-          // fit page, but never upscale past the image's own size
-          const s = Math.min(availW / item.w, availH / item.h, 1);
-          const dw = item.w * s, dh = item.h * s;
-          const x = (pw - dw) / 2, yy = (ph - dh) / 2;
-          doc.addImage(item.dataURL, item.fmt, x, yy, dw, dh);
+          if (fitMode === 'fill') {
+            // centre-crop the normalised copy to the page ratio, stretch to page area
+            const src = await loadImage(item.dataURL);
+            const iw = src.naturalWidth, ih = src.naturalHeight;
+            const targetAspect = availW / availH;
+            let sw = iw, sh = ih, sx = 0, sy = 0;
+            if (iw / ih > targetAspect) { sw = ih * targetAspect; sx = (iw - sw) / 2; }
+            else { sh = iw / targetAspect; sy = (ih - sh) / 2; }
+            const scalePx = Math.min(2.5, 2200 / Math.max(sw, sh));
+            const canvas = document.createElement('canvas');
+            canvas.width = Math.max(1, Math.round(sw * scalePx));
+            canvas.height = Math.max(1, Math.round(sh * scalePx));
+            const ctx = canvas.getContext('2d');
+            ctx.fillStyle = '#fff';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.drawImage(src, sx, sy, sw, sh, 0, 0, canvas.width, canvas.height);
+            doc.addImage(canvas.toDataURL('image/jpeg', compress ? 0.85 : 0.95),
+              'JPEG', margin, margin, availW, availH);
+          } else {
+            // fit page, but never upscale past the image's own size
+            const s = Math.min(availW / item.w, availH / item.h, 1);
+            const dw = item.w * s, dh = item.h * s;
+            const x = (pw - dw) / 2, yy = (ph - dh) / 2;
+            doc.addImage(item.dataURL, item.fmt, x, yy, dw, dh);
+          }
         }
       }
 
@@ -1221,7 +1301,7 @@
     [textInput, titleInput].forEach(el => el.addEventListener('input', () => schedulePreview()));
     ['opt-format', 'opt-orient', 'opt-fontsize', 'opt-lh', 'opt-margin', 'opt-footer', 'opt-pagenum']
       .forEach(id => $(id).addEventListener('change', () => schedulePreview(50)));
-    ['img-format', 'img-orient', 'img-margin', 'img-fit']
+    ['img-format', 'img-orient', 'img-margin', 'img-fit', 'img-layout']
       .forEach(id => $(id).addEventListener('change', () => schedulePreview(50)));
     ['img-compress', 'img-bw']
       .forEach(id => $(id).addEventListener('change', renormalizeAll));
@@ -1240,6 +1320,21 @@
         '---\n' +
         'Vygenerovan\u00e9 priamo v prehliada\u010di, bez servera.';
       schedulePreview(0);
+    });
+
+    // Import .txt / .md files into text mode
+    $('btn-import-text').addEventListener('click', () => $('text-import').click());
+    $('text-import').addEventListener('change', async () => {
+      const f = $('text-import').files[0];
+      if (!f) return;
+      try {
+        textInput.value = await f.text();
+        if (!titleInput.value.trim()) titleInput.value = f.name.replace(/\.[^.]+$/, '');
+        schedulePreview(0);
+      } catch (e) {
+        showError('Could not read: ' + f.name);
+      }
+      $('text-import').value = '';
     });
 
     // Dropzone

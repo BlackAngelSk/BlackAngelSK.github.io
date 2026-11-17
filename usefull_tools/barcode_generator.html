@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Barcode Generator — BlackAngelSK</title>
+  <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; }
+    :root {
+      --green: #00ff00; --green-dim: #006600; --green-mid: #00cc00;
+      --green-glow: rgba(0, 255, 0, 0.15);
+      --bg: #000; --card: #0a0a0a; --border: #00ff00; --input-bg: #0d0d0d;
+    }
+    body {
+      font-family: 'Courier New', monospace;
+      background: var(--bg); color: var(--green);
+      margin: 0; padding: 0; min-height: 100vh; display: flex; flex-direction: column;
+    }
+    header {
+      background: #111; padding: 16px 24px; font-size: 18px; font-weight: bold;
+      text-transform: uppercase; border-bottom: 2px solid var(--border);
+      display: flex; align-items: center; gap: 16px;
+    }
+    header a { color: var(--green); text-decoration: none; }
+    header a:hover { text-decoration: underline; }
+    header .sep { color: var(--green-dim); }
+    header .title { color: var(--green-mid); font-size: 14px; letter-spacing: 1px; }
+
+    .app {
+      flex: 1; display: grid; grid-template-columns: minmax(340px, 420px) 1fr;
+      max-width: 1200px; width: 100%; margin: 0 auto;
+    }
+    .panel-left {
+      padding: 28px 24px; display: flex; flex-direction: column; gap: 16px;
+      border-right: 1px solid #1a1a1a;
+    }
+    .section-label {
+      font-size: 11px; letter-spacing: 3px; text-transform: uppercase;
+      color: var(--green-dim); margin-bottom: 6px;
+      display: flex; align-items: center; gap: 8px;
+    }
+    .section-label::after {
+      content: ''; flex: 1; height: 1px;
+      background: linear-gradient(90deg, #1a1a1a, transparent);
+    }
+
+    input[type="text"] {
+      width: 100%; background: var(--input-bg); color: var(--green);
+      border: 1px solid #1e1e1e; padding: 9px 10px;
+      font-family: inherit; font-size: 14px; outline: none; transition: all 0.2s;
+    }
+    input[type="text"]:focus { border-color: var(--green); box-shadow: 0 0 12px var(--green-glow); }
+
+    .opts-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .opt-group label {
+      display: block; font-size: 11px; letter-spacing: 2px;
+      text-transform: uppercase; color: var(--green-dim); margin-bottom: 6px;
+    }
+    select {
+      width: 100%; background: var(--input-bg); color: var(--green);
+      border: 1px solid #1e1e1e; padding: 8px 10px;
+      font-family: inherit; font-size: 13px; cursor: pointer; outline: none;
+      appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath d='M2 4l4 4 4-4' fill='none' stroke='%2300ff00' stroke-width='1.5'/%3E%3C/svg%3E");
+      background-repeat: no-repeat; background-position: right 10px center;
+    }
+    select:focus { border-color: var(--green); }
+    select option { background: #111; color: var(--green); }
+    input[type="range"] { width: 100%; accent-color: var(--green); cursor: pointer; }
+    input[type="color"] {
+      width: 42px; height: 34px; border: 1px solid #1e1e1e;
+      cursor: pointer; padding: 2px; background: var(--input-bg);
+    }
+    input[type="checkbox"] { width: 15px; height: 15px; accent-color: var(--green); cursor: pointer; }
+    .checkbox-row label {
+      display: flex; align-items: center; gap: 8px;
+      font-size: 12px; color: var(--green-mid); cursor: pointer;
+      text-transform: uppercase; letter-spacing: 1px; user-select: none;
+    }
+
+    .actions { display: flex; gap: 10px; }
+    .btn {
+      flex: 1; padding: 11px 14px; background: var(--input-bg); color: var(--green);
+      border: 1px solid #1e1e1e; font-family: inherit; font-size: 13px;
+      cursor: pointer; text-transform: uppercase; letter-spacing: 1px;
+      transition: all 0.2s; display: flex; align-items: center; justify-content: center; gap: 6px;
+    }
+    .btn:hover:not(:disabled) { border-color: var(--green); box-shadow: 0 0 10px var(--green-glow); background: #111; }
+    .btn:active:not(:disabled) { transform: scale(0.97); }
+    .btn:disabled { opacity: 0.3; cursor: not-allowed; }
+
+    .error-msg {
+      color: #ff4444; font-size: 12px; display: none;
+      padding: 8px 12px; border: 1px solid #ff444433; background: #ff444408; line-height: 1.6;
+    }
+    .error-msg.visible { display: block; }
+
+    .panel-right {
+      padding: 28px 24px; display: flex; flex-direction: column;
+      align-items: center; justify-content: center; gap: 20px;
+      background: var(--card); min-width: 0;
+    }
+    .preview-label {
+      font-size: 11px; letter-spacing: 3px; text-transform: uppercase;
+      color: var(--green-dim); align-self: flex-start;
+    }
+    .bar-stage {
+      width: 100%; display: flex; align-items: center; justify-content: center;
+      min-height: 260px; padding: 24px;
+    }
+    .bar-frame {
+      padding: 20px; background: #fff;
+      box-shadow: 0 0 30px rgba(0,255,0,0.08); max-width: 100%;
+    }
+    .bar-frame canvas { display: block; max-width: 100%; height: auto; }
+    .bar-placeholder {
+      text-align: center; color: #1a3a1a; font-size: 13px; line-height: 2;
+    }
+    .bar-placeholder .big { font-size: 48px; display: block; letter-spacing: 6px; }
+    .bar-meta {
+      display: flex; gap: 20px; font-size: 12px; color: var(--green-dim);
+    }
+    .bar-meta .ok { color: var(--green-mid); }
+
+    footer {
+      background: #111; padding: 12px; font-size: 13px;
+      border-top: 2px solid var(--border); text-align: center; color: var(--green-dim);
+    }
+    @media (max-width: 800px) {
+      .app { grid-template-columns: 1fr; }
+      .panel-left { border-right: none; border-bottom: 1px solid #1a1a1a; }
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <a href="../index.html">BlackAngelSK</a>
+    <span class="sep">/</span>
+    <span class="title">Barcode Generator</span>
+  </header>
+
+  <div class="app">
+    <div class="panel-left">
+
+      <div>
+        <div class="section-label">Format</div>
+        <select id="bc-format">
+          <option value="CODE128" selected>CODE128 (any text)</option>
+          <option value="CODE128A">CODE128 A</option>
+          <option value="CODE128B">CODE128 B</option>
+          <option value="CODE128C">CODE128 C (digits)</option>
+          <option value="CODE39">CODE39</option>
+          <option value="EAN13">EAN-13 (12/13 digits)</option>
+          <option value="EAN8">EAN-8 (7/8 digits)</option>
+          <option value="UPC">UPC-A (11/12 digits)</option>
+          <option value="ITF14">ITF-14 (digits)</option>
+          <option value="MSI">MSI</option>
+          <option value="pharmacode">Pharmacode</option>
+          <option value="codabar">Codabar</option>
+        </select>
+      </div>
+
+      <div>
+        <div class="section-label">Value</div>
+        <input type="text" id="bc-value" value="BlackAngelSK-2026" placeholder="Barcode content...">
+        <div class="error-msg" id="error-msg" style="margin-top:8px;"></div>
+      </div>
+
+      <div>
+        <div class="section-label">Appearance</div>
+        <div class="opts-grid">
+          <div class="opt-group">
+            <label>Bar width <span id="bc-w-val" style="color:var(--green-mid);">2</span></label>
+            <input type="range" id="bc-width" min="1" max="4" value="2">
+          </div>
+          <div class="opt-group">
+            <label>Height <span id="bc-h-val" style="color:var(--green-mid);">90</span></label>
+            <input type="range" id="bc-height" min="30" max="180" value="90">
+          </div>
+          <div class="opt-group">
+            <label>Text size <span id="bc-fs-val" style="color:var(--green-mid);">16</span></label>
+            <input type="range" id="bc-fontsize" min="8" max="30" value="16">
+          </div>
+          <div class="opt-group">
+            <label>Text position</label>
+            <select id="bc-textpos">
+              <option value="bottom" selected>bottom</option>
+              <option value="top">top</option>
+            </select>
+          </div>
+          <div class="opt-group">
+            <label>Bars colour</label>
+            <input type="color" id="bc-line" value="#000000">
+          </div>
+          <div class="opt-group">
+            <label>Background</label>
+            <input type="color" id="bc-bg" value="#ffffff">
+          </div>
+        </div>
+        <div class="checkbox-row" style="margin-top:10px;">
+          <label><input type="checkbox" id="bc-display" checked> Show text</label>
+        </div>
+      </div>
+
+      <div class="actions">
+        <button class="btn" id="btn-png"><span class="icon">↓</span> PNG</button>
+        <button class="btn" id="btn-svg"><span class="icon">↓</span> SVG</button>
+      </div>
+
+    </div>
+
+    <div class="panel-right">
+      <div class="preview-label">Live Preview</div>
+      <div class="bar-stage" id="bar-stage">
+        <div class="bar-placeholder" id="placeholder">
+          <span class="big">|| || ||| ||</span>
+          Start typing to generate...
+        </div>
+        <div class="bar-frame" id="bar-frame" style="display:none;">
+          <canvas id="bc-canvas"></canvas>
+        </div>
+      </div>
+      <div class="bar-meta" id="bar-meta"></div>
+      <svg id="bc-svg" xmlns="http://www.w3.org/2000/svg" style="display:none;"></svg>
+    </div>
+  </div>
+
+  <footer>&copy; 2026 BlackAngelSK</footer>
+
+  <script>
+    const $ = id => document.getElementById(id);
+    let lastOk = false;
+
+    function showError(msg) { $('error-msg').textContent = msg; $('error-msg').classList.add('visible'); }
+    function hideError() { $('error-msg').classList.remove('visible'); }
+
+    function options() {
+      return {
+        format: $('bc-format').value,
+        width: parseInt($('bc-width').value, 10),
+        height: parseInt($('bc-height').value, 10),
+        displayValue: $('bc-display').checked,
+        font: 'monospace',
+        fontSize: parseInt($('bc-fontsize').value, 10),
+        textPosition: $('bc-textpos').value,
+        textAlign: 'center',
+        lineColor: $('bc-line').value,
+        background: $('bc-bg').value,
+        margin: 12,
+        fontOptions: ''
+      };
+    }
+
+    function generate() {
+      const value = $('bc-value').value;
+      const opts = options();
+      hideError();
+      if (!value) {
+        lastOk = false;
+        $('bar-frame').style.display = 'none';
+        $('placeholder').style.display = 'block';
+        $('bar-meta').innerHTML = '';
+        return;
+      }
+      try {
+        JsBarcode('#bc-canvas', value, opts);
+        JsBarcode('#bc-svg', value, opts);
+        lastOk = true;
+        $('bar-frame').style.display = 'block';
+        $('placeholder').style.display = 'none';
+        $('bar-meta').innerHTML =
+          '<span>' + opts.format + '</span><span>|</span>' +
+          '<span>' + value.length + ' chars</span><span>|</span>' +
+          '<span class="ok">ready</span>';
+      } catch (e) {
+        lastOk = false;
+        $('bar-frame').style.display = 'none';
+        $('placeholder').style.display = 'block';
+        $('bar-meta').innerHTML = '';
+        showError('Invalid for ' + opts.format + ' — ' + (e.message || 'check the value') +
+          (opts.format === 'EAN13' ? ' (needs 12 digits, 13th is the checksum)' :
+           opts.format === 'EAN8' ? ' (needs 7 digits)' :
+           opts.format === 'UPC' ? ' (needs 11 digits)' :
+           opts.format === 'CODE128C' ? ' (needs an even number of digits)' :
+           opts.format === 'ITF14' ? ' (needs 13 or 14 digits)' : ''));
+      }
+    }
+
+    let timer = null;
+    function schedule() { clearTimeout(timer); timer = setTimeout(generate, 120); }
+
+    ['bc-format', 'bc-value', 'bc-width', 'bc-height', 'bc-fontsize', 'bc-textpos', 'bc-line', 'bc-bg', 'bc-display']
+      .forEach(id => {
+        $(id).addEventListener('input', schedule);
+        $(id).addEventListener('change', schedule);
+      });
+    $('bc-width').addEventListener('input', () => { $('bc-w-val').textContent = $('bc-width').value; });
+    $('bc-height').addEventListener('input', () => { $('bc-h-val').textContent = $('bc-height').value; });
+    $('bc-fontsize').addEventListener('input', () => { $('bc-fs-val').textContent = $('bc-fontsize').value; });
+
+    function download(url, name) {
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = name;
+      a.click();
+    }
+
+    $('btn-png').addEventListener('click', () => {
+      if (!lastOk) { showError('Nothing to download — fix the value first.'); return; }
+      download($('bc-canvas').toDataURL('image/png'), 'barcode.png');
+    });
+
+    $('btn-svg').addEventListener('click', () => {
+      if (!lastOk) { showError('Nothing to download — fix the value first.'); return; }
+      const svgEl = $('bc-svg');
+      svgEl.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+      const svg = '<?xml version="1.0" encoding="UTF-8"?>\n' + svgEl.outerHTML;
+      download('data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg), 'barcode.svg');
+    });
+
+    generate();
+  </script>
+
+</body>
+</html>
